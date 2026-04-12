@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-700.css";
+
+:root {
+  --bg-base: #141416;
+  --bg-surface: #141416;
+  --bg-elevated: #1c1c1f;
+  --border: #2a2a2e;
+  --text-primary: #e8e8ea;
+  --text-secondary: #9898a6;
+  --text-muted: #6b6b72;
+  --accent: #7c6af7;
+  --accent-glow: rgba(124, 106, 247, 0.15);
+  --on-accent: #ffffff;
+  /* text/icon color on accent-colored backgrounds */
+  --error: #f85149;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-size-mono: 15px;
+  --font-size-ui: 15px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* xterm.js overrides */
+.xterm,
+.xterm-viewport,
+.xterm-screen,
+.xterm-scrollable-element {
+  background-color: var(--bg-surface) !important;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
