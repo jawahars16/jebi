@@ -2,6 +2,8 @@
 @import "@fontsource/jetbrains-mono/latin-400.css";
 @import "@fontsource/jetbrains-mono/latin-700.css";
 
+/* Colors and fonts below define the initial paint only.
+   PreferencesProvider (hooks/usePreferences.js) overrides them at runtime. */
 :root {
   --bg-base: #141416;
   --bg-surface: #141416;
@@ -30,7 +32,6 @@ body,
 }
 
 body {
-  background: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
@@ -44,8 +45,18 @@ body {
   background-color: var(--bg-surface) !important;
 }
 
+/* Hide the overview ruler — xterm always creates the canvas but we don't register decorations */
+.xterm-overview-ruler {
+  display: none !important;
+}
+
+.xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
 .xterm-viewport::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .xterm-viewport::-webkit-scrollbar-track {
@@ -60,3 +71,9 @@ body {
 .xterm-viewport::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* CodeMirror — suppress internal scrollbar; auto-height plugin controls sizing */
+.cm-scroller {
+  overflow: hidden !important;
+}
+

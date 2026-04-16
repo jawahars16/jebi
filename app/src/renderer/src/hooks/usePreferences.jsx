@@ -1,0 +1,86 @@
+import { createContext, useContext, useState, useEffect, useMemo } from 'react'
+import { THEMES } from '../preferences/themes'
+import { DEFAULT_PREFS } from '../preferences/defaults'
+import { applyThemeToCSSVars } from '../preferences/cssVars'
+
+const STORAGE_KEY = 'term-prefs'
+
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) }
+  } catch {}
+  return DEFAULT_PREFS
+}
+
+const PreferencesContext = createContext(null)
+
+export function PreferencesProvider({ children }) {
+  const [prefs, setPrefs] = useState(() => {
+    const loaded = loadPrefs()
+    // Apply immediately so there's no flash of default colors on first paint.
+    const colors = loaded.themeId === 'custom'
+      ? loaded.customColors
+      : THEMES[loaded.themeId]?.colors ?? THEMES['default'].colors
+    applyThemeToCSSVars(colors, loaded.fontSize, loaded.fontFamily)
+    return loaded
+  })
+
+  // Whenever prefs change: apply CSS vars + persist.
+  useEffect(() => {
+    const colors = prefs.themeId === 'custom'
+      ? prefs.customColors
+      : THEMES[prefs.themeId]?.colors ?? THEMES['default'].colors
+    applyThemeToCSSVars(colors, prefs.fontSize, prefs.fontFamily)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)) } catch {}
+  }, [prefs])
+
+  const activeColors = useMemo(() =>
+    prefs.themeId === 'custom'
+      ? prefs.customColors
+      : THEMES[prefs.themeId]?.colors ?? THEMES['default'].colors,
+    [prefs.themeId, prefs.customColors]
+  )
+
+  function setTheme(id) {
+    setPrefs(prev => {
+      if (id === 'custom') {
+        // Seed custom slot from current named theme so user can fork it.
+        const base = THEMES[prev.themeId]?.colors ?? prev.customColors
+        return { ...prev, themeId: 'custom', customColors: { ...base } }
+      }
+      return { ...prev, themeId: id }
+    })
+  }
+
+  function setCustomColor(key, value) {
+    setPrefs(prev => ({
+      ...prev,
+      themeId: 'custom',
+      customColors: { ...prev.customColors, [key]: value },
+    }))
+  }
+
+  function setFontFamily(value) {
+    setPrefs(prev => ({ ...prev, fontFamily: value }))
+  }
+
+  function setFontSize(value) {
+    const clamped = Math.min(22, Math.max(11, Math.round(Number(value))))
+    setPrefs(prev => ({ ...prev, fontSize: clamped }))
+  }
+
+  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize }
+
+  return (
+    <PreferencesContext.Provider value={value}>
+      {children}
+    </PreferencesContext.Provider>
+  )
+}
+
+export function usePreferences() {
+  const ctx = useContext(PreferencesContext)
+  if (!ctx) throw new Error('usePreferences must be used inside PreferencesProvider')
+  return ctx
+}

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { spawn } from 'child_process'
 
@@ -11,7 +11,7 @@ function coreBinaryPath() {
   if (app.isPackaged) {
     return join(process.resourcesPath, bin)
   }
-  return join(app.getAppPath(), '..', 'core', bin)
+  return join(app.getAppPath(), '..', 'core/bin', bin)
 }
 
 function startCore() {
@@ -55,10 +55,20 @@ function createWindow() {
   }
 }
 
+ipcMain.handle('open-path', (_, path) => shell.openPath(path))
+
 app.whenReady().then(() => {
   startCore()
   createWindow()
+})
+
+// Register Cmd+N only while a terminal window is focused so it doesn't
+// fire as a system-wide shortcut when other apps are in the foreground.
+app.on('browser-window-focus', () => {
   globalShortcut.register('CommandOrControl+N', createWindow)
+})
+app.on('browser-window-blur', () => {
+  globalShortcut.unregister('CommandOrControl+N')
 })
 
 app.on('window-all-closed', () => {

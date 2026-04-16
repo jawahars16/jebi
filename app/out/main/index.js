@@ -8,7 +8,7 @@ function coreBinaryPath() {
   if (electron.app.isPackaged) {
     return path.join(process.resourcesPath, bin);
   }
-  return path.join(electron.app.getAppPath(), "..", "core", bin);
+  return path.join(electron.app.getAppPath(), "..", "core/bin", bin);
 }
 function startCore() {
   const bin = coreBinaryPath();
@@ -45,10 +45,16 @@ function createWindow() {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 }
+electron.ipcMain.handle("open-path", (_, path2) => electron.shell.openPath(path2));
 electron.app.whenReady().then(() => {
   startCore();
   createWindow();
+});
+electron.app.on("browser-window-focus", () => {
   electron.globalShortcut.register("CommandOrControl+N", createWindow);
+});
+electron.app.on("browser-window-blur", () => {
+  electron.globalShortcut.unregister("CommandOrControl+N");
 });
 electron.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

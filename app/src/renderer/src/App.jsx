@@ -6,6 +6,7 @@ import { useSessionStore } from './hooks/useSessionStore.jsx'
 import { usePaneResize } from './hooks/usePaneResize'
 import { createLeaf, splitLeaf, removeLeaf, collectPaneIds, computePaneRects, computeDividers } from './utils/layoutTree'
 import StatusBar from './components/StatusBar/index.jsx'
+import PreferencesModal from './components/Preferences'
 
 function createTab(counter) {
   const leaf = createLeaf()
@@ -27,6 +28,7 @@ export default function App() {
   const { deleteSession } = useSessionStore()
   const paneWrapperRef = useRef(null)
   const { startDrag, dragCursor } = usePaneResize(paneWrapperRef, setTabs)
+  const [isPrefsOpen, setIsPrefsOpen] = useState(false)
 
   // --- Tab handlers ---
 
@@ -106,6 +108,7 @@ export default function App() {
     'Meta+w': closeActivePane,
     'Meta+d': () => splitActivePane('horizontal'),
     'Meta+Shift+D': () => splitActivePane('vertical'),
+    'Meta+,': () => setIsPrefsOpen(true),
   })
 
   // --- Pane count for current tab (to show/hide close button) ---
@@ -208,7 +211,7 @@ export default function App() {
   // Single layout tree — pane wrapper is always at the same position so React never
   // remounts terminals when toggling tab bar between top and left.
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-base)]">
+    <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-surface)]">
       {/* Title bar — always at top; holds TabBar in top mode, just a drag handle in left mode */}
       <div
         className="shrink-0 flex items-center bg-[var(--bg-base)] border-b border-[var(--border)] [-webkit-app-region:drag]"
@@ -220,6 +223,16 @@ export default function App() {
             <TabBar {...tabBarProps} />
           </>
         )}
+        <div className="ml-auto flex items-center pr-3 [-webkit-app-region:no-drag]">
+          <button
+            title="Preferences (⌘,)"
+            onClick={() => setIsPrefsOpen(true)}
+            className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--bg-elevated)]"
+            style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            ⚙
+          </button>
+        </div>
       </div>
 
       {/* Main area — flex row; left TabBar appears here when in left mode */}
@@ -239,6 +252,8 @@ export default function App() {
       {dragCursor && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, cursor: dragCursor }} />
       )}
+
+      <PreferencesModal isOpen={isPrefsOpen} onClose={() => setIsPrefsOpen(false)} />
     </div>
   )
 }

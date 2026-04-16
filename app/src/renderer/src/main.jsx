@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { SessionStoreProvider } from './hooks/useSessionStore.jsx'
+import { PreferencesProvider } from './hooks/usePreferences'
 import './styles/global.css'
 
 // StrictMode intentionally double-invokes effects in dev, which opens two
@@ -8,6 +9,8 @@ import './styles/global.css'
 // reconnect/singleton guard in useTerminal.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <SessionStoreProvider>
-    <App />
+    <PreferencesProvider>
+      <App />
+    </PreferencesProvider>
   </SessionStoreProvider>
 )
