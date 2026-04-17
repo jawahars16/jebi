@@ -18,7 +18,7 @@ export class PromptAddon {
     this._decorations = [];
     this._elements = []; // DOM elements from onRender, for TUI visibility toggling
     this._tuiActive = false;
-    this._commands = []; // { marker, command, cwd, exitCode, gitData, root, cellHeight, onCopy }
+    this._commands = []; // { marker, command, cwd, exitCode, gitData, nodeData, root, cellHeight, onCopy }
   }
 
   activate(terminal) {
@@ -57,6 +57,7 @@ export class PromptAddon {
       cwd: best.cwd,
       exitCode: best.exitCode,
       gitData: best.gitData ?? null,
+      nodeData: best.nodeData ?? null,
       onCopy: best.onCopy,
     };
   }
@@ -92,6 +93,9 @@ export class PromptAddon {
     const onGitClick = entry.gitData?.branch
       ? () => navigator.clipboard.writeText(entry.gitData.branch)
       : undefined;
+    const onNodeClick = entry.nodeData?.version
+      ? () => navigator.clipboard.writeText(entry.nodeData.version)
+      : undefined;
     entry.root?.render(
       <Prompt
         command={entry.command}
@@ -99,6 +103,8 @@ export class PromptAddon {
         exitCode={entry.exitCode}
         gitData={entry.gitData}
         onGitClick={onGitClick}
+        nodeData={entry.nodeData}
+        onNodeClick={onNodeClick}
         rowHeight={entry.cellHeight}
         onCopy={entry.onCopy}
       />,
@@ -126,6 +132,14 @@ export class PromptAddon {
     const entry = this._commands[this._commands.length - 1];
     if (!entry) return;
     entry.gitData = gitData;
+    this._renderEntry(entry);
+  }
+
+  // Called when TypeNode arrives — updates the most recent decoration with node state.
+  updateLastNode(nodeData) {
+    const entry = this._commands[this._commands.length - 1];
+    if (!entry) return;
+    entry.nodeData = nodeData;
     this._renderEntry(entry);
   }
 
@@ -172,6 +186,7 @@ export class PromptAddon {
       cwd,
       exitCode: 0,
       gitData: null,
+      nodeData: null,
       root: null,
       cellHeight,
       onCopy: null,
