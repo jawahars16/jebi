@@ -3,7 +3,7 @@ import Prompt from '../Prompt'
 import { useShellEditor } from './useShellEditor'
 
 const InputBar = forwardRef(function InputBar(
-  { onSubmit, onNavigateHistory, getHistory, cwd, exitCode, gitData, onGitClick },
+  { onSubmit, onNavigateHistory, getHistory, cwd, exitCode, gitData, onGitClick, nodeData, onNodeClick },
   ref,
 ) {
   // callbacksRef keeps latest prop values accessible inside the CodeMirror
@@ -28,7 +28,7 @@ const InputBar = forwardRef(function InputBar(
   return (
     <div className="shrink-0 flex flex-col bg-[var(--bg-surface)] mt-1 pt-2 pb-2">
       <div>
-        <Prompt cwd={cwd} exitCode={exitCode} gitData={gitData} onGitClick={onGitClick} />
+        <Prompt cwd={cwd} exitCode={exitCode} gitData={gitData} onGitClick={onGitClick} nodeData={nodeData} onNodeClick={onNodeClick} />
       </div>
       <div ref={editorContainerRef} />
     </div>
