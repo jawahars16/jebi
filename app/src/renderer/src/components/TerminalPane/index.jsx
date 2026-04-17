@@ -20,19 +20,19 @@ export default function TerminalPane({
   const [running, setRunning] = useState(false)
   const [cwd, setCwd] = useState('')
   const [exitCode, setExitCode] = useState(0)
+  const [gitData, setGitData] = useState(null)
   const inputBarRef = useRef(null)
-  // Kept in a ref so the OutputArea key-intercept callback always sees the live value.
   const runningRef = useRef(false)
   const pendingCommandRef = useRef(null)
 
   runningRef.current = running
 
-  // Expose to OutputArea so its key-intercept handler can redirect focus here.
   callbacksRef.current.isRunning = () => runningRef.current
   callbacksRef.current.focusInput = () => inputBarRef.current?.focus()
 
   callbacksRef.current.onCwd = (value) => {
     setCwd(value)
+    setGitData(null) // Reset on directory change; onGit re-populates if new dir is a git repo
     callbacksRef.current.currentCwd = value
     callbacksRef.current.onCwdDecoration?.(value)
   }
@@ -49,6 +49,11 @@ export default function TerminalPane({
     setTimeout(() => inputBarRef.current?.focus(), 0)
   }
 
+  callbacksRef.current.onGit = (data) => {
+    setGitData(data)
+    callbacksRef.current.onGitDecoration?.(data)
+  }
+
   const handleSubmit = useCallback((command) => {
     pendingCommandRef.current = command.trim()
     sendInput(command)
@@ -57,9 +62,6 @@ export default function TerminalPane({
   }, [sendInput])
 
   function handleMouseDown() {
-    // When a command isn't running the InputBar owns keyboard input.
-    // setTimeout lets xterm's own mousedown handler fire first, then we
-    // steal focus back so the user's keystrokes land in the InputBar.
     if (!runningRef.current) setTimeout(() => inputBarRef.current?.focus(), 0)
   }
 
@@ -76,7 +78,18 @@ export default function TerminalPane({
         isVisible={isVisible}
       />
 
-      {!running && <InputBar ref={inputBarRef} onSubmit={handleSubmit} onNavigateHistory={navigateHistory} getHistory={getHistory} cwd={cwd} exitCode={exitCode} />}
+      {!running && (
+        <InputBar
+          ref={inputBarRef}
+          onSubmit={handleSubmit}
+          onNavigateHistory={navigateHistory}
+          getHistory={getHistory}
+          cwd={cwd}
+          exitCode={exitCode}
+          gitData={gitData}
+          onGitClick={() => handleSubmit('git status')}
+        />
+      )}
     </div>
   )
 }

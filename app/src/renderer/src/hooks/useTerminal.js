@@ -23,6 +23,16 @@ export function useTerminal(paneId, callbacksRef) {
         case wire.TypeExitCode:
           callbacksRef.current.onExitCode?.(msg.data)
           break
+        case wire.TypeGit: {
+          const [branch, dirty, ahead, behind] = msg.data.split('|')
+          callbacksRef.current.onGit?.({
+            branch,
+            dirty: dirty === '1',
+            ahead: parseInt(ahead, 10) || 0,
+            behind: parseInt(behind, 10) || 0,
+          })
+          break
+        }
       }
     }
 
@@ -34,8 +44,6 @@ export function useTerminal(paneId, callbacksRef) {
     if (terminalSizeRef.current) {
       ws.current.send(JSON.stringify({ type: wire.TypeResize, data: terminalSizeRef.current }))
     }
-    // Render the React Prompt decoration above the command's output.
-    // Wrapped in try-catch so addon errors never block the command send.
     try { callbacksRef.current.onCommandStart?.(text) } catch (e) { console.error(e) }
     ws.current.send(JSON.stringify({ type: wire.TypeInput, data: text + '\n' }))
   }, [paneId])

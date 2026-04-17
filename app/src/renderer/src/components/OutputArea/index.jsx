@@ -171,6 +171,12 @@ export default function OutputArea({
         setStickyCommand(promptAddon.getStickyCommand(viewportY));
       };
 
+      callbacksRef.current.onGitDecoration = (gitData) => {
+        promptAddon.updateLastGit(gitData);
+        const viewportY = term.buffer.active.viewportY;
+        setStickyCommand(promptAddon.getStickyCommand(viewportY));
+      };
+
       const observer = new ResizeObserver(() => fitAddon.fit());
       observer.observe(rootRef.current);
 
@@ -253,6 +259,10 @@ export default function OutputArea({
             exitCode={stickyCommand.exitCode}
             rowHeight={cellHeightRef.current}
             onCopy={stickyCommand.onCopy}
+            gitData={stickyCommand.gitData}
+            onGitClick={stickyCommand.gitData?.branch
+              ? () => navigator.clipboard.writeText(stickyCommand.gitData.branch)
+              : undefined}
           />
         </div>
       )}

@@ -18,7 +18,7 @@ export class PromptAddon {
     this._decorations = [];
     this._elements = []; // DOM elements from onRender, for TUI visibility toggling
     this._tuiActive = false;
-    this._commands = []; // { marker, command, cwd, exitCode, root, cellHeight, onCopy }
+    this._commands = []; // { marker, command, cwd, exitCode, gitData, root, cellHeight, onCopy }
   }
 
   activate(terminal) {
@@ -56,6 +56,7 @@ export class PromptAddon {
       command: best.command,
       cwd: best.cwd,
       exitCode: best.exitCode,
+      gitData: best.gitData ?? null,
       onCopy: best.onCopy,
     };
   }
@@ -87,20 +88,29 @@ export class PromptAddon {
     return lines.join("\n");
   }
 
+  _renderEntry(entry) {
+    const onGitClick = entry.gitData?.branch
+      ? () => navigator.clipboard.writeText(entry.gitData.branch)
+      : undefined;
+    entry.root?.render(
+      <Prompt
+        command={entry.command}
+        cwd={entry.cwd}
+        exitCode={entry.exitCode}
+        gitData={entry.gitData}
+        onGitClick={onGitClick}
+        rowHeight={entry.cellHeight}
+        onCopy={entry.onCopy}
+      />,
+    );
+  }
+
   // Called when TypeCwd arrives — updates the most recent decoration with the real cwd.
   updateLastCwd(cwd) {
     const entry = this._commands[this._commands.length - 1];
     if (!entry) return;
     entry.cwd = cwd;
-    entry.root?.render(
-      <Prompt
-        command={entry.command}
-        cwd={cwd}
-        exitCode={entry.exitCode}
-        rowHeight={entry.cellHeight}
-        onCopy={entry.onCopy}
-      />,
-    );
+    this._renderEntry(entry);
   }
 
   // Called when TypeExitCode arrives — updates the most recent decoration with the real exit code.
@@ -108,15 +118,15 @@ export class PromptAddon {
     const entry = this._commands[this._commands.length - 1];
     if (!entry) return;
     entry.exitCode = code;
-    entry.root?.render(
-      <Prompt
-        command={entry.command}
-        cwd={entry.cwd}
-        exitCode={code}
-        rowHeight={entry.cellHeight}
-        onCopy={entry.onCopy}
-      />,
-    );
+    this._renderEntry(entry);
+  }
+
+  // Called when TypeGit arrives — updates the most recent decoration with git state.
+  updateLastGit(gitData) {
+    const entry = this._commands[this._commands.length - 1];
+    if (!entry) return;
+    entry.gitData = gitData;
+    this._renderEntry(entry);
   }
 
   enterTui() {
@@ -161,6 +171,7 @@ export class PromptAddon {
       command,
       cwd,
       exitCode: 0,
+      gitData: null,
       root: null,
       cellHeight,
       onCopy: null,
@@ -199,15 +210,7 @@ export class PromptAddon {
         el._reactRoot = root;
         entry.root = root;
         this._roots.push(root);
-        root.render(
-          <Prompt
-            command={command}
-            cwd={cwd}
-            exitCode={entry.exitCode}
-            rowHeight={cellHeight}
-            onCopy={entry.onCopy}
-          />,
-        );
+        this._renderEntry(entry);
       }
     });
 

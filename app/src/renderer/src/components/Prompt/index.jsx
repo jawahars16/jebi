@@ -1,6 +1,7 @@
 import { useState } from "react";
 import FolderIcon from "../../icons/FolderIcon";
 import ClipboardIcon from "../../icons/ClipboardIcon";
+import GitSegment from "./GitSegment";
 
 // Prompt — prompt header rendered in xterm decorations and InputBar.
 // Used in two places:
@@ -11,7 +12,7 @@ import ClipboardIcon from "../../icons/ClipboardIcon";
 // so prompt rows align exactly with terminal cell rows. When omitted (InputBar), rows
 // use natural height with lineHeight 1.2 to match xterm's compact feel.
 // Total decoration height must equal (1 + commandLines.length) * rowHeight.
-export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy }) {
+export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitData, onGitClick }) {
   const [copied, setCopied] = useState(false);
   const hasError = exitCode > 0;
   const commandLines = command ? command.split("\n") : [];
@@ -81,6 +82,15 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy }) {
                 {shortenPath(cwd)}
               </span>
             </button>
+          )}
+          {gitData && (
+            <GitSegment
+              branch={gitData.branch}
+              dirty={gitData.dirty}
+              ahead={gitData.ahead}
+              behind={gitData.behind}
+              onClick={onGitClick}
+            />
           )}
         </div>
         <div className="flex-1 h-px bg-gray-300/15" />
