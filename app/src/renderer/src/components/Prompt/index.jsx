@@ -1,6 +1,5 @@
 import { useState } from "react";
-import FolderIcon from "../../icons/FolderIcon";
-import ClipboardIcon from "../../icons/ClipboardIcon";
+import { FolderOpen, Clipboard } from '@phosphor-icons/react';
 import GitSegment from "./GitSegment";
 
 // Prompt — prompt header rendered in xterm decorations and InputBar.
@@ -69,7 +68,7 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitD
                 padding: 0,
               }}
             >
-              <FolderIcon color="var(--accent)" size={16} />
+              <FolderOpen size={16} color="var(--accent)" weight="regular" />
               <span
                 className="ml-1 hover:text-[var(--accent)] transition-colors duration-150"
                 style={{
@@ -127,7 +126,7 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitD
             {copied ? (
               <span style={{ fontSize: "11px", fontWeight: "bold" }}>✓</span>
             ) : (
-              <ClipboardIcon size={11} color="currentColor" />
+              <Clipboard size={11} color="currentColor" weight="regular" />
             )}
           </button>
         )}

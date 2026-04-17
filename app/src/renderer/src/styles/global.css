@@ -77,3 +77,8 @@ body {
   overflow: hidden !important;
 }
 
+/* AI mode tint — subtle purple wash when input starts with | */
+.cm-editor[data-ai-mode] .cm-content {
+  background: rgba(124, 106, 247, 0.05);
+}
+
