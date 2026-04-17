@@ -188,6 +188,8 @@ func (s *Session) pipe() {
 						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
 					case strings.HasPrefix(p, "9002;"):
 						s.w.Send(wire.StringMessage(wire.TypeGit, strings.TrimPrefix(p, "9002;")))
+					case strings.HasPrefix(p, "9003;"):
+						s.w.Send(wire.StringMessage(wire.TypeNode, strings.TrimPrefix(p, "9003;")))
 					}
 				}
 

@@ -52,6 +52,25 @@ func TestGitPayloadPrefix(t *testing.T) {
 	}
 }
 
+// TestParseOSCNodePayload verifies parseOSC extracts the OSC 9003 node payload.
+func TestParseOSCNodePayload(t *testing.T) {
+	input := []byte("\x1b]9003;v20.11.0|npm\x1b\\some output")
+	cleaned, payloads, leftover := parseOSC(input)
+
+	if string(cleaned) != "some output" {
+		t.Errorf("cleaned = %q, want %q", string(cleaned), "some output")
+	}
+	if len(payloads) != 1 {
+		t.Fatalf("len(payloads) = %d, want 1", len(payloads))
+	}
+	if payloads[0] != "9003;v20.11.0|npm" {
+		t.Errorf("payloads[0] = %q, want %q", payloads[0], "9003;v20.11.0|npm")
+	}
+	if leftover != nil {
+		t.Errorf("leftover = %q, want nil", string(leftover))
+	}
+}
+
 func hasPrefix(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
