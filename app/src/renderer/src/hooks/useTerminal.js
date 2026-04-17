@@ -33,6 +33,11 @@ export function useTerminal(paneId, callbacksRef) {
           })
           break
         }
+        case wire.TypeNode: {
+          const [version, packageManager] = msg.data.split('|')
+          callbacksRef.current.onNode?.({ version, packageManager })
+          break
+        }
       }
     }
 
