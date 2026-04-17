@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FolderOpen, Clipboard } from '@phosphor-icons/react';
+import { FolderOpenIcon, ClipboardIcon } from "@phosphor-icons/react";
 import GitSegment from "./GitSegment";
+import NodeSegment from "./NodeSegment";
 
 // Prompt — prompt header rendered in xterm decorations and InputBar.
 // Used in two places:
@@ -11,7 +12,17 @@ import GitSegment from "./GitSegment";
 // so prompt rows align exactly with terminal cell rows. When omitted (InputBar), rows
 // use natural height with lineHeight 1.2 to match xterm's compact feel.
 // Total decoration height must equal (1 + commandLines.length) * rowHeight.
-export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitData, onGitClick }) {
+export default function Prompt({
+  command,
+  cwd,
+  exitCode,
+  rowHeight,
+  onCopy,
+  gitData,
+  onGitClick,
+  nodeData,
+  onNodeClick,
+}) {
   const [copied, setCopied] = useState(false);
   const hasError = exitCode > 0;
   const commandLines = command ? command.split("\n") : [];
@@ -68,7 +79,11 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitD
                 padding: 0,
               }}
             >
-              <FolderOpen size={16} color="var(--accent)" weight="regular" />
+              <FolderOpenIcon
+                size={20}
+                color="var(--accent)"
+                weight="regular"
+              />
               <span
                 className="ml-1 hover:text-[var(--accent)] transition-colors duration-150"
                 style={{
@@ -83,7 +98,16 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitD
             </button>
           )}
           {cwd && gitData && (
-            <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border)', flexShrink: 0, opacity: 0.6 }} />
+            <div
+              style={{
+                width: "2px",
+                height: "18px",
+                margin: "0 8px",
+                backgroundColor: "var(--text-primary)",
+                flexShrink: 0,
+                opacity: 0.8,
+              }}
+            />
           )}
           {gitData && (
             <GitSegment
@@ -92,6 +116,25 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitD
               ahead={gitData.ahead}
               behind={gitData.behind}
               onClick={onGitClick}
+            />
+          )}
+          {(gitData || cwd) && nodeData && (
+            <div
+              style={{
+                width: "2px",
+                height: "18px",
+                margin: "0 8px",
+                backgroundColor: "var(--text-primary)",
+                flexShrink: 0,
+                opacity: 0.8,
+              }}
+            />
+          )}
+          {nodeData && (
+            <NodeSegment
+              version={nodeData.version}
+              packageManager={nodeData.packageManager}
+              onClick={onNodeClick}
             />
           )}
         </div>
@@ -126,7 +169,7 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitD
             {copied ? (
               <span style={{ fontSize: "11px", fontWeight: "bold" }}>✓</span>
             ) : (
-              <Clipboard size={11} color="currentColor" weight="regular" />
+              <ClipboardIcon size={11} color="currentColor" weight="regular" />
             )}
           </button>
         )}
