@@ -21,6 +21,7 @@ export default function TerminalPane({
   const [cwd, setCwd] = useState('')
   const [exitCode, setExitCode] = useState(0)
   const [gitData, setGitData] = useState(null)
+  const [nodeData, setNodeData] = useState(null)
   const inputBarRef = useRef(null)
   const runningRef = useRef(false)
   const pendingCommandRef = useRef(null)
@@ -33,6 +34,7 @@ export default function TerminalPane({
   callbacksRef.current.onCwd = (value) => {
     setCwd(value)
     setGitData(null) // Reset on directory change; onGit re-populates if new dir is a git repo
+    setNodeData(null) // Reset on directory change; onNode re-populates if new dir has package.json
     callbacksRef.current.currentCwd = value
     callbacksRef.current.onCwdDecoration?.(value)
   }
@@ -52,6 +54,11 @@ export default function TerminalPane({
   callbacksRef.current.onGit = (data) => {
     setGitData(data)
     callbacksRef.current.onGitDecoration?.(data)
+  }
+
+  callbacksRef.current.onNode = (data) => {
+    setNodeData(data)
+    callbacksRef.current.onNodeDecoration?.(data)
   }
 
   const handleSubmit = useCallback((command) => {
@@ -88,6 +95,8 @@ export default function TerminalPane({
           exitCode={exitCode}
           gitData={gitData}
           onGitClick={() => handleSubmit('git status')}
+          nodeData={nodeData}
+          onNodeClick={() => handleSubmit(`${nodeData?.packageManager ?? 'npm'} run`)}
         />
       )}
     </div>
