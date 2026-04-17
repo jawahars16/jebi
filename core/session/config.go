@@ -19,13 +19,20 @@ func (c Config) hasSegment(name string) bool {
 // DefaultConfig is used until a settings UI exists.
 var DefaultConfig = Config{
 	Shell:          "",
-	PromptSegments: []string{"cwd"},
+	PromptSegments: []string{"cwd", "git"},
 }
 
 // segmentEmits maps each segment name to the shell printf that emits its OSC sequence.
 var segmentEmits = map[string]string{
 	"cwd":       `  printf '\033]7;%s\033\\' "$PWD"`,
 	"exit_code": `  printf '\033]9001;%s\033\\' "$?"`,
+	"git": `  _git_br=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+  if [ -n "$_git_br" ]; then
+    _git_d=$(git status --porcelain 2>/dev/null | head -c1); [ -n "$_git_d" ] && _git_d=1 || _git_d=0
+    _git_a=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+    _git_b=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
+    printf '\033]9002;%s|%s|%s|%s\033\\' "$_git_br" "$_git_d" "$_git_a" "$_git_b"
+  fi`,
 }
 
 // buildShellHook generates a precmd/PROMPT_COMMAND hook for the given shell.
