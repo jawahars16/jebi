@@ -19,7 +19,7 @@ func (c Config) hasSegment(name string) bool {
 // DefaultConfig is used until a settings UI exists.
 var DefaultConfig = Config{
 	Shell:          "",
-	PromptSegments: []string{"cwd", "git"},
+	PromptSegments: []string{"cwd", "git", "node"},
 }
 
 // segmentEmits maps each segment name to the shell printf that emits its OSC sequence.
@@ -32,6 +32,28 @@ var segmentEmits = map[string]string{
     _git_a=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
     _git_b=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
     printf '\033]9002;%s|%s|%s|%s\033\\' "$_git_br" "$_git_d" "$_git_a" "$_git_b"
+  fi`,
+	"node": `  _node_pkg=$(
+    _d="$PWD"
+    while [ "$_d" != "/" ] && [ "$_d" != "$HOME" ]; do
+      [ -f "$_d/package.json" ] && echo "$_d" && break
+      _d=$(dirname "$_d")
+    done
+  )
+  if [ -n "$_node_pkg" ]; then
+    _node_ver=$(node --version 2>/dev/null)
+    if [ -n "$_node_ver" ]; then
+      if [ -f "$_node_pkg/bun.lockb" ] || [ -f "$_node_pkg/bun.lock" ]; then
+        _node_pm=bun
+      elif [ -f "$_node_pkg/pnpm-lock.yaml" ]; then
+        _node_pm=pnpm
+      elif [ -f "$_node_pkg/yarn.lock" ]; then
+        _node_pm=yarn
+      else
+        _node_pm=npm
+      fi
+      printf '\033]9003;%s|%s\033\\' "$_node_ver" "$_node_pm"
+    fi
   fi`,
 }
 

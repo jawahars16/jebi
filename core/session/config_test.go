@@ -29,6 +29,36 @@ func TestBuildShellHookOmitsGitWhenNotConfigured(t *testing.T) {
 	}
 }
 
+func TestBuildShellHookIncludesNode(t *testing.T) {
+	cfg := Config{
+		Shell:          "",
+		PromptSegments: []string{"cwd", "git", "node"},
+	}
+	hook := buildShellHook(cfg, "/bin/zsh")
+
+	if !contains(hook, "9003") {
+		t.Errorf("expected hook to contain OSC 9003 node emission, got:\n%s", hook)
+	}
+	if !contains(hook, "package.json") {
+		t.Errorf("expected hook to contain package.json detection, got:\n%s", hook)
+	}
+	if !contains(hook, "node --version") {
+		t.Errorf("expected hook to contain node --version, got:\n%s", hook)
+	}
+}
+
+func TestBuildShellHookOmitsNodeWhenNotConfigured(t *testing.T) {
+	cfg := Config{
+		Shell:          "",
+		PromptSegments: []string{"cwd", "git"},
+	}
+	hook := buildShellHook(cfg, "/bin/zsh")
+
+	if contains(hook, "9003") {
+		t.Errorf("expected hook to NOT contain OSC 9003 when node not in segments, got:\n%s", hook)
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsHelper(s, sub))
 }
