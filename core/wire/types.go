@@ -6,6 +6,7 @@ const (
 	TypeCwd      = "cwd"
 	TypeExitCode = "exit_code"
 	TypeGit      = "git"
+	TypeNode     = "node"
 	TypePrompt   = "prompt"
 	TypeTui      = "tui"
 	TypeConfig   = "config"
