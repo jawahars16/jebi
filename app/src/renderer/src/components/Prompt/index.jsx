@@ -83,6 +83,9 @@ export default function Prompt({ command, cwd, exitCode, rowHeight, onCopy, gitD
               </span>
             </button>
           )}
+          {cwd && gitData && (
+            <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border)', flexShrink: 0, opacity: 0.6 }} />
+          )}
           {gitData && (
             <GitSegment
               branch={gitData.branch}
