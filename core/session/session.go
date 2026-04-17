@@ -151,6 +151,7 @@ func (s *Session) Start() {
 	}
 }
 
+
 const termReadyMarker = "__TERM_READY__"
 
 // pipe reads PTY output, parses OSC sequences, and forwards to the frontend.
@@ -185,6 +186,8 @@ func (s *Session) pipe() {
 						s.w.Send(wire.StringMessage(wire.TypeCwd, strings.TrimPrefix(p, "7;")))
 					case strings.HasPrefix(p, "9001;"):
 						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
+					case strings.HasPrefix(p, "9002;"):
+						s.w.Send(wire.StringMessage(wire.TypeGit, strings.TrimPrefix(p, "9002;")))
 					}
 				}
 
