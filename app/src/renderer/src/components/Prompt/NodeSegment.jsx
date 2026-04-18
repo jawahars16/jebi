@@ -1,4 +1,4 @@
-import { Package } from '@phosphor-icons/react'
+import { PackageIcon } from '@phosphor-icons/react'
 
 // NodeSegment — renders a node.js context badge: version and package manager.
 // onClick behavior differs by context:
@@ -23,7 +23,7 @@ export default function NodeSegment({ version, packageManager, onClick }) {
         flexShrink: 0,
       }}
     >
-      <Package size={20} color="var(--accent)" weight="regular" />
+      <PackageIcon size={20} color="var(--accent)" weight="regular" />
       <span style={{ whiteSpace: 'nowrap' }}>{version}</span>
       <span style={{ color: 'var(--text-muted)' }}>·</span>
       <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{packageManager}</span>
