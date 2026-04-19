@@ -107,6 +107,7 @@ export class PromptAddon {
         onNodeClick={onNodeClick}
         rowHeight={entry.cellHeight}
         onCopy={entry.onCopy}
+        running={entry.running}
       />,
     );
   }
@@ -124,6 +125,7 @@ export class PromptAddon {
     const entry = this._commands[this._commands.length - 1];
     if (!entry) return;
     entry.exitCode = code;
+    entry.running = false;
     this._renderEntry(entry);
   }
 
@@ -187,6 +189,7 @@ export class PromptAddon {
       exitCode: 0,
       gitData: null,
       nodeData: null,
+      running: true,
       root: null,
       cellHeight,
       onCopy: null,

@@ -2,6 +2,7 @@ package session
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -39,6 +40,9 @@ type Session struct {
 	// size
 	rows uint16
 	cols uint16
+
+	// cancelDetect cancels any in-flight git/node detection goroutine.
+	cancelDetect context.CancelFunc
 }
 
 // resolveShell returns cfg.Shell if set, then $SHELL, then /bin/zsh.
@@ -112,6 +116,9 @@ func New(conn connection) (*Session, error) {
 
 // Close kills the shell process, releases the PTY, and closes the connection.
 func (s *Session) Close() {
+	if s.cancelDetect != nil {
+		s.cancelDetect()
+	}
 	if s.cmd != nil && s.cmd.Process != nil {
 		s.cmd.Process.Kill()
 	}
@@ -183,13 +190,17 @@ func (s *Session) pipe() {
 				for _, p := range payloads {
 					switch {
 					case strings.HasPrefix(p, "7;"):
-						s.w.Send(wire.StringMessage(wire.TypeCwd, strings.TrimPrefix(p, "7;")))
+						cwd := strings.TrimPrefix(p, "7;")
+						s.w.Send(wire.StringMessage(wire.TypeCwd, cwd))
+						// Cancel previous detection and start fresh for the new directory.
+						if s.cancelDetect != nil {
+							s.cancelDetect()
+						}
+						ctx, cancel := newDetectContext()
+						s.cancelDetect = cancel
+						go s.detectEnv(ctx, cwd)
 					case strings.HasPrefix(p, "9001;"):
 						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
-					case strings.HasPrefix(p, "9002;"):
-						s.w.Send(wire.StringMessage(wire.TypeGit, strings.TrimPrefix(p, "9002;")))
-					case strings.HasPrefix(p, "9003;"):
-						s.w.Send(wire.StringMessage(wire.TypeNode, strings.TrimPrefix(p, "9003;")))
 					}
 				}
 

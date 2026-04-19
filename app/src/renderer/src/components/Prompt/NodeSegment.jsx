@@ -1,32 +1,65 @@
-import { PackageIcon } from '@phosphor-icons/react'
+import { FaNodeJs } from "react-icons/fa";
+import { RiNpmjsFill } from "react-icons/ri";
 
-// NodeSegment — renders a node.js context badge: version and package manager.
-// onClick behavior differs by context:
-//   InputBar  → runs `npm run` / `yarn run` / `pnpm run` / `bun run`
-//   xterm decoration → copies node version to clipboard
-export default function NodeSegment({ version, packageManager, onClick }) {
+// NodeSegment — Node.js version and package manager badge.
+// onClick: in InputBar → runs `npm/yarn/pnpm/bun run`; in xterm decoration → copies version.
+export default function NodeSegment({
+  version,
+  packageManager,
+  onClick,
+  rowHeight,
+  iconSize,
+}) {
+  const compact = rowHeight != null;
+  const paddingH = compact ? 7 : 10;
+  const paddingV = compact ? 0 : 4;
+
+  const bg = "#23347b";
+  const fg = "#ffffff";
+
+  const style = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    height: compact ? `${rowHeight}px` : undefined,
+    minHeight: compact ? `${rowHeight}px` : undefined,
+    padding: `${paddingV}px ${paddingH}px`,
+    backgroundColor: bg,
+    color: fg,
+    lineHeight: 1,
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    fontFamily: "var(--font-mono)",
+    fontSize: "var(--font-size-mono)",
+    fontWeight: 500,
+    border: "none",
+    cursor: onClick ? "pointer" : "default",
+  };
+
+  const stopEvents = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
   return (
     <button
       onClick={onClick}
-      onMouseDown={(e) => { e.stopPropagation(); e.preventDefault() }}
-      onPointerDown={(e) => { e.stopPropagation(); e.preventDefault() }}
+      onMouseDown={stopEvents}
+      onPointerDown={stopEvents}
       title={`Node ${version} · ${packageManager}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-        background: 'none',
-        border: 'none',
-        cursor: 'pointer',
-        color: 'var(--text-primary)',
-        padding: 0,
-        flexShrink: 0,
-      }}
+      style={style}
     >
-      <PackageIcon size={20} color="var(--accent)" weight="regular" />
-      <span style={{ whiteSpace: 'nowrap' }}>{version}</span>
-      <span style={{ color: 'var(--text-muted)' }}>·</span>
-      <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{packageManager}</span>
+      <FaNodeJs size={iconSize + 2} />
+      <span
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: "8ch",
+        }}
+      >
+        {version}
+      </span>
     </button>
-  )
+  );
 }

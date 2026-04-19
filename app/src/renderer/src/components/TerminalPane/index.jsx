@@ -1,82 +1,95 @@
-import { useRef, useState, useCallback } from 'react'
-import { useTerminal } from '../../hooks/useTerminal'
-import { useSharedHistory } from '../../hooks/useSharedHistory'
-import OutputArea from '../OutputArea'
-import InputBar from '../InputBar'
+import { useRef, useState, useCallback } from "react";
+import { useTerminal } from "../../hooks/useTerminal";
+import { useSharedHistory } from "../../hooks/useSharedHistory";
+import { setPaneInfo } from "../../hooks/usePaneInfo";
+import OutputArea from "../OutputArea";
+import InputBar from "../InputBar";
 
 export default function TerminalPane({
   paneId,
   isActive,
   isVisible,
   onFocus,
-  onTitleChange,
   onSplitRight,
   onSplitDown,
   onClose,
 }) {
-  const callbacksRef = useRef({})
-  const { sendInput, sendRaw, sendResize } = useTerminal(paneId, callbacksRef)
-  const { push: pushHistory, navigate: navigateHistory, getAll: getHistory } = useSharedHistory()
-  const [running, setRunning] = useState(false)
-  const [cwd, setCwd] = useState('')
-  const [exitCode, setExitCode] = useState(0)
-  const [gitData, setGitData] = useState(null)
-  const [nodeData, setNodeData] = useState(null)
-  const inputBarRef = useRef(null)
-  const runningRef = useRef(false)
-  const pendingCommandRef = useRef(null)
+  const callbacksRef = useRef({});
+  const { sendInput, sendRaw, sendResize } = useTerminal(paneId, callbacksRef);
+  const {
+    push: pushHistory,
+    navigate: navigateHistory,
+    getAll: getHistory,
+  } = useSharedHistory();
+  const [running, setRunning] = useState(false);
+  const [cwd, setCwd] = useState("");
+  const [exitCode, setExitCode] = useState(0);
+  const [gitData, setGitData] = useState(null);
+  const [nodeData, setNodeData] = useState(null);
+  const inputBarRef = useRef(null);
+  const runningRef = useRef(false);
+  const pendingCommandRef = useRef(null);
 
-  runningRef.current = running
+  runningRef.current = running;
 
-  callbacksRef.current.isRunning = () => runningRef.current
-  callbacksRef.current.focusInput = () => inputBarRef.current?.focus()
+  callbacksRef.current.isRunning = () => runningRef.current;
+  callbacksRef.current.focusInput = () => inputBarRef.current?.focus();
 
   callbacksRef.current.onCwd = (value) => {
-    setCwd(value)
-    setGitData(null) // Reset on directory change; onGit re-populates if new dir is a git repo
-    setNodeData(null) // Reset on directory change; onNode re-populates if new dir has package.json
-    callbacksRef.current.currentCwd = value
-    callbacksRef.current.onCwdDecoration?.(value)
-  }
+    setCwd(value);
+    setGitData(null); // Reset on directory change; onGit re-populates if new dir is a git repo
+    setNodeData(null); // Reset on directory change; onNode re-populates if new dir has package.json
+    callbacksRef.current.currentCwd = value;
+    callbacksRef.current.onCwdDecoration?.(value);
+    setPaneInfo(paneId, { cwd: value });
+  };
 
   // exit_code arrives before every prompt — signals command done and captures exit status.
   callbacksRef.current.onExitCode = (value) => {
-    const code = Number(value)
-    setExitCode(code)
-    callbacksRef.current.currentExitCode = code
-    callbacksRef.current.onExitCodeDecoration?.(code)
-    if (code === 0 && pendingCommandRef.current) pushHistory(pendingCommandRef.current)
-    pendingCommandRef.current = null
-    setRunning(false)
-    setTimeout(() => inputBarRef.current?.focus(), 0)
-  }
+    const code = Number(value);
+    setExitCode(code);
+    callbacksRef.current.currentExitCode = code;
+    callbacksRef.current.onExitCodeDecoration?.(code);
+    if (code === 0 && pendingCommandRef.current)
+      pushHistory(pendingCommandRef.current);
+    pendingCommandRef.current = null;
+    setRunning(false);
+    setPaneInfo(paneId, { runningCommand: null });
+    setTimeout(() => inputBarRef.current?.focus(), 0);
+  };
 
   callbacksRef.current.onGit = (data) => {
-    setGitData(data)
-    callbacksRef.current.onGitDecoration?.(data)
-  }
+    setGitData(data);
+    callbacksRef.current.onGitDecoration?.(data);
+  };
 
   callbacksRef.current.onNode = (data) => {
-    setNodeData(data)
-    callbacksRef.current.onNodeDecoration?.(data)
-  }
+    setNodeData(data);
+    callbacksRef.current.onNodeDecoration?.(data);
+  };
 
-  const handleSubmit = useCallback((command) => {
-    pendingCommandRef.current = command.trim()
-    sendInput(command)
-    setRunning(true)
-    callbacksRef.current.focusTerm?.()
-  }, [sendInput])
+  const handleSubmit = useCallback(
+    (command) => {
+      const trimmed = command.trim();
+      pendingCommandRef.current = trimmed;
+      sendInput(command);
+      setRunning(true);
+      setPaneInfo(paneId, { runningCommand: trimmed });
+      callbacksRef.current.focusTerm?.();
+    },
+    [sendInput, paneId],
+  );
 
   function handleMouseDown() {
-    if (!runningRef.current) setTimeout(() => inputBarRef.current?.focus(), 0)
+    if (!runningRef.current) setTimeout(() => inputBarRef.current?.focus(), 0);
   }
 
   return (
     <div
       className="flex-1 min-h-0 flex flex-col overflow-hidden"
       onClick={onFocus}
-      onMouseDown={handleMouseDown}>
+      onMouseDown={handleMouseDown}
+    >
       <OutputArea
         callbacksRef={callbacksRef}
         sendRaw={sendRaw}
@@ -94,11 +107,13 @@ export default function TerminalPane({
           cwd={cwd}
           exitCode={exitCode}
           gitData={gitData}
-          onGitClick={() => handleSubmit('git status')}
+          onGitClick={() => handleSubmit("git status")}
           nodeData={nodeData}
-          onNodeClick={() => handleSubmit(`${nodeData?.packageManager ?? 'npm'} run`)}
+          onNodeClick={() =>
+            handleSubmit(`${nodeData?.packageManager ?? "npm"} run`)
+          }
         />
       )}
     </div>
-  )
+  );
 }

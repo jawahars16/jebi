@@ -1,56 +1,108 @@
-import { GitBranch } from '@phosphor-icons/react';
+import { DiGitBranch } from "react-icons/di";
+import { FaStarOfLife } from "react-icons/fa";
+import {
+  FaArrowDownLong,
+  FaArrowsUpDown,
+  FaArrowUpLong,
+} from "react-icons/fa6";
 
-// GitSegment — renders a git context badge: branch name, dirty indicator, ahead/behind counts.
-// onClick behavior differs by context:
-//   InputBar  → runs `git status` in the active shell
-//   xterm decoration → copies branch name to clipboard
-export default function GitSegment({ branch, dirty, ahead, behind, onClick }) {
+// GitSegment — branch name, dirty indicator, ahead/behind counts.
+// onClick: in InputBar → runs `git status`; in xterm decoration → copies branch to clipboard.
+export default function GitSegment({
+  branch,
+  dirty,
+  ahead,
+  behind,
+  onClick,
+  rowHeight,
+  iconSize,
+}) {
+  const compact = rowHeight != null;
+  const paddingH = compact ? 7 : 10;
+  const paddingV = compact ? 0 : 4;
+
+  const bg = "#323131";
+  const fg = "#ffffff";
+  const dirtyColor = "#edf459";
+  const upColor = "#e74c3c";
+  const downColor = "#27ae60";
+
+  const style = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    height: compact ? `${rowHeight}px` : undefined,
+    minHeight: compact ? `${rowHeight}px` : undefined,
+    padding: `${paddingV}px ${paddingH}px`,
+    backgroundColor: bg,
+    color: fg,
+    lineHeight: 1,
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    fontFamily: "var(--font-mono)",
+    fontSize: "var(--font-size-mono)",
+    fontWeight: 500,
+    border: "none",
+    cursor: onClick ? "pointer" : "default",
+  };
+
+  const stopEvents = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  const title = `Branch: ${branch}${dirty ? " (dirty)" : ""}${ahead ? ` ↑${ahead}` : ""}${behind ? ` ↓${behind}` : ""}`;
+
   return (
     <button
       onClick={onClick}
-      onMouseDown={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-      }}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-      }}
-      title={`Branch: ${branch}${dirty ? " (dirty)" : ""}${ahead ? ` ↑${ahead}` : ""}${behind ? ` ↓${behind}` : ""}`}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "4px",
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        color: "var(--text-primary)",
-        padding: 0,
-        flexShrink: 0,
-      }}
+      onMouseDown={stopEvents}
+      onPointerDown={stopEvents}
+      title={title}
+      style={style}
     >
-      <GitBranch size={14} color="var(--accent)" weight="regular" />
+      <DiGitBranch size={iconSize + 3} color="rgba(255,255,255,0.85)" />
       <span
         style={{
-          maxWidth: "20ch",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
+          maxWidth: "20ch",
         }}
       >
         {branch}
       </span>
       {dirty && (
-        <span style={{ color: "var(--accent)", lineHeight: 1 }}>•</span>
+        <span style={{ color: fg, lineHeight: 1, flexShrink: 0 }}>
+          <FaStarOfLife size={9} color={dirtyColor} />
+        </span>
       )}
       {ahead > 0 && (
-        <span style={{ color: "var(--text-primary)", fontSize: "11px" }}>
-          ↑{ahead}
+        <span
+          className="flex"
+          style={{
+            color: upColor,
+            lineHeight: 1,
+            flexShrink: 0,
+            scale: "0.8",
+          }}
+        >
+          <FaArrowUpLong size={iconSize} />
+          {ahead}
         </span>
       )}
       {behind > 0 && (
-        <span style={{ color: "var(--text-primary)", fontSize: "11px" }}>
-          ↓{behind}
+        <span
+          className="flex -ml-1"
+          style={{
+            color: downColor,
+            lineHeight: 1,
+            flexShrink: 0,
+            scale: "0.8",
+          }}
+        >
+          <FaArrowDownLong size={iconSize} />
+          {behind}
         </span>
       )}
     </button>

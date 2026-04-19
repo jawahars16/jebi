@@ -1,17 +1,10 @@
 import { useState } from "react";
-import { FolderOpenIcon, ClipboardIcon } from "@phosphor-icons/react";
+import { FaRegCopy, FaCheck } from "react-icons/fa";
+import CwdSegment from "./CwdSegment";
 import GitSegment from "./GitSegment";
 import NodeSegment from "./NodeSegment";
+import WaveSeparator from "./WaveSeparator";
 
-// Prompt — prompt header rendered in xterm decorations and InputBar.
-// Used in two places:
-//   1. xterm Decoration above each command's output  →  row 1: elements, rows 2+: command lines
-//   2. InputBar first line                           →  row 1: elements only (textarea is row 2)
-//
-// rowHeight: when provided (xterm decorations), each row is fixed to that pixel height
-// so prompt rows align exactly with terminal cell rows. When omitted (InputBar), rows
-// use natural height with lineHeight 1.2 to match xterm's compact feel.
-// Total decoration height must equal (1 + commandLines.length) * rowHeight.
 export default function Prompt({
   command,
   cwd,
@@ -22,13 +15,21 @@ export default function Prompt({
   onGitClick,
   nodeData,
   onNodeClick,
+  running,
 }) {
   const [copied, setCopied] = useState(false);
-  const hasError = exitCode > 0;
   const commandLines = command ? command.split("\n") : [];
+
+  const iconSize = rowHeight ? Math.min(14, Math.max(10, rowHeight - 6)) : 14;
+
   const rowStyle = rowHeight
-    ? { height: `${rowHeight}px`, minHeight: `${rowHeight}px` }
-    : { lineHeight: 1.2 };
+    ? {
+        height: `${rowHeight}px`,
+        minHeight: `${rowHeight}px`,
+        maxHeight: `${rowHeight}px`,
+        overflow: "hidden",
+      }
+    : { lineHeight: 1.4 };
 
   function handleCopy(e) {
     e.stopPropagation();
@@ -36,6 +37,14 @@ export default function Prompt({
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
+
+  const hasCwd = Boolean(cwd);
+  const hasGit = Boolean(gitData);
+  const hasNode = Boolean(nodeData);
+  const hasAny = hasCwd || hasGit || hasNode;
+
+  // Border radius for the connected group
+  const groupRadius = rowHeight ? Math.max(4, Math.floor(rowHeight / 3)) : 8;
 
   return (
     <div
@@ -45,100 +54,57 @@ export default function Prompt({
         fontSize: "var(--font-size-mono)",
       }}
     >
-      {/* Row 1: prompt elements */}
-      <div className="flex items-center w-full gap-1" style={rowStyle}>
-        <div
-          className="flex items-center gap-1 py-2 px-2 rounded-md text-[var(--text-primary)]"
-          style={{
-            flexShrink: 0,
-            backgroundColor: "#00000038",
-            border: "1px solid #f9f9f91f",
-            lineHeight: 1,
-          }}
-        >
-          {cwd && (
-            <button
-              onClick={() => window.electron?.openPath(cwd)}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-              title={cwd}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "inherit",
-                padding: 0,
-              }}
-            >
-              <FolderOpenIcon
-                size={20}
-                color="var(--accent)"
-                weight="regular"
+      {/* Row 1 */}
+      <div
+        className="flex items-center w-full"
+        style={{ gap: "8px", ...rowStyle }}
+      >
+        {/* Connected segment group */}
+        {hasAny && (
+          <div
+            style={{
+              display: "inline-flex",
+              borderRadius: `0 ${groupRadius}px ${groupRadius}px 0`,
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {hasCwd && (
+              <CwdSegment
+                cwd={cwd}
+                exitCode={exitCode}
+                rowHeight={rowHeight}
+                iconSize={iconSize}
+                onClick={() => window.electron?.openPath(cwd)}
               />
-              <span
-                className="ml-1 hover:text-[var(--accent)] transition-colors duration-150"
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  maxWidth: "40vw",
-                }}
-              >
-                {shortenPath(cwd)}
-              </span>
-            </button>
-          )}
-          {cwd && gitData && (
-            <div
-              style={{
-                width: "2px",
-                height: "18px",
-                margin: "0 8px",
-                backgroundColor: "var(--text-primary)",
-                flexShrink: 0,
-                opacity: 0.8,
-              }}
-            />
-          )}
-          {gitData && (
-            <GitSegment
-              branch={gitData.branch}
-              dirty={gitData.dirty}
-              ahead={gitData.ahead}
-              behind={gitData.behind}
-              onClick={onGitClick}
-            />
-          )}
-          {(gitData || cwd) && nodeData && (
-            <div
-              style={{
-                width: "2px",
-                height: "18px",
-                margin: "0 8px",
-                backgroundColor: "var(--text-primary)",
-                flexShrink: 0,
-                opacity: 0.8,
-              }}
-            />
-          )}
-          {nodeData && (
-            <NodeSegment
-              version={nodeData.version}
-              packageManager={nodeData.packageManager}
-              onClick={onNodeClick}
-            />
-          )}
-        </div>
-        <div className="flex-1 h-px bg-gray-300/15" />
+            )}
+
+            {hasGit && (
+              <GitSegment
+                branch={gitData.branch}
+                dirty={gitData.dirty}
+                ahead={gitData.ahead}
+                behind={gitData.behind}
+                onClick={onGitClick}
+                rowHeight={rowHeight}
+                iconSize={iconSize}
+              />
+            )}
+
+            {hasNode && (
+              <NodeSegment
+                version={nodeData.version}
+                packageManager={nodeData.packageManager}
+                onClick={onNodeClick}
+                rowHeight={rowHeight}
+                iconSize={iconSize}
+              />
+            )}
+          </div>
+        )}
+
+        <WaveSeparator running={running} />
+
         {onCopy && (
           <button
             onClick={handleCopy}
@@ -154,42 +120,55 @@ export default function Prompt({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "20px",
-              height: "20px",
+              width: `${iconSize + 10}px`,
+              height: `${iconSize + 10}px`,
               background: "none",
               border: "none",
               cursor: "pointer",
-              color: copied ? "var(--accent)" : "var(--text-muted)",
+              color: copied ? "var(--accent)" : "var(--text-secondary)",
               flexShrink: 0,
               transition: "color 0.15s",
-              marginRight: "20px",
+              marginRight: "16px",
             }}
             title="Copy command and output"
           >
             {copied ? (
-              <span style={{ fontSize: "11px", fontWeight: "bold" }}>✓</span>
+              <FaCheck size={iconSize + 2} />
             ) : (
-              <ClipboardIcon size={11} color="currentColor" weight="regular" />
+              <FaRegCopy size={iconSize + 2} />
             )}
           </button>
         )}
       </div>
 
-      {/* Rows 2+: one row per command line (xterm decoration only) */}
+      {/* Rows 2+: command lines (xterm decoration only) */}
       {commandLines.map((line, i) => (
-        <div key={i} className="flex items-center px-3 mt-2" style={rowStyle}>
-          <span>{line}</span>
+        <div
+          key={i}
+          className="flex items-center m-2 relative"
+          style={{ ...rowStyle, paddingLeft: 22, paddingRight: 12 }}
+        >
+          {i === 0 && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: 5,
+                top: -1,
+                bottom: "50%",
+                width: 13,
+                height: 18,
+                borderLeft: "2px dotted #fff",
+                borderBottom: "2px dotted #fff",
+                borderBottomLeftRadius: 3,
+                pointerEvents: "none",
+              }}
+            />
+          )}
+          <span className="ml-1">{line}</span>
         </div>
       ))}
     </div>
   );
 }
 
-function shortenPath(p) {
-  const home = "/Users/";
-  const parts = p.split("/");
-  if (p.startsWith(home) && parts.length >= 3) {
-    return "~/" + parts.slice(3).join("/");
-  }
-  return p;
-}

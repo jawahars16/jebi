@@ -6,6 +6,8 @@
 // All interactive elements carry [-webkit-app-region:no-drag] so clicks work
 // even though the parent drag strip has drag enabled.
 
+import { usePaneInfo, computeTabTitle } from '../../hooks/usePaneInfo'
+
 export default function TabBar({
   tabs,
   activeTabId,
@@ -112,6 +114,8 @@ function LeftTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTo
 }
 
 function TabPill({ tab, isActive, onSelect, onClose }) {
+  const info = usePaneInfo(tab.activePaneId)
+  const title = computeTabTitle(info, tab.fallbackTitle)
   return (
     <div
       onClick={onSelect}
@@ -124,7 +128,7 @@ function TabPill({ tab, isActive, onSelect, onClose }) {
         maxWidth: '140px',
       }}
     >
-      <span className="truncate">{tab.title}</span>
+      <span className="truncate">{title}</span>
       {onClose && (
         <button
           onClick={e => { e.stopPropagation(); onClose() }}
@@ -139,6 +143,8 @@ function TabPill({ tab, isActive, onSelect, onClose }) {
 }
 
 function LeftTabPill({ tab, isActive, onSelect, onClose }) {
+  const info = usePaneInfo(tab.activePaneId)
+  const title = computeTabTitle(info, tab.fallbackTitle)
   return (
     <div
       onClick={onSelect}
@@ -151,7 +157,7 @@ function LeftTabPill({ tab, isActive, onSelect, onClose }) {
         paddingLeft: '8px',
       }}
     >
-      <span className="flex-1 truncate">{tab.title}</span>
+      <span className="flex-1 truncate">{title}</span>
       {onClose && (
         <button
           onClick={e => { e.stopPropagation(); onClose() }}

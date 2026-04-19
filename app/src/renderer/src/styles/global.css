@@ -50,26 +50,25 @@ body {
   display: none !important;
 }
 
-.xterm-viewport {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+/* xterm 6.x uses a VS Code-style custom scrollbar (not native webkit).
+   Override the .scrollbar track and .slider thumb directly. */
+.xterm .xterm-scrollable-element > .scrollbar.vertical {
+  width: 6px !important;
 }
-
-.xterm-viewport::-webkit-scrollbar {
-  width: 3px;
+.xterm .xterm-scrollable-element > .scrollbar.horizontal {
+  height: 6px !important;
 }
-
-.xterm-viewport::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.xterm-viewport::-webkit-scrollbar-thumb {
-  background: var(--border);
+.xterm .xterm-scrollable-element > .scrollbar > .slider {
+  width: 6px !important;
   border-radius: 3px;
+  background: var(--border) !important;
 }
-
-.xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+.xterm .xterm-scrollable-element > .scrollbar.horizontal > .slider {
+  height: 6px !important;
+  width: auto !important;
+}
+.xterm .xterm-scrollable-element > .scrollbar > .slider:hover {
+  background: var(--text-muted) !important;
 }
 
 /* CodeMirror — suppress internal scrollbar; auto-height plugin controls sizing */

@@ -79,6 +79,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("new connection from", r.RemoteAddr)
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("upgrade:", err)

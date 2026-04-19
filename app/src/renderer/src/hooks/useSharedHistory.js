@@ -49,6 +49,11 @@ export function useSharedHistory() {
   const indexRef = useRef(-1)
   const draftRef = useRef('')
 
+  function resetNavigation() {
+    indexRef.current = -1
+    draftRef.current = ''
+  }
+
   function navigate(direction, currentValue) {
     const history = sharedHistory
     const index = indexRef.current

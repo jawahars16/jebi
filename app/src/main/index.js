@@ -11,7 +11,7 @@ function coreBinaryPath() {
   if (app.isPackaged) {
     return join(process.resourcesPath, bin)
   }
-  return join(app.getAppPath(), '..', 'core/bin', bin)
+  return join(app.getAppPath(), '..', 'core', bin)
 }
 
 function startCore() {
@@ -58,7 +58,6 @@ function createWindow() {
 ipcMain.handle('open-path', (_, path) => shell.openPath(path))
 
 app.whenReady().then(() => {
-  startCore()
   createWindow()
 })
 
@@ -73,12 +72,9 @@ app.on('browser-window-blur', () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    stopCore()
     app.quit()
   }
 })
-
-app.on('will-quit', stopCore)
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()

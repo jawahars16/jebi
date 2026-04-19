@@ -4,6 +4,7 @@ import TerminalPane from './components/TerminalPane'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useSessionStore } from './hooks/useSessionStore.jsx'
 import { usePaneResize } from './hooks/usePaneResize'
+import { deletePaneInfo } from './hooks/usePaneInfo'
 import { createLeaf, splitLeaf, removeLeaf, collectPaneIds, computePaneRects, computeDividers } from './utils/layoutTree'
 import StatusBar from './components/StatusBar/index.jsx'
 import PreferencesModal from './components/Preferences'
@@ -12,7 +13,7 @@ function createTab(counter) {
   const leaf = createLeaf()
   return {
     id: crypto.randomUUID(),
-    title: `Terminal ${counter}`,
+    fallbackTitle: `Terminal ${counter}`,
     layout: leaf,
     activePaneId: leaf.paneId,
   }
@@ -53,15 +54,6 @@ export default function App() {
     })
   }, [])
 
-  const updateTabTitle = useCallback((tabId, paneId, title) => {
-    setTabs(prev => prev.map(t => {
-      if (t.id !== tabId) return t
-      // Only update title when the changed pane is the active one
-      if (t.activePaneId !== paneId) return t
-      return { ...t, title }
-    }))
-  }, [])
-
   // --- Pane handlers ---
 
   const setActivePane = useCallback((tabId, paneId) => {
@@ -91,6 +83,7 @@ export default function App() {
       return { ...t, layout: newTree, activePaneId: newActiveId }
     }))
     deleteSession(paneId)
+    deletePaneInfo(paneId)
   }, [deleteSession])
 
   const closeActivePane = useCallback(() => {
@@ -117,7 +110,7 @@ export default function App() {
   // --- Render ---
 
   const tabBarProps = {
-    tabs: tabs.map(t => ({ id: t.id, title: t.title })),
+    tabs: tabs.map(t => ({ id: t.id, activePaneId: t.activePaneId, fallbackTitle: t.fallbackTitle })),
     activeTabId,
     position: tabBarPosition,
     onSelectTab: setActiveTabId,
@@ -179,6 +172,7 @@ export default function App() {
         {/* Panes — flat siblings so keys survive layout tree mutations */}
         {paneIds.map(paneId => {
           const r = rects[paneId]
+          const isActive = paneId === tab.activePaneId
           return (
             <div
               key={paneId}
@@ -189,14 +183,14 @@ export default function App() {
                 width: `${r.width}%`,
                 height: `${r.height}%`,
                 display: 'flex',
+                filter: isActive ? 'none' : 'grayscale(60%)',
               }}
             >
               <TerminalPane
                 paneId={paneId}
-                isActive={paneId === tab.activePaneId}
+                isActive={isActive}
                 isVisible={tab.id === activeTabId}
                 onFocus={() => setActivePane(tab.id, paneId)}
-                onTitleChange={title => updateTabTitle(tab.id, paneId, title)}
                 onSplitRight={() => splitPane(tab.id, paneId, 'horizontal')}
                 onSplitDown={() => splitPane(tab.id, paneId, 'vertical')}
                 onClose={paneCount > 1 ? () => closePane(tab.id, paneId) : null}
