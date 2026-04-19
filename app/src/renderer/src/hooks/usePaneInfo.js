@@ -33,18 +33,23 @@ export function usePaneInfo(paneId) {
 }
 
 // Derives a human-friendly tab title from pane info. Priority:
-//   1. Currently running command (first word) — e.g. "npm", "vim"
-//   2. basename(cwd) — e.g. "term", "app"
-//   3. fallback
+//   1. Currently running command (full text, CSS truncates) — e.g. "docker run hello"
+//   2. Last run command (persists after it finishes)
+//   3. basename(cwd) — e.g. "term", "app"
+//   4. fallback
 export function computeTabTitle(info, fallback) {
-  if (info?.runningCommand) {
-    const first = info.runningCommand.trim().split(/\s+/)[0]
-    if (first) return first
-  }
+  const cmd = (info?.runningCommand ?? info?.lastCommand)?.trim()
+  if (cmd) return cmd
   if (info?.cwd) {
     const parts = info.cwd.split('/').filter(Boolean)
     if (parts.length > 0) return parts[parts.length - 1]
     return '/'
   }
   return fallback
+}
+
+// True when the tab's title is coming from a command (vs. cwd fallback).
+// Callers use this to pick between commandIcon(cmd) and a folder icon.
+export function hasCommandTitle(info) {
+  return !!((info?.runningCommand ?? info?.lastCommand)?.trim())
 }

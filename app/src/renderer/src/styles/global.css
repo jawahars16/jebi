@@ -81,3 +81,20 @@ body {
   background: rgba(124, 106, 247, 0.05);
 }
 
+/* Tab running indicator — the icon itself breathes while a command is active.
+   Zero extra geometry, works on any tab background, always stays aligned. */
+@keyframes tab-icon-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.18;
+    transform: scale(0.82);
+  }
+}
+.tab-icon-pulse {
+  animation: tab-icon-pulse 0.9s ease-in-out infinite;
+  transform-origin: center;
+}
+

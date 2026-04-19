@@ -36,12 +36,21 @@ export default function TerminalPane({
   callbacksRef.current.focusInput = () => inputBarRef.current?.focus();
 
   callbacksRef.current.onCwd = (value) => {
+    // The shell hook fires cwd before every prompt — not just after `cd`.
+    // Only treat it as a directory change when the value actually differs
+    // from the previous cwd; otherwise we'd wipe lastCommand on every prompt
+    // and the tab icon/title would revert to the folder after every command.
+    const changed = callbacksRef.current.currentCwd !== value;
     setCwd(value);
-    setGitData(null); // Reset on directory change; onGit re-populates if new dir is a git repo
-    setNodeData(null); // Reset on directory change; onNode re-populates if new dir has package.json
+    if (changed) {
+      setGitData(null); // Reset on directory change; onGit re-populates if new dir is a git repo
+      setNodeData(null); // Reset on directory change; onNode re-populates if new dir has package.json
+    }
     callbacksRef.current.currentCwd = value;
     callbacksRef.current.onCwdDecoration?.(value);
-    setPaneInfo(paneId, { cwd: value });
+    // Clear lastCommand only when cwd actually changes, so `cd foo` lands on
+    // a folder-named tab but `docker ps` keeps the docker icon after it exits.
+    setPaneInfo(paneId, changed ? { cwd: value, lastCommand: null } : { cwd: value });
   };
 
   // exit_code arrives before every prompt — signals command done and captures exit status.
@@ -74,7 +83,16 @@ export default function TerminalPane({
       pendingCommandRef.current = trimmed;
       sendInput(command);
       setRunning(true);
-      setPaneInfo(paneId, { runningCommand: trimmed });
+      // Navigation commands (cd/pushd/popd) shouldn't become the tab title —
+      // onCwd will clear lastCommand and the folder fallback takes over.
+      const firstTok = trimmed.split(/\s+/)[0];
+      const isNav = firstTok === "cd" || firstTok === "pushd" || firstTok === "popd";
+      setPaneInfo(
+        paneId,
+        isNav
+          ? { runningCommand: trimmed }
+          : { runningCommand: trimmed, lastCommand: trimmed },
+      );
       callbacksRef.current.focusTerm?.();
     },
     [sendInput, paneId],

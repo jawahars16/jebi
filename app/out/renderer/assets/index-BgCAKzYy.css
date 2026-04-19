@@ -295,7 +295,19 @@
       --tw-border-style: solid;
       --tw-font-weight: initial;
       --tw-outline-style: solid;
-      --tw-duration: initial;
+      --tw-blur: initial;
+      --tw-brightness: initial;
+      --tw-contrast: initial;
+      --tw-grayscale: initial;
+      --tw-hue-rotate: initial;
+      --tw-invert: initial;
+      --tw-opacity: initial;
+      --tw-saturate: initial;
+      --tw-sepia: initial;
+      --tw-drop-shadow: initial;
+      --tw-drop-shadow-color: initial;
+      --tw-drop-shadow-alpha: 100%;
+      --tw-drop-shadow-size: initial;
     }
   }
 }
@@ -306,15 +318,10 @@
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
-    --color-gray-300: oklch(87.2% .01 258.338);
     --spacing: .25rem;
-    --text-xs: .75rem;
-    --text-xs--line-height: calc(1 / .75);
     --text-sm: .875rem;
     --text-sm--line-height: calc(1.25 / .875);
     --font-weight-medium: 500;
-    --radius-md: .375rem;
-    --animate-pulse: pulse 2s cubic-bezier(.4, 0, .6, 1) infinite;
     --default-transition-duration: .15s;
     --default-transition-timing-function: cubic-bezier(.4, 0, .2, 1);
     --default-font-family: var(--font-sans);
@@ -626,8 +633,8 @@
     }
   }
 
-  .mx-0 {
-    margin-inline: calc(var(--spacing) * 0);
+  .m-2 {
+    margin: calc(var(--spacing) * 2);
   }
 
   .mx-2 {
@@ -638,8 +645,12 @@
     margin-top: calc(var(--spacing) * 1);
   }
 
-  .mt-2 {
-    margin-top: calc(var(--spacing) * 2);
+  .mb-1 {
+    margin-bottom: calc(var(--spacing) * 1);
+  }
+
+  .-ml-1 {
+    margin-left: calc(var(--spacing) * -1);
   }
 
   .ml-1 {
@@ -666,6 +677,10 @@
     display: none;
   }
 
+  .inline-flex {
+    display: inline-flex;
+  }
+
   .h-4 {
     height: calc(var(--spacing) * 4);
   }
@@ -678,12 +693,12 @@
     height: calc(var(--spacing) * 7);
   }
 
-  .h-9 {
-    height: calc(var(--spacing) * 9);
+  .h-8 {
+    height: calc(var(--spacing) * 8);
   }
 
-  .h-px {
-    height: 1px;
+  .h-9 {
+    height: calc(var(--spacing) * 9);
   }
 
   .h-screen {
@@ -700,6 +715,10 @@
 
   .w-6 {
     width: calc(var(--spacing) * 6);
+  }
+
+  .w-7 {
+    width: calc(var(--spacing) * 7);
   }
 
   .w-20 {
@@ -730,10 +749,6 @@
     transform: var(--tw-rotate-x, ) var(--tw-rotate-y, ) var(--tw-rotate-z, ) var(--tw-skew-x, ) var(--tw-skew-y, );
   }
 
-  .animate-pulse {
-    animation: var(--animate-pulse);
-  }
-
   .cursor-pointer {
     cursor: pointer;
   }
@@ -752,6 +767,10 @@
 
   .items-center {
     align-items: center;
+  }
+
+  .items-end {
+    align-items: flex-end;
   }
 
   .justify-center {
@@ -788,18 +807,14 @@
     border-radius: .25rem;
   }
 
-  .rounded-md {
-    border-radius: var(--radius-md);
-  }
-
-  .rounded-t {
-    border-top-left-radius: .25rem;
-    border-top-right-radius: .25rem;
-  }
-
   .border {
     border-style: var(--tw-border-style);
     border-width: 1px;
+  }
+
+  .border-t {
+    border-top-style: var(--tw-border-style);
+    border-top-width: 1px;
   }
 
   .border-r {
@@ -816,10 +831,6 @@
     border-color: var(--border);
   }
 
-  .bg-\[var\(--accent\)\] {
-    background-color: var(--accent);
-  }
-
   .bg-\[var\(--bg-base\)\] {
     background-color: var(--bg-base);
   }
@@ -828,42 +839,24 @@
     background-color: var(--bg-surface);
   }
 
-  .bg-gray-300\/15 {
-    background-color: #d1d5dc26;
-  }
-
-  @supports (color: color-mix(in lab, red, red)) {
-    .bg-gray-300\/15 {
-      background-color: color-mix(in oklab, var(--color-gray-300) 15%, transparent);
-    }
-  }
-
-  .p-4 {
-    padding: calc(var(--spacing) * 4);
+  .p-1 {
+    padding: calc(var(--spacing) * 1);
   }
 
   .px-2 {
     padding-inline: calc(var(--spacing) * 2);
   }
 
+  .px-2\.5 {
+    padding-inline: calc(var(--spacing) * 2.5);
+  }
+
   .px-3 {
     padding-inline: calc(var(--spacing) * 3);
   }
 
-  .py-1 {
-    padding-block: calc(var(--spacing) * 1);
-  }
-
-  .py-1\.5 {
-    padding-block: calc(var(--spacing) * 1.5);
-  }
-
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
-  }
-
-  .py-2\.5 {
-    padding-block: calc(var(--spacing) * 2.5);
   }
 
   .pt-2 {
@@ -887,11 +880,6 @@
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 
-  .text-xs {
-    font-size: var(--text-xs);
-    line-height: var(--tw-leading, var(--text-xs--line-height));
-  }
-
   .font-medium {
     --tw-font-weight: var(--font-weight-medium);
     font-weight: var(--font-weight-medium);
@@ -907,6 +895,10 @@
 
   .text-\[var\(--text-primary\)\] {
     color: var(--text-primary);
+  }
+
+  .lowercase {
+    text-transform: lowercase;
   }
 
   .uppercase {
@@ -926,6 +918,10 @@
     outline-width: 1px;
   }
 
+  .filter {
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+
   .transition {
     transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
@@ -938,9 +934,10 @@
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
 
-  .duration-150 {
-    --tw-duration: .15s;
-    transition-duration: .15s;
+  .transition-opacity {
+    transition-property: opacity;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
 
   .select-none {
@@ -965,16 +962,8 @@
       opacity: 1;
     }
 
-    .hover\:bg-\[var\(--bg-base\)\]:hover {
-      background-color: var(--bg-base);
-    }
-
     .hover\:bg-\[var\(--bg-elevated\)\]:hover {
       background-color: var(--bg-elevated);
-    }
-
-    .hover\:text-\[var\(--accent\)\]:hover {
-      color: var(--accent);
     }
   }
 }
@@ -1033,26 +1022,27 @@ body {
   display: none !important;
 }
 
-.xterm-viewport {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+.xterm .xterm-scrollable-element > .scrollbar.vertical {
+  width: 6px !important;
 }
 
-.xterm-viewport::-webkit-scrollbar {
-  width: 3px;
+.xterm .xterm-scrollable-element > .scrollbar.horizontal {
+  height: 6px !important;
 }
 
-.xterm-viewport::-webkit-scrollbar-track {
-  background: none;
-}
-
-.xterm-viewport::-webkit-scrollbar-thumb {
-  background: var(--border);
+.xterm .xterm-scrollable-element > .scrollbar > .slider {
   border-radius: 3px;
+  background: var(--border) !important;
+  width: 6px !important;
 }
 
-.xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+.xterm .xterm-scrollable-element > .scrollbar.horizontal > .slider {
+  width: auto !important;
+  height: 6px !important;
+}
+
+.xterm .xterm-scrollable-element > .scrollbar > .slider:hover {
+  background: var(--text-muted) !important;
 }
 
 .cm-scroller {
@@ -1061,6 +1051,23 @@ body {
 
 .cm-editor[data-ai-mode] .cm-content {
   background: #7c6af70d;
+}
+
+@keyframes tab-icon-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: .18;
+    transform: scale(.82);
+  }
+}
+
+.tab-icon-pulse {
+  transform-origin: center;
+  animation: .9s ease-in-out infinite tab-icon-pulse;
 }
 
 @property --tw-rotate-x {
@@ -1105,13 +1112,68 @@ body {
   initial-value: solid;
 }
 
-@property --tw-duration {
+@property --tw-blur {
   syntax: "*";
   inherits: false
 }
 
-@keyframes pulse {
-  50% {
-    opacity: .5;
-  }
+@property --tw-brightness {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-contrast {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-grayscale {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-hue-rotate {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-invert {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-opacity {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-saturate {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-sepia {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-drop-shadow {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-drop-shadow-color {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-drop-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+
+@property --tw-drop-shadow-size {
+  syntax: "*";
+  inherits: false
 }
