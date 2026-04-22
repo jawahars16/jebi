@@ -9,13 +9,15 @@ export default function NodeSegment({
   onClick,
   rowHeight,
   iconSize,
+  segmentRadius,
+  bare,
 }) {
   const compact = rowHeight != null;
-  const paddingH = compact ? 7 : 10;
+  const paddingH = bare ? 0 : (compact ? 7 : 10);
   const paddingV = compact ? 0 : 4;
 
-  const bg = "#23347b";
-  const fg = "#ffffff";
+  const bg = bare ? "transparent" : "var(--border)";
+  const fg = "var(--text-primary)";
 
   const style = {
     display: "inline-flex",
@@ -33,6 +35,7 @@ export default function NodeSegment({
     fontSize: "var(--font-size-mono)",
     fontWeight: 500,
     border: "none",
+    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
     cursor: onClick ? "pointer" : "default",
   };
 

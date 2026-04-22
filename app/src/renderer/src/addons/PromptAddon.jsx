@@ -18,7 +18,15 @@ export class PromptAddon {
     this._decorations = [];
     this._elements = []; // DOM elements from onRender, for TUI visibility toggling
     this._tuiActive = false;
-    this._commands = []; // { marker, command, cwd, exitCode, gitData, nodeData, root, cellHeight, onCopy }
+    this._onReplay = null; // (command) => void, set by OutputArea
+    this._commands = []; // { marker, command, cwd, exitCode, gitData, nodeData, goData, pythonData, dockerData, k8sData, root, cellHeight, onCopy, onReplay }
+  }
+
+  // Registers a pane-level replay handler. Called by OutputArea so per-command
+  // onReplay closures can invoke the pane's submit pipeline (which sets running
+  // state, updates history, etc.) rather than sending input straight to the PTY.
+  setOnReplay(fn) {
+    this._onReplay = fn;
   }
 
   activate(terminal) {
@@ -42,6 +50,16 @@ export class PromptAddon {
     this._commands = [];
   }
 
+  // Copies the most recent command's output to the clipboard.
+  // Reuses the per-entry onCopy wired in commandStart — returns false if no
+  // command has run yet (nothing to copy).
+  copyLastOutput() {
+    const entry = this._commands[this._commands.length - 1];
+    if (!entry || !entry.onCopy) return false;
+    entry.onCopy();
+    return true;
+  }
+
   // Returns the command whose prompt should be shown as a sticky header.
   getStickyCommand(viewportY) {
     let best = null;
@@ -58,7 +76,12 @@ export class PromptAddon {
       exitCode: best.exitCode,
       gitData: best.gitData ?? null,
       nodeData: best.nodeData ?? null,
+      goData: best.goData ?? null,
+      pythonData: best.pythonData ?? null,
+      dockerData: best.dockerData ?? null,
+      k8sData: best.k8sData ?? null,
       onCopy: best.onCopy,
+      onReplay: best.onReplay,
     };
   }
 
@@ -96,6 +119,15 @@ export class PromptAddon {
     const onNodeClick = entry.nodeData?.version
       ? () => navigator.clipboard.writeText(entry.nodeData.version)
       : undefined;
+    const onGoClick = entry.goData?.version
+      ? () => navigator.clipboard.writeText(entry.goData.version)
+      : undefined;
+    const onPythonClick = entry.pythonData?.version
+      ? () => navigator.clipboard.writeText(entry.pythonData.version)
+      : undefined;
+    const onK8sClick = entry.k8sData?.context
+      ? () => navigator.clipboard.writeText(entry.k8sData.context)
+      : undefined;
     entry.root?.render(
       <Prompt
         command={entry.command}
@@ -105,8 +137,16 @@ export class PromptAddon {
         onGitClick={onGitClick}
         nodeData={entry.nodeData}
         onNodeClick={onNodeClick}
+        goData={entry.goData}
+        onGoClick={onGoClick}
+        pythonData={entry.pythonData}
+        onPythonClick={onPythonClick}
+        dockerData={entry.dockerData}
+        k8sData={entry.k8sData}
+        onK8sClick={onK8sClick}
         rowHeight={entry.cellHeight}
         onCopy={entry.onCopy}
+        onReplay={entry.onReplay}
         running={entry.running}
       />,
     );
@@ -142,6 +182,38 @@ export class PromptAddon {
     const entry = this._commands[this._commands.length - 1];
     if (!entry) return;
     entry.nodeData = nodeData;
+    this._renderEntry(entry);
+  }
+
+  // Called when TypeGo arrives — updates the most recent decoration with go state.
+  updateLastGo(goData) {
+    const entry = this._commands[this._commands.length - 1];
+    if (!entry) return;
+    entry.goData = goData;
+    this._renderEntry(entry);
+  }
+
+  // Called when TypePython arrives — updates the most recent decoration with python state.
+  updateLastPython(pythonData) {
+    const entry = this._commands[this._commands.length - 1];
+    if (!entry) return;
+    entry.pythonData = pythonData;
+    this._renderEntry(entry);
+  }
+
+  // Called when TypeDocker arrives — updates the most recent decoration with docker state.
+  updateLastDocker(dockerData) {
+    const entry = this._commands[this._commands.length - 1];
+    if (!entry) return;
+    entry.dockerData = dockerData;
+    this._renderEntry(entry);
+  }
+
+  // Called when TypeK8s arrives — updates the most recent decoration with k8s state.
+  updateLastK8s(k8sData) {
+    const entry = this._commands[this._commands.length - 1];
+    if (!entry) return;
+    entry.k8sData = k8sData;
     this._renderEntry(entry);
   }
 
@@ -189,10 +261,15 @@ export class PromptAddon {
       exitCode: 0,
       gitData: null,
       nodeData: null,
+      goData: null,
+      pythonData: null,
+      dockerData: null,
+      k8sData: null,
       running: true,
       root: null,
       cellHeight,
       onCopy: null,
+      onReplay: null,
     };
 
     // onCopy reads the buffer at call-time so it always captures the final output.
@@ -201,6 +278,12 @@ export class PromptAddon {
       const text = (entry.command ? `$ ${entry.command}\n` : "") + output;
       navigator.clipboard.writeText(text).catch(() => {});
     };
+
+    // onReplay delegates to the pane-level handler so replay goes through the
+    // same path as InputBar submission (sets running state, updates history).
+    entry.onReplay = entry.command
+      ? () => this._onReplay?.(entry.command)
+      : null;
 
     // Read the container's left padding so the decoration can bleed back to the true left edge.
     const termContainer = this._term.element?.parentElement;

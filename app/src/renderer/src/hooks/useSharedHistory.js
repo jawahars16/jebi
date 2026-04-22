@@ -54,6 +54,13 @@ export function useSharedHistory() {
     draftRef.current = ''
   }
 
+  // True while the user is mid-history-navigation. Used by the editor's
+  // Up/Down keymap to keep stepping through history instead of falling back
+  // to ghost-text cycling once the doc becomes non-empty after the first Up.
+  function isNavigating() {
+    return indexRef.current !== -1
+  }
+
   function navigate(direction, currentValue) {
     const history = sharedHistory
     const index = indexRef.current
@@ -82,5 +89,5 @@ export function useSharedHistory() {
     return null
   }
 
-  return { push, navigate, getAll }
+  return { push, navigate, getAll, isNavigating, resetNavigation }
 }

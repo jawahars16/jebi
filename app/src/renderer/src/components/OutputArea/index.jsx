@@ -22,6 +22,7 @@ export default function OutputArea({
   callbacksRef,
   sendRaw,
   sendResize,
+  onReplay,
   isActive,
   isVisible,
   renderer = DEFAULT_RENDERER,
@@ -34,6 +35,7 @@ export default function OutputArea({
   const promptAddonRef = useRef(null);
   const cellHeightRef = useRef(28);
   const sendResizeRef = useRef(sendResize);
+  const onReplayRef = useRef(onReplay);
   const pendingRef = useRef([]);
   const pendingSizeRef = useRef(0);
   const isVisibleRef = useRef(isVisible);
@@ -41,6 +43,7 @@ export default function OutputArea({
   const [stickyCommand, setStickyCommand] = useState(null);
 
   sendResizeRef.current = sendResize;
+  onReplayRef.current = onReplay;
 
   // When the tab becomes visible, flush buffered output and refit.
   useEffect(() => {
@@ -90,6 +93,7 @@ export default function OutputArea({
       term.loadAddon(fitAddon);
       term.loadAddon(promptAddon);
       promptAddonRef.current = promptAddon;
+      promptAddon.setOnReplay((command) => onReplayRef.current?.(command));
 
       term.onData((data) => {
         sendRaw(data);
@@ -131,6 +135,11 @@ export default function OutputArea({
       });
 
       callbacksRef.current.focusTerm = () => term.focus();
+
+      // Slash-command hooks — invoked from the InputBar's command executor
+      // via the pane's commandContext.
+      callbacksRef.current.clearScrollback = () => term.clear();
+      callbacksRef.current.copyLastOutput = () => promptAddon.copyLastOutput();
 
       callbacksRef.current.onOutput = (data) => {
         if (data.includes(TUI_ENTER)) promptAddon.enterTui();
@@ -179,6 +188,30 @@ export default function OutputArea({
 
       callbacksRef.current.onNodeDecoration = (nodeData) => {
         promptAddon.updateLastNode(nodeData);
+        const viewportY = term.buffer.active.viewportY;
+        setStickyCommand(promptAddon.getStickyCommand(viewportY));
+      };
+
+      callbacksRef.current.onGoDecoration = (goData) => {
+        promptAddon.updateLastGo(goData);
+        const viewportY = term.buffer.active.viewportY;
+        setStickyCommand(promptAddon.getStickyCommand(viewportY));
+      };
+
+      callbacksRef.current.onPythonDecoration = (pythonData) => {
+        promptAddon.updateLastPython(pythonData);
+        const viewportY = term.buffer.active.viewportY;
+        setStickyCommand(promptAddon.getStickyCommand(viewportY));
+      };
+
+      callbacksRef.current.onDockerDecoration = (dockerData) => {
+        promptAddon.updateLastDocker(dockerData);
+        const viewportY = term.buffer.active.viewportY;
+        setStickyCommand(promptAddon.getStickyCommand(viewportY));
+      };
+
+      callbacksRef.current.onK8sDecoration = (k8sData) => {
+        promptAddon.updateLastK8s(k8sData);
         const viewportY = term.buffer.active.viewportY;
         setStickyCommand(promptAddon.getStickyCommand(viewportY));
       };
@@ -265,6 +298,7 @@ export default function OutputArea({
             exitCode={stickyCommand.exitCode}
             rowHeight={cellHeightRef.current}
             onCopy={stickyCommand.onCopy}
+            onReplay={stickyCommand.onReplay}
             gitData={stickyCommand.gitData}
             onGitClick={stickyCommand.gitData?.branch
               ? () => navigator.clipboard.writeText(stickyCommand.gitData.branch)
@@ -272,6 +306,19 @@ export default function OutputArea({
             nodeData={stickyCommand.nodeData}
             onNodeClick={stickyCommand.nodeData?.version
               ? () => navigator.clipboard.writeText(stickyCommand.nodeData.version)
+              : undefined}
+            goData={stickyCommand.goData}
+            onGoClick={stickyCommand.goData?.version
+              ? () => navigator.clipboard.writeText(stickyCommand.goData.version)
+              : undefined}
+            pythonData={stickyCommand.pythonData}
+            onPythonClick={stickyCommand.pythonData?.version
+              ? () => navigator.clipboard.writeText(stickyCommand.pythonData.version)
+              : undefined}
+            dockerData={stickyCommand.dockerData}
+            k8sData={stickyCommand.k8sData}
+            onK8sClick={stickyCommand.k8sData?.context
+              ? () => navigator.clipboard.writeText(stickyCommand.k8sData.context)
               : undefined}
           />
         </div>

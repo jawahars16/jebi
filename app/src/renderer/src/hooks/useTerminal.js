@@ -38,6 +38,24 @@ export function useTerminal(paneId, callbacksRef) {
           callbacksRef.current.onNode?.({ version, packageManager })
           break
         }
+        case wire.TypeGo: {
+          callbacksRef.current.onGo?.({ version: msg.data })
+          break
+        }
+        case wire.TypePython: {
+          const [version, venv] = msg.data.split('|')
+          callbacksRef.current.onPython?.({ version, venv })
+          break
+        }
+        case wire.TypeDocker: {
+          callbacksRef.current.onDocker?.({ kind: msg.data })
+          break
+        }
+        case wire.TypeK8s: {
+          const [context, namespace] = msg.data.split('|')
+          callbacksRef.current.onK8s?.({ context, namespace })
+          break
+        }
       }
     }
 

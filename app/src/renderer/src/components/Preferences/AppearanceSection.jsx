@@ -3,6 +3,7 @@ import { FONT_OPTIONS } from '../../preferences/fonts'
 import ThemeGrid from './ThemeGrid'
 import CustomColorPickers from './CustomColorPickers'
 import FontSizeControl from './FontSizeControl'
+import PromptStyleGrid from './PromptStyleGrid'
 
 const sectionLabel = {
   fontSize: '11px',
@@ -44,6 +45,11 @@ export default function AppearanceSection() {
           <CustomColorPickers />
         </div>
       )}
+
+      <div>
+        <div style={sectionLabel}>Prompt Style</div>
+        <PromptStyleGrid />
+      </div>
 
       <div>
         <div style={sectionLabel}>Font</div>

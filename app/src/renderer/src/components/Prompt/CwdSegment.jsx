@@ -3,14 +3,14 @@ import { FaFolderOpen } from 'react-icons/fa'
 // CwdSegment — current working directory pill.
 // Also renders a compact ✕N error badge when the previous command failed.
 // onClick: usually opens the directory in Finder/Nautilus.
-export default function CwdSegment({ cwd, exitCode = 0, rowHeight, iconSize, onClick }) {
+export default function CwdSegment({ cwd, exitCode = 0, rowHeight, iconSize, onClick, segmentRadius, bare }) {
   const compact = rowHeight != null
-  const paddingH = compact ? 7 : 10
+  const paddingH = bare ? 0 : (compact ? 7 : 10)
   const paddingV = compact ? 0 : 4
   const hasError = exitCode > 0
 
-  const bg = 'var(--accent)'
-  const fg = 'var(--on-accent)'
+  const bg = bare ? 'transparent' : 'var(--accent)'
+  const fg = bare ? 'var(--accent)' : 'var(--on-accent)'
 
   const style = {
     display: 'inline-flex',
@@ -28,6 +28,7 @@ export default function CwdSegment({ cwd, exitCode = 0, rowHeight, iconSize, onC
     fontSize: 'var(--font-size-mono)',
     fontWeight: 500,
     border: 'none',
+    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
     cursor: onClick ? 'pointer' : 'default',
   }
 

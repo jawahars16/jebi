@@ -157,14 +157,13 @@ function TabPill({ tab, isActive, onSelect, onClose }) {
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent' }}
     >
       <RunningRing running={running}>
-        <Icon size={15} color={iconColor} weight="regular" />
+        <Icon size={18} color={iconColor} weight="bold" />
       </RunningRing>
 
       <span
         className="flex-1 truncate"
         style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: '12.5px',
           letterSpacing: '0.01em',
           color: textColor,
         }}

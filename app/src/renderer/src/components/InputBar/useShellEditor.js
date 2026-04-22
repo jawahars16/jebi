@@ -5,7 +5,10 @@ import { defaultKeymap, insertNewlineAndIndent } from '@codemirror/commands'
 import { StreamLanguage, HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { shell } from '@codemirror/legacy-modes/mode/shell'
 import { tags as t } from '@lezer/highlight'
+import { autocompletion } from '@codemirror/autocomplete'
 import { SHELL_COLORS } from '../../utils/tokenizeShell'
+import { makeSlashCommandSource } from '../../commands/completionSource'
+import { tryExecuteSlashCommand } from '../../commands/executor'
 
 const shellLanguage = StreamLanguage.define(shell)
 
@@ -126,6 +129,9 @@ function makeGhostPlugin(callbacksRef) {
     _recompute(view) {
       const doc = view.state.doc.toString()
       if (!doc.trim()) { this._clear(); return }
+      // Don't offer ghost suggestions while the user is walking history;
+      // otherwise a fetched entry picks up an unwanted grey tail.
+      if (callbacksRef.current.isNavigatingHistory?.()) { this._clear(); return }
       const matches = this._getMatches(doc)
       if (matches.length === 0) { this._clear(); return }
       this.suggestion = matches[0]
@@ -199,6 +205,7 @@ export function useShellEditor(callbacksRef) {
     const cssVar = (name) => style.getPropertyValue(name).trim()
 
     const ghostPlugin = makeGhostPlugin(callbacksRef)
+    const slashSource = makeSlashCommandSource(callbacksRef)
 
     const submitKeymap = keymap.of([
       {
@@ -206,6 +213,16 @@ export function useShellEditor(callbacksRef) {
         run(view) {
           const text = view.state.doc.toString()
           if (!text.trim()) return true
+
+          // Slash-commands short-circuit: if the line resolves to a registered
+          // in-app command, run it and clear the input WITHOUT calling onSubmit.
+          // Skipping onSubmit is also what keeps the line out of shared history.
+          const ctx = callbacksRef.current.commandContext
+          if (ctx && tryExecuteSlashCommand(text, ctx)) {
+            view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
+            return true
+          }
+
           callbacksRef.current.onSubmit?.(text)
           view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
           return true
@@ -222,7 +239,11 @@ export function useShellEditor(callbacksRef) {
           const head = view.state.selection.main.head
           if (view.state.doc.lineAt(head).number !== 1) return false
 
-          if (doc.trim()) {
+          // Keep walking history once navigation has started, even though the
+          // doc is now non-empty. Only fall back to ghost cycling when the
+          // user is NOT mid-history-navigation.
+          const inHistoryNav = callbacksRef.current.isNavigatingHistory?.() ?? false
+          if (!inHistoryNav && doc.trim()) {
             view.dispatch({ effects: ghostCycleEffect.of('up') })
             return true
           }
@@ -243,7 +264,8 @@ export function useShellEditor(callbacksRef) {
           const head = view.state.selection.main.head
           if (view.state.doc.lineAt(head).number !== view.state.doc.lines) return false
 
-          if (doc.trim()) {
+          const inHistoryNav = callbacksRef.current.isNavigatingHistory?.() ?? false
+          if (!inHistoryNav && doc.trim()) {
             view.dispatch({ effects: ghostCycleEffect.of('down') })
             return true
           }
@@ -286,6 +308,15 @@ export function useShellEditor(callbacksRef) {
           buildTheme(cssVar),
           EditorView.lineWrapping,
           autoHeightPlugin,
+          // Slash-command completions. `activateOnTyping` ensures the popup
+          // opens as soon as the user types `/` in an empty doc; the source
+          // itself gates everything else (line 1, starts with `/`, etc.).
+          autocompletion({
+            override: [slashSource],
+            activateOnTyping: true,
+            closeOnBlur: true,
+            icons: false,
+          }),
           submitKeymap,
           keymap.of(defaultKeymap),
           ghostPlugin,

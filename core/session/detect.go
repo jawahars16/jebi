@@ -33,10 +33,10 @@ type detector struct {
 var detectors = []detector{
 	{wire.TypeGit, detectGit},
 	{wire.TypeNode, detectNode},
-	// {wire.TypePython, detectPython},
 	{wire.TypeGo, detectGo},
-	// {wire.TypeRust,   detectRust},
-	// {wire.TypeDocker, detectDocker},
+	{wire.TypePython, detectPython},
+	{wire.TypeDocker, detectDocker},
+	{wire.TypeK8s, detectK8s},
 }
 
 // detectEnv runs all registered detectors concurrently for dir and sends each
@@ -148,6 +148,119 @@ func detectGo(ctx context.Context, dir string) string {
 	return parts[2]
 }
 
+// ── Python ───────────────────────────────────────────────────────────────────
+
+// pythonMarkers lists the filenames that mark a directory as a Python project.
+// Walk-up stops at the nearest ancestor containing any of these.
+var pythonMarkers = []string{
+	"pyproject.toml",
+	"requirements.txt",
+	"setup.py",
+	"setup.cfg",
+	"Pipfile",
+}
+
+// detectPython returns "version|venv" when dir is inside a Python project, or ""
+// when no marker is found or python is not installed / times out.
+// venv is the basename of $VIRTUAL_ENV when set, otherwise "".
+func detectPython(ctx context.Context, dir string) string {
+	if findUpAny(dir, pythonMarkers) == "" {
+		return ""
+	}
+
+	pyCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	// Prefer python3 — on most systems `python` is python 2 or missing entirely.
+	ver := cmd(pyCtx, "python3", "--version")
+	if ver == "" {
+		ver = cmd(pyCtx, "python", "--version")
+	}
+	if ver == "" {
+		return ""
+	}
+	// "Python 3.11.6" → "3.11.6"
+	parts := strings.Fields(ver)
+	if len(parts) >= 2 {
+		ver = parts[1]
+	}
+
+	venv := ""
+	if v := os.Getenv("VIRTUAL_ENV"); v != "" {
+		venv = filepath.Base(v)
+	}
+
+	return fmt.Sprintf("%s|%s", ver, venv)
+}
+
+// ── Docker ───────────────────────────────────────────────────────────────────
+
+// dockerMarkers lists filenames that mark a directory as a Docker project.
+// Unlike Python/Node, Docker files don't have walk-up semantics — they usually
+// live exactly in the directory where you want to run them. Check only `dir`.
+var dockerMarkers = []struct {
+	file string
+	kind string
+}{
+	{"docker-compose.yml", "compose"},
+	{"docker-compose.yaml", "compose"},
+	{"compose.yml", "compose"},
+	{"compose.yaml", "compose"},
+	{"Dockerfile", "dockerfile"},
+}
+
+// detectDocker returns "kind" ("compose" or "dockerfile") when dir contains a
+// Docker marker file, or "" otherwise. Presence is enough — we don't call out
+// to the docker daemon (slow, noisy when it's not running).
+func detectDocker(ctx context.Context, dir string) string {
+	for _, m := range dockerMarkers {
+		if exists(filepath.Join(dir, m.file)) {
+			return m.kind
+		}
+	}
+	return ""
+}
+
+// ── Kubernetes ───────────────────────────────────────────────────────────────
+
+// k8sMarkers lists file / directory names that mark a directory as a k8s
+// project. We walk up so `apps/foo/Chart.yaml` surfaces from any subdir.
+var k8sMarkers = []string{
+	"kustomization.yaml",
+	"kustomization.yml",
+	"Chart.yaml",
+	"skaffold.yaml",
+}
+
+// k8sDirMarkers are directory names (not files) that indicate a k8s project.
+var k8sDirMarkers = []string{
+	"k8s",
+	"kubernetes",
+	"helm",
+	"manifests",
+}
+
+// detectK8s returns "context|namespace" when dir is inside a k8s project and
+// kubectl is available, or "" otherwise. namespace is "default" when unset.
+func detectK8s(ctx context.Context, dir string) string {
+	if findUpAny(dir, k8sMarkers) == "" && findUpAnyDir(dir, k8sDirMarkers) == "" {
+		return ""
+	}
+
+	kubeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	kctx := cmd(kubeCtx, "kubectl", "config", "current-context")
+	if kctx == "" {
+		return ""
+	}
+
+	ns := cmd(kubeCtx, "kubectl", "config", "view", "--minify", "-o", "jsonpath={..namespace}")
+	if ns == "" {
+		ns = "default"
+	}
+
+	return fmt.Sprintf("%s|%s", kctx, ns)
+}
+
 // lockFilePM detects the package manager from lock files in dir.
 func lockFilePM(dir string) string {
 	for _, lf := range []struct{ file, name string }{
@@ -171,6 +284,41 @@ func findUp(dir, filename string) string {
 	for {
 		if exists(filepath.Join(dir, filename)) {
 			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+// findUpAny walks up from dir looking for a directory that contains any of filenames.
+// Returns the matching directory, or "" if the filesystem root is reached.
+func findUpAny(dir string, filenames []string) string {
+	for {
+		for _, f := range filenames {
+			if exists(filepath.Join(dir, f)) {
+				return dir
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+// findUpAnyDir walks up from dir looking for a directory that contains any of
+// the named subdirectories. Returns the matching parent, or "".
+func findUpAnyDir(dir string, dirnames []string) string {
+	for {
+		for _, d := range dirnames {
+			p := filepath.Join(dir, d)
+			if info, err := os.Stat(p); err == nil && info.IsDir() {
+				return dir
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {

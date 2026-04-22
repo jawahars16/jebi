@@ -16,13 +16,15 @@ export default function GitSegment({
   onClick,
   rowHeight,
   iconSize,
+  segmentRadius,
+  bare,
 }) {
   const compact = rowHeight != null;
-  const paddingH = compact ? 7 : 10;
+  const paddingH = bare ? 0 : (compact ? 7 : 10);
   const paddingV = compact ? 0 : 4;
 
-  const bg = "#323131";
-  const fg = "#ffffff";
+  const bg = bare ? "transparent" : "var(--bg-elevated)";
+  const fg = "var(--text-primary)";
   const dirtyColor = "#edf459";
   const upColor = "#e74c3c";
   const downColor = "#27ae60";
@@ -43,6 +45,7 @@ export default function GitSegment({
     fontSize: "var(--font-size-mono)",
     fontWeight: 500,
     border: "none",
+    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
     cursor: onClick ? "pointer" : "default",
   };
 
@@ -61,7 +64,7 @@ export default function GitSegment({
       title={title}
       style={style}
     >
-      <DiGitBranch size={iconSize + 3} color="rgba(255,255,255,0.85)" />
+      <DiGitBranch size={iconSize + 3} color="var(--text-primary)" />
       <span
         style={{
           overflow: "hidden",

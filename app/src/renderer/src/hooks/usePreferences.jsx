@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useMemo } from 'react'
 import { THEMES } from '../preferences/themes'
 import { DEFAULT_PREFS } from '../preferences/defaults'
 import { applyThemeToCSSVars } from '../preferences/cssVars'
+import { setPromptStyleId } from '../preferences/promptStyles'
 
 const STORAGE_KEY = 'term-prefs'
 
@@ -23,15 +24,20 @@ export function PreferencesProvider({ children }) {
       ? loaded.customColors
       : THEMES[loaded.themeId]?.colors ?? THEMES['default'].colors
     applyThemeToCSSVars(colors, loaded.fontSize, loaded.fontFamily)
+    // Seed module-level prompt style store so xterm-decoration React roots
+    // (outside this provider) pick up the user's choice on first paint.
+    setPromptStyleId(loaded.promptStyleId)
     return loaded
   })
 
-  // Whenever prefs change: apply CSS vars + persist.
+  // Whenever prefs change: apply CSS vars + persist + mirror prompt style
+  // to the module store for out-of-tree consumers.
   useEffect(() => {
     const colors = prefs.themeId === 'custom'
       ? prefs.customColors
       : THEMES[prefs.themeId]?.colors ?? THEMES['default'].colors
     applyThemeToCSSVars(colors, prefs.fontSize, prefs.fontFamily)
+    setPromptStyleId(prefs.promptStyleId)
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)) } catch {}
   }, [prefs])
 
@@ -70,7 +76,11 @@ export function PreferencesProvider({ children }) {
     setPrefs(prev => ({ ...prev, fontSize: clamped }))
   }
 
-  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize }
+  function setPromptStyle(id) {
+    setPrefs(prev => ({ ...prev, promptStyleId: id }))
+  }
+
+  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle }
 
   return (
     <PreferencesContext.Provider value={value}>

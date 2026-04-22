@@ -24,6 +24,10 @@ export default function App() {
   const [tabs, setTabs] = useState(() => [createTab(tabCounterRef.current)])
   const [activeTabId, setActiveTabId] = useState(tabs[0].id)
   const [tabBarPosition, setTabBarPosition] = useState('top')
+  const toggleTabBarPosition = useCallback(
+    () => setTabBarPosition((p) => (p === 'top' ? 'left' : 'top')),
+    [],
+  )
 
   const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0]
   const { deleteSession } = useSessionStore()
@@ -116,7 +120,7 @@ export default function App() {
     onSelectTab: setActiveTabId,
     onCloseTab: closeTab,
     onNewTab: addTab,
-    onTogglePosition: () => setTabBarPosition(p => p === 'top' ? 'left' : 'top'),
+    onTogglePosition: toggleTabBarPosition,
     onSplitRight: () => splitActivePane('horizontal'),
     onSplitDown: () => splitActivePane('vertical'),
   }
@@ -194,6 +198,8 @@ export default function App() {
                 onSplitRight={() => splitPane(tab.id, paneId, 'horizontal')}
                 onSplitDown={() => splitPane(tab.id, paneId, 'vertical')}
                 onClose={paneCount > 1 ? () => closePane(tab.id, paneId) : null}
+                onNewTab={addTab}
+                onToggleTabPosition={toggleTabBarPosition}
               />
             </div>
           )

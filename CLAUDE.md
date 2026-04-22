@@ -126,9 +126,14 @@ Spawns the Go core binary on app launch (`startCore()`) and kills it on `will-qu
 
 **Prompt (`components/Prompt/`):**
 - Used in BOTH xterm decorations and InputBar (row 1) and as the sticky overlay.
-- Two-line layout: row 1 = prompt elements (➜, future: cwd, git branch), rows 2+ = one div per command line (only in xterm decoration / sticky; InputBar uses the textarea as row 2).
+- Two-line layout: row 1 = segment group + `WaveSeparator` + optional copy button; rows 2+ = one div per command line (only in xterm decoration / sticky; InputBar uses the textarea as row 2).
+- Segments rendered inline from props: `cwd` → `CwdSegment`, `gitData` → `GitSegment`, `nodeData` → `NodeSegment`. New segments are added directly in `Prompt/index.jsx` — there is no central segment registry.
+- CwdSegment click calls `window.electron?.openPath(cwd)` (IPC exposed from main → renderer preload).
+- `WaveSeparator` is always rendered between segments and the copy button; it animates into a sine wave while `running` is true, flat otherwise.
 - `rowHeight` prop (default 28) controls each row's pixel height. In xterm decorations, this is set to the actual terminal cell height so rows align perfectly.
 - Font size uses `--font-size-mono` CSS variable — never hardcoded.
+- **Prompt style presets** (`preferences/promptStyles.js`): Wave, Powerline, Pill, Slant, Minimal. A preset defines `group.radius` (`0 | number | 'dynamic' | 'pill'`), `group.connected`, `group.rightCap` (`round | triangle | slant | square | none`), and `separator` (`wave | triangle | slash | dot | none`). Between-segment separators live in `components/Prompt/separators/` (`TriangleSeparator`, `SlashSeparator`, `DotSeparator`); `WaveSeparator` sits at the Prompt root.
+- **Reading the active style:** `Prompt` subscribes via `useSyncExternalStore(subscribePromptStyle, getPromptStyleId)` against a **module-level** store in `promptStyles.js` — NOT React context. This is required because Prompt is also mounted inside xterm decoration roots created by `createRoot()` that live outside `PreferencesProvider`. `usePreferences.setPromptStyle` writes through `setPromptStyleId` to keep context and module store in sync.
 
 **InputBar (`components/InputBar/`):**
 - Textarea with auto-height resizing (no scroll, always shows full content). `Enter` submits, `Shift+Enter` inserts newline.
@@ -136,12 +141,23 @@ Spawns the Go core binary on app launch (`startCore()`) and kills it on `will-qu
 - Hidden while a command is running (`running` state in `TerminalPane`); shown again when OSC 9001 exit code sequence is received.
 
 **PromptLine (`components/PromptLine/`):**
-- Renders prompt segments (cwd, etc.) + a `❯` chevron (red on non-zero exit).
-- Segment → component map: `{ cwd: CwdSegment }`. Add new entries here as segments are wired up.
+- Legacy component that renders a `❯` chevron (red on non-zero exit). The active segment rendering path is now `Prompt/index.jsx` directly — do not wire new segments through `PromptLine`.
 
 **TabBar (`components/TabBar/`):**
 - Supports two positions: `'top'` (horizontal strip) and `'left'` (vertical sidebar).
 - Toggle button switches between the two layouts.
+
+**Preferences (`components/Preferences/` + `preferences/` + `hooks/usePreferences.jsx`):**
+- `PreferencesProvider` (`hooks/usePreferences.jsx`) wraps the app. State is persisted to `localStorage` under key `term-prefs`; defaults come from `preferences/defaults.js`.
+- On every prefs change: resolves the active color palette (named theme from `preferences/themes.js` OR `customColors` when `themeId === 'custom'`), calls `applyThemeToCSSVars` to write CSS vars on `body`, and mirrors `promptStyleId` into the module-level store via `setPromptStyleId` so xterm-decoration Prompts re-render.
+- Preferences UI lives in `components/Preferences/`:
+  - `AppearanceSection` — host section
+  - `ThemeGrid` / `ThemeSwatch` — named theme picker (includes a "custom" slot that forks the current theme on selection)
+  - `CustomColorPickers` — per-role color editors when `themeId === 'custom'`
+  - `FontSizeControl` — clamped 11–22
+  - `PromptStyleGrid` / `PromptStyleSwatch` — preview + select prompt style presets
+- API exposed by `usePreferences()`: `{ prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle }`.
+- **Important:** when adding any new pref that must be visible inside xterm decoration roots, follow the same pattern as `promptStyleId` — keep a module-level reactive store that the decoration consumer subscribes to with `useSyncExternalStore`. React context alone will not reach those roots.
 
 **StatusBar (`components/StatusBar/`):**
 - Bottom bar, currently renders a static "Terminal" label. Placeholder for future status info.
@@ -206,7 +222,9 @@ Both sides use `{ "type": "...", "data": ... }`. Type constants live in `core/wi
 - Custom `InputBar` (auto-height textarea, no xterm for input), xterm.js `OutputArea`, `PromptLine`, `StatusBar`
 - `PromptAddon` — renders React `<Prompt>` decoration above each command in xterm; sticky header overlay while output is in viewport
 - `WebglAddon` — GPU-accelerated rendering; 10 000-line scrollback; smooth scrolling
-- Two-line `Prompt` layout — row 1: elements (➜), rows 2+: command lines
+- Two-line `Prompt` layout — row 1: segments (cwd/git/node) + wave separator + copy button, rows 2+: command lines
+- Prompt style presets (Wave / Powerline / Pill / Slant / Minimal) with per-preset separators in `components/Prompt/separators/`
+- Preferences system with persistent localStorage (`term-prefs`): theme (named + custom colors), font family, font size, prompt style — with a module-level store for prompt style so xterm-decoration Prompts stay in sync
 - `InputBar` hidden while command is running (generic TUI + blocking command detection via OSC 9001)
 - TUI app detection: prompt decorations hidden on alternate-screen enter; xterm focused
 - Output buffering for hidden tabs (512 KB cap)
