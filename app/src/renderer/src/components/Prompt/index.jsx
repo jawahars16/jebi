@@ -16,6 +16,7 @@ import {
   getPromptStyleId,
   subscribePromptStyle,
 } from "../../preferences/promptStyles";
+import infoIconUrl from "../../assets/info.png";
 
 function formatDuration(ms) {
   if (ms < 1000) return `${ms}ms`;
@@ -417,7 +418,20 @@ export default function Prompt({
                   cursor: "default",
                 }}
               >
-                <FaInfoCircle size={iconSize + 4} />
+                {/* <FaInfoCircle size={iconSize + 4} /> */}
+                <img
+                  src={infoIconUrl}
+                  alt={`Exit code ${exitCode}`}
+                  title={`Exit code: ${exitCode}`}
+                  width={iconSize}
+                  height={iconSize}
+                  style={{
+                    width: iconSize + 4,
+                    height: iconSize + 4,
+                    objectFit: "contain",
+                    flexShrink: 0,
+                  }}
+                />
               </span>
             )}
           </div>
