@@ -23,6 +23,7 @@ export default function TerminalPane({
     navigate: navigateHistory,
     getAll: getHistory,
     isNavigating: isNavigatingHistory,
+    resetNavigation,
   } = useSharedHistory();
   const [running, setRunning] = useState(false);
   const [cwd, setCwd] = useState("");
@@ -172,6 +173,7 @@ export default function TerminalPane({
           ref={inputBarRef}
           onSubmit={handleSubmit}
           onNavigateHistory={navigateHistory}
+          resetNavigation={resetNavigation}
           getHistory={getHistory}
           isNavigatingHistory={isNavigatingHistory}
           commandContext={commandContext}

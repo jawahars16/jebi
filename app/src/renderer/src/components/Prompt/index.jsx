@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import { FaRegCopy, FaCheck, FaRedo } from "react-icons/fa";
+import { FaRegCopy, FaCheck, FaRedo, FaInfoCircle } from "react-icons/fa";
 import CwdSegment from "./CwdSegment";
 import GitSegment from "./GitSegment";
 import NodeSegment from "./NodeSegment";
@@ -17,18 +17,20 @@ import {
   subscribePromptStyle,
 } from "../../preferences/promptStyles";
 
+function formatDuration(ms) {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  const m = Math.floor(ms / 60000);
+  const s = Math.round((ms % 60000) / 1000);
+  return `${m}m ${s}s`;
+}
+
 // Per-segment bg color used for Powerline/Slant separators that need to "extend"
 // the previous segment's color into an arrow/wedge sitting on the surface bg.
-// Minimal mode doesn't need these (segments are bare).
+// Reads the same --prompt-{kind}-bg var the segment itself paints with so the
+// separator never drifts out of sync with the segment's color.
 function segmentBg(kind) {
-  if (kind === "cwd") return "var(--accent)";
-  if (kind === "git") return "var(--bg-elevated)";
-  if (kind === "node") return "var(--border)";
-  if (kind === "go") return "var(--border)";
-  if (kind === "python") return "var(--border)";
-  if (kind === "docker") return "var(--border)";
-  if (kind === "k8s") return "var(--border)";
-  return "transparent";
+  return `var(--prompt-${kind}-bg)`;
 }
 
 export default function Prompt({
@@ -38,6 +40,8 @@ export default function Prompt({
   rowHeight,
   onCopy,
   onReplay,
+  startTime,
+  duration,
   gitData,
   onGitClick,
   nodeData,
@@ -62,6 +66,7 @@ export default function Prompt({
   const { group, separator } = preset;
 
   const [copied, setCopied] = useState(false);
+  const [infoVisible, setInfoVisible] = useState(false);
   const commandLines = command ? command.split("\n") : [];
 
   const iconSize = rowHeight ? Math.min(14, Math.max(10, rowHeight - 6)) : 14;
@@ -94,7 +99,8 @@ export default function Prompt({
   const hasPython = Boolean(pythonData);
   const hasDocker = Boolean(dockerData);
   const hasK8s = Boolean(k8sData);
-  const hasAny = hasCwd || hasGit || hasNode || hasGo || hasPython || hasDocker || hasK8s;
+  const hasAny =
+    hasCwd || hasGit || hasNode || hasGo || hasPython || hasDocker || hasK8s;
 
   // Build ordered segment descriptors so separators can reference the
   // previous segment's bg color (for Powerline/Slant).
@@ -164,11 +170,7 @@ export default function Prompt({
       );
     if (kind === "go")
       return (
-        <GoSegment
-          {...segProps}
-          version={goData.version}
-          onClick={onGoClick}
-        />
+        <GoSegment {...segProps} version={goData.version} onClick={onGoClick} />
       );
     if (kind === "python")
       return (
@@ -322,6 +324,7 @@ export default function Prompt({
               justifyContent: "center",
               width: `${iconSize + 10}px`,
               height: `${iconSize + 10}px`,
+              title: "Run this command again",
               background: "none",
               border: "none",
               cursor: "pointer",
@@ -353,12 +356,12 @@ export default function Prompt({
               width: `${iconSize + 10}px`,
               height: `${iconSize + 10}px`,
               background: "none",
-              border: "none",
               cursor: "pointer",
+              border: "none",
+              title: "Copy command and output",
               color: copied ? "var(--accent)" : "var(--text-secondary)",
               flexShrink: 0,
               transition: "color 0.15s",
-              marginRight: "16px",
             }}
             title="Copy command and output"
           >
@@ -368,6 +371,56 @@ export default function Prompt({
               <FaRegCopy size={iconSize + 2} />
             )}
           </button>
+        )}
+
+        {startTime != null && duration != null && (
+          <div
+            style={{
+              flexShrink: 0,
+              marginRight: "16px",
+              display: "flex",
+              alignItems: "center",
+              cursor: "pointer",
+            }}
+            onMouseEnter={() => setInfoVisible(true)}
+            onMouseLeave={() => setInfoVisible(false)}
+          >
+            {infoVisible ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "2px 8px",
+                  backgroundColor: "var(--tab-accent)",
+                  borderRadius: 4,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: `${iconSize}px`,
+                  color: "var(--on-accent)",
+                  whiteSpace: "nowrap",
+                  animation: "slideInRight 0.15s ease-out",
+                }}
+              >
+                <span>{new Date(startTime).toLocaleTimeString()}</span>
+                <span style={{ opacity: 0.5 }}>·</span>
+                <span>{formatDuration(duration)}</span>
+              </div>
+            ) : (
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: `${iconSize + 10}px`,
+                  height: `${iconSize + 10}px`,
+                  color: "var(--text-muted)",
+                  cursor: "default",
+                }}
+              >
+                <FaInfoCircle size={iconSize + 4} />
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -388,14 +441,14 @@ export default function Prompt({
                 bottom: "50%",
                 width: 13,
                 height: 18,
-                borderLeft: "2px dotted #fff",
-                borderBottom: "2px dotted #fff",
+                borderLeft: "2px dotted var(--tab-accent)",
+                borderBottom: "2px dotted var(--tab-accent)",
                 borderBottomLeftRadius: 3,
                 pointerEvents: "none",
               }}
             />
           )}
-          <span className="ml-1">{line}</span>
+          <span className="ml-1 text-[var(--tab-accent)]">{line}</span>
         </div>
       ))}
     </div>

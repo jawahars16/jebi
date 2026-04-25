@@ -21,6 +21,38 @@
   --font-ui: 'Inter', system-ui, sans-serif;
   --font-size-mono: 15px;
   --font-size-ui: 15px;
+
+  /* Per-segment prompt colors — each segment has a `tint` hue (the segment's
+     identity color) and a `bg` that mixes a small percentage of that hue into
+     `--bg-elevated`, so segments read as subtly differentiated neutrals on
+     every theme. `--prompt-tint-strength` is the global mix percentage —
+     dial it up/down once and the whole row tracks.
+     Themes can override any subset (see preferences/themes.js + applyTheme).
+     `bare` mode (Minimal preset) intentionally bypasses bg and uses transparent. */
+  --prompt-tint-strength: 20%;
+
+  --prompt-cwd-tint:    var(--accent);   /* fallback; overridden inline in CwdSegment */
+  --prompt-git-tint:    #eb6200;   /* orange — git tradition */
+  --prompt-node-tint:   #22c55e;   /* green  — node brand */
+  --prompt-go-tint:     #0291b4;   /* cyan   — go brand */
+  --prompt-python-tint: #eab308;   /* yellow — python brand */
+  --prompt-docker-tint: #3b82f6;   /* blue   — docker tradition */
+  --prompt-k8s-tint:    #6366f1;   /* indigo — k8s feel */
+
+  --prompt-cwd-bg:    color-mix(in srgb, var(--prompt-cwd-tint)    var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-cwd-fg:    var(--text-primary);
+  --prompt-git-bg:    color-mix(in srgb, var(--prompt-git-tint)    var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-git-fg:    var(--text-primary);
+  --prompt-node-bg:   color-mix(in srgb, var(--prompt-node-tint)   var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-node-fg:   var(--text-primary);
+  --prompt-go-bg:     color-mix(in srgb, var(--prompt-go-tint)     var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-go-fg:     var(--text-primary);
+  --prompt-python-bg: color-mix(in srgb, var(--prompt-python-tint) var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-python-fg: var(--text-primary);
+  --prompt-docker-bg: color-mix(in srgb, var(--prompt-docker-tint) var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-docker-fg: var(--text-primary);
+  --prompt-k8s-bg:    color-mix(in srgb, var(--prompt-k8s-tint)    var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-k8s-fg:    var(--text-primary);
 }
 
 html,
@@ -81,20 +113,17 @@ body {
   background: rgba(124, 106, 247, 0.05);
 }
 
-/* Tab running indicator — the icon itself breathes while a command is active.
-   Zero extra geometry, works on any tab background, always stays aligned. */
-@keyframes tab-icon-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.18;
-    transform: scale(0.82);
-  }
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(6px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
-.tab-icon-pulse {
-  animation: tab-icon-pulse 0.9s ease-in-out infinite;
+
+@keyframes tab-icon-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.tab-icon-spin {
+  animation: tab-icon-spin 1s linear infinite;
   transform-origin: center;
 }
 

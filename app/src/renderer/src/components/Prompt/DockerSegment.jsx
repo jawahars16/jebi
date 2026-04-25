@@ -14,8 +14,8 @@ export default function DockerSegment({
   const paddingH = bare ? 0 : (compact ? 7 : 10);
   const paddingV = compact ? 0 : 4;
 
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-docker-bg)";
+  const fg = "var(--prompt-docker-fg)";
 
   const label = kind === "compose" ? "compose" : "docker";
 

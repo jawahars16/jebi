@@ -1,10 +1,10 @@
-import { DiGitBranch } from "react-icons/di";
 import { FaStarOfLife } from "react-icons/fa";
 import {
   FaArrowDownLong,
   FaArrowsUpDown,
   FaArrowUpLong,
 } from "react-icons/fa6";
+import gitIconUrl from "../../assets/git.png";
 
 // GitSegment — branch name, dirty indicator, ahead/behind counts.
 // onClick: in InputBar → runs `git status`; in xterm decoration → copies branch to clipboard.
@@ -23,8 +23,8 @@ export default function GitSegment({
   const paddingH = bare ? 0 : (compact ? 7 : 10);
   const paddingV = compact ? 0 : 4;
 
-  const bg = bare ? "transparent" : "var(--bg-elevated)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-git-bg)";
+  const fg = "var(--prompt-git-fg)";
   const dirtyColor = "#edf459";
   const upColor = "#e74c3c";
   const downColor = "#27ae60";
@@ -64,7 +64,14 @@ export default function GitSegment({
       title={title}
       style={style}
     >
-      <DiGitBranch size={iconSize + 3} color="var(--text-primary)" />
+      <img
+        src={gitIconUrl}
+        alt=""
+        aria-hidden="true"
+        width={iconSize + 3}
+        height={iconSize + 3}
+        style={{ flexShrink: 0, objectFit: "contain" }}
+      />
       <span
         style={{
           overflow: "hidden",

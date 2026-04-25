@@ -1,163 +1,41 @@
-// commandIcon(cmd) — maps a raw command string (e.g. "git status", "/usr/bin/kubectl get pods")
-// to an icon component reference. Caller renders <Icon size={...} />. Pure, no side effects.
-//
-// Resolution: take first whitespace token → strip leading path → lowercase → lookup.
-// Falls back to a generic terminal icon on miss.
+// commandIconUrl(cmd) — maps a raw command string to a color PNG asset URL.
+// Falls back to terminal.png for unknown commands.
 
-import {
-  GitBranchIcon,
-  PencilSimpleIcon,
-  TerminalWindowIcon,
-  GlobeIcon,
-  FolderIcon,
-  FileTextIcon,
-  MagnifyingGlassIcon,
-  HammerIcon,
-  SparkleIcon,
-  DatabaseIcon,
-  PackageIcon,
-  TreeStructureIcon,
-  WrenchIcon,
-} from '@phosphor-icons/react'
-import { SiDocker, SiKubernetes, SiNodedotjs, SiPython, SiGo, SiRust } from 'react-icons/si'
-import { BsTerminalFill } from 'react-icons/bs'
+import dockerUrl  from '../../assets/docker.png'
+import gitUrl     from '../../assets/git.png'
+import goUrl      from '../../assets/go.png'
+import k8sUrl     from '../../assets/k8s.png'
+import nodeUrl    from '../../assets/node.png'
+import pythonUrl  from '../../assets/python.png'
+import termUrl    from '../../assets/terminal.png'
 
 const MAP = {
   // git / github
-  git: GitBranchIcon,
-  gh: GitBranchIcon,
-  hub: GitBranchIcon,
-  lazygit: GitBranchIcon,
-
-  // editors
-  vim: PencilSimpleIcon,
-  nvim: PencilSimpleIcon,
-  vi: PencilSimpleIcon,
-  nano: PencilSimpleIcon,
-  micro: PencilSimpleIcon,
-  code: PencilSimpleIcon,
-  subl: PencilSimpleIcon,
-  hx: PencilSimpleIcon,
-  emacs: PencilSimpleIcon,
+  git: gitUrl, gh: gitUrl, hub: gitUrl, lazygit: gitUrl,
 
   // containers / orchestration
-  docker: SiDocker,
-  'docker-compose': SiDocker,
-  dc: SiDocker,
-  podman: SiDocker,
-  kubectl: SiKubernetes,
-  k: SiKubernetes,
-  helm: SiKubernetes,
-  k9s: SiKubernetes,
-  minikube: SiKubernetes,
-  kind: SiKubernetes,
+  docker: dockerUrl, 'docker-compose': dockerUrl, dc: dockerUrl, podman: dockerUrl,
+
+  // kubernetes
+  kubectl: k8sUrl, k: k8sUrl, helm: k8sUrl, k9s: k8sUrl, minikube: k8sUrl, kind: k8sUrl,
 
   // node / js
-  npm: SiNodedotjs,
-  yarn: SiNodedotjs,
-  pnpm: SiNodedotjs,
-  node: SiNodedotjs,
-  npx: SiNodedotjs,
-  bun: SiNodedotjs,
-  deno: SiNodedotjs,
-  tsc: SiNodedotjs,
+  npm: nodeUrl, yarn: nodeUrl, pnpm: nodeUrl, node: nodeUrl,
+  npx: nodeUrl, bun: nodeUrl, deno: nodeUrl, tsc: nodeUrl,
 
   // python
-  python: SiPython,
-  python3: SiPython,
-  py: SiPython,
-  pip: SiPython,
-  pip3: SiPython,
-  uv: SiPython,
-  poetry: SiPython,
-  pytest: SiPython,
-  ruff: SiPython,
+  python: pythonUrl, python3: pythonUrl, py: pythonUrl,
+  pip: pythonUrl, pip3: pythonUrl, uv: pythonUrl,
+  poetry: pythonUrl, pytest: pythonUrl, ruff: pythonUrl,
 
   // go
-  go: SiGo,
-  gofmt: SiGo,
-  goimports: SiGo,
-
-  // rust
-  cargo: SiRust,
-  rustc: SiRust,
-  rustup: SiRust,
-
-  // network / http
-  ssh: TerminalWindowIcon,
-  scp: TerminalWindowIcon,
-  mosh: TerminalWindowIcon,
-  curl: GlobeIcon,
-  wget: GlobeIcon,
-  http: GlobeIcon,
-  httpie: GlobeIcon,
-  xh: GlobeIcon,
-
-  // filesystem
-  ls: FolderIcon,
-  ll: FolderIcon,
-  la: FolderIcon,
-  tree: TreeStructureIcon,
-  find: FolderIcon,
-  fd: FolderIcon,
-  cd: FolderIcon,
-  pwd: FolderIcon,
-  mkdir: FolderIcon,
-
-  // read
-  cat: FileTextIcon,
-  bat: FileTextIcon,
-  less: FileTextIcon,
-  more: FileTextIcon,
-  head: FileTextIcon,
-  tail: FileTextIcon,
-
-  // search
-  grep: MagnifyingGlassIcon,
-  rg: MagnifyingGlassIcon,
-  ag: MagnifyingGlassIcon,
-  ack: MagnifyingGlassIcon,
-
-  // build
-  make: HammerIcon,
-  cmake: HammerIcon,
-  ninja: HammerIcon,
-  bazel: HammerIcon,
-  gradle: HammerIcon,
-  mvn: HammerIcon,
-
-  // AI
-  claude: SparkleIcon,
-  aider: SparkleIcon,
-  cursor: SparkleIcon,
-  gemini: SparkleIcon,
-
-  // data
-  psql: DatabaseIcon,
-  mysql: DatabaseIcon,
-  sqlite3: DatabaseIcon,
-  redis: DatabaseIcon,
-  'redis-cli': DatabaseIcon,
-  mongosh: DatabaseIcon,
-
-  // pkg managers (os)
-  brew: PackageIcon,
-  apt: PackageIcon,
-  'apt-get': PackageIcon,
-  dnf: PackageIcon,
-  yum: PackageIcon,
-  pacman: PackageIcon,
-
-  // misc tools
-  ssh_config: WrenchIcon,
-  systemctl: WrenchIcon,
-  service: WrenchIcon,
+  go: goUrl, gofmt: goUrl, goimports: goUrl,
 }
 
-export function commandIcon(cmd) {
-  if (!cmd) return BsTerminalFill
+export function commandIconUrl(cmd) {
+  if (!cmd) return termUrl
   const first = cmd.trim().split(/\s+/)[0]
-  if (!first) return BsTerminalFill
+  if (!first) return termUrl
   const base = first.split('/').pop().toLowerCase()
-  return MAP[base] || BsTerminalFill
+  return MAP[base] ?? termUrl
 }

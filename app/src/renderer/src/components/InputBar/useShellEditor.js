@@ -5,9 +5,15 @@ import { defaultKeymap, insertNewlineAndIndent } from '@codemirror/commands'
 import { StreamLanguage, HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { shell } from '@codemirror/legacy-modes/mode/shell'
 import { tags as t } from '@lezer/highlight'
-import { autocompletion } from '@codemirror/autocomplete'
+import {
+  autocompletion,
+  startCompletion,
+  acceptCompletion,
+  completionStatus,
+} from '@codemirror/autocomplete'
 import { SHELL_COLORS } from '../../utils/tokenizeShell'
 import { makeSlashCommandSource } from '../../commands/completionSource'
+import { makeFilePathSource } from '../../commands/filePathSource'
 import { tryExecuteSlashCommand } from '../../commands/executor'
 
 const shellLanguage = StreamLanguage.define(shell)
@@ -48,6 +54,72 @@ function buildTheme(cssVar) {
     },
     '.cm-activeLine': { background: 'transparent' },
     '.cm-gutters': { display: 'none' },
+
+    // Autocomplete dropdown — matches the active theme via CSS vars.
+    '.cm-tooltip.cm-tooltip-autocomplete': {
+      background: cssVar('--bg-elevated'),
+      border: `1px solid ${cssVar('--border')}`,
+      borderRadius: '6px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+      fontFamily: cssVar('--font-mono'),
+      fontSize: cssVar('--font-size-mono'),
+      padding: '4px',
+      overflow: 'hidden',
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul': {
+      maxHeight: '14em',
+      fontFamily: cssVar('--font-mono'),
+      padding: 0,
+      margin: 0,
+      scrollbarWidth: 'thin', // Firefox
+      scrollbarColor: `${cssVar('--border')} transparent`,
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul::-webkit-scrollbar': {
+      width: '3px',
+      height: '3px',
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul::-webkit-scrollbar-track': {
+      background: 'transparent',
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul::-webkit-scrollbar-thumb': {
+      background: cssVar('--border'),
+      borderRadius: '2px',
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul > li': {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '4px 8px',
+      borderRadius: '4px',
+      color: cssVar('--text-primary'),
+      lineHeight: '1.3',
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': {
+      background: cssVar('--accent'),
+      color: cssVar('--on-accent'),
+    },
+    '.cm-completionLabel': { color: 'inherit' },
+    '.cm-completionMatchedText': {
+      textDecoration: 'none',
+      color: cssVar('--accent'),
+      fontWeight: 600,
+    },
+    '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText': {
+      color: cssVar('--on-accent'),
+    },
+    '.cm-completionDetail': {
+      color: cssVar('--text-muted'),
+      fontStyle: 'normal',
+      marginLeft: 'auto',
+      paddingLeft: '12px',
+      fontSize: '0.85em',
+    },
+    '.cm-file-icon': {
+      width: '14px',
+      height: '14px',
+      flexShrink: 0,
+      objectFit: 'contain',
+    },
   }, { dark: true })
 }
 
@@ -206,6 +278,7 @@ export function useShellEditor(callbacksRef) {
 
     const ghostPlugin = makeGhostPlugin(callbacksRef)
     const slashSource = makeSlashCommandSource(callbacksRef)
+    const filePathSource = makeFilePathSource(callbacksRef)
 
     const submitKeymap = keymap.of([
       {
@@ -223,6 +296,7 @@ export function useShellEditor(callbacksRef) {
             return true
           }
 
+          callbacksRef.current.resetNavigation?.()
           callbacksRef.current.onSubmit?.(text)
           view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
           return true
@@ -231,6 +305,24 @@ export function useShellEditor(callbacksRef) {
       {
         key: 'Shift-Enter',
         run: insertNewlineAndIndent,
+      },
+      {
+        key: 'Escape',
+        run(view) {
+          if (view.state.doc.length === 0) return false
+          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
+          callbacksRef.current.resetNavigation?.()
+          return true
+        },
+      },
+      {
+        key: 'Ctrl-c',
+        run(view) {
+          if (view.state.doc.length === 0) return false
+          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
+          callbacksRef.current.resetNavigation?.()
+          return true
+        },
       },
       {
         key: 'ArrowUp',
@@ -280,8 +372,27 @@ export function useShellEditor(callbacksRef) {
         },
       },
       {
+        // Tab precedence (first match wins):
+        //   1. popup open                → accept highlighted item
+        //   2. doc start (no chars)      → noop (first token is a command)
+        //   3. preceding char is space   → open file dropdown (cwd)
+        //   4. current word contains '/' → open file dropdown (parent dir)
+        //   5. mid-word with ghost text  → accept ghost text
+        //   6. otherwise                 → noop
         key: 'Tab',
         run(view) {
+          if (completionStatus(view.state) != null) return acceptCompletion(view)
+
+          const { head } = view.state.selection.main
+          if (head === 0) return false
+
+          const before = view.state.sliceDoc(Math.max(0, head - 1), head)
+          if (/\s/.test(before)) return startCompletion(view)
+
+          const lineFrom = view.state.doc.lineAt(head).from
+          const wordSoFar = view.state.sliceDoc(lineFrom, head).match(/\S*$/)?.[0] ?? ''
+          if (wordSoFar.includes('/')) return startCompletion(view)
+
           const plugin = view.plugin(ghostPlugin)
           if (plugin?.suggestion) return plugin.accept(view)
           return false
@@ -308,14 +419,29 @@ export function useShellEditor(callbacksRef) {
           buildTheme(cssVar),
           EditorView.lineWrapping,
           autoHeightPlugin,
-          // Slash-command completions. `activateOnTyping` ensures the popup
-          // opens as soon as the user types `/` in an empty doc; the source
-          // itself gates everything else (line 1, starts with `/`, etc.).
+          // Slash-command + file-path completions.
+          //   - slashSource: gates on doc starting with '/'; activates on typing.
+          //   - filePathSource: gates on context.explicit (Tab-only). Will not
+          //     spontaneously open while typing — protects Up/Down history nav.
           autocompletion({
-            override: [slashSource],
+            override: [slashSource, filePathSource],
             activateOnTyping: true,
             closeOnBlur: true,
             icons: false,
+            addToOptions: [{
+              // Render a 14×14 icon before the label for completions that
+              // carry an iconUrl (file-path entries). Slash commands have
+              // no iconUrl → render nothing for them.
+              render(completion) {
+                if (!completion.iconUrl) return null
+                const img = document.createElement('img')
+                img.src = completion.iconUrl
+                img.className = 'cm-file-icon'
+                img.alt = ''
+                return img
+              },
+              position: 20,
+            }],
           }),
           submitKeymap,
           keymap.of(defaultKeymap),

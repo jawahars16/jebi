@@ -299,6 +299,8 @@ export default function OutputArea({
             rowHeight={cellHeightRef.current}
             onCopy={stickyCommand.onCopy}
             onReplay={stickyCommand.onReplay}
+            startTime={stickyCommand.startTime}
+            duration={stickyCommand.duration}
             gitData={stickyCommand.gitData}
             onGitClick={stickyCommand.gitData?.branch
               ? () => navigator.clipboard.writeText(stickyCommand.gitData.branch)

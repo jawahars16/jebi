@@ -26,7 +26,7 @@ export default function WaveSeparator({ running }) {
   }
 
   const pathStyle = {
-    stroke: "rgba(255,255,255,0.4)",
+    stroke: "var(--tab-accent)",
     strokeWidth: 1,
     fill: "none",
     animation: running ? "waveDrift 1s linear infinite" : "none",
@@ -41,7 +41,7 @@ export default function WaveSeparator({ running }) {
           height: "12px",
           overflow: "hidden",
           minWidth: 0,
-          opacity: 0.7,
+          opacity: 0.4,
         }}
         preserveAspectRatio="none"
         aria-hidden="true"

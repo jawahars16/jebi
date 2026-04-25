@@ -1,6 +1,8 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron'
-import { join } from 'path'
+import { join, isAbsolute, resolve } from 'path'
 import { spawn } from 'child_process'
+import { promises as fs } from 'fs'
+import { homedir } from 'os'
 
 // ─── Go core lifecycle ────────────────────────────────────────────────────────
 
@@ -56,6 +58,26 @@ function createWindow() {
 }
 
 ipcMain.handle('open-path', (_, path) => shell.openPath(path))
+
+// Lists folders/files at dirPath. Used by the InputBar file-path autosuggest.
+// Resolves '~' against the user's home dir; relative paths must be resolved
+// against cwd by the caller (this handler doesn't know about per-pane cwd).
+// Returns [] silently on any error so the dropdown just stays empty.
+ipcMain.handle('list-files', async (_, dirPath) => {
+  if (typeof dirPath !== 'string' || dirPath === '') return []
+  let abs = dirPath
+  if (abs === '~' || abs.startsWith('~/')) {
+    abs = abs === '~' ? homedir() : join(homedir(), abs.slice(2))
+  }
+  if (!isAbsolute(abs)) return []
+  abs = resolve(abs)
+  try {
+    const entries = await fs.readdir(abs, { withFileTypes: true })
+    return entries.map((e) => ({ name: e.name, isDir: e.isDirectory() }))
+  } catch {
+    return []
+  }
+})
 
 app.whenReady().then(() => {
   createWindow()

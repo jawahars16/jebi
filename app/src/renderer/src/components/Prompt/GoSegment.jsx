@@ -1,4 +1,4 @@
-import { FaGolang } from "react-icons/fa6";
+import goIconUrl from "../../assets/go.png";
 
 // GoSegment — Go toolchain version badge.
 // Shown whenever dir is inside a Go module (go.mod walk-up).
@@ -14,8 +14,8 @@ export default function GoSegment({
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
 
-  const bg = "#01A7D0";
-  const fg = "#000";
+  const bg = bare ? "transparent" : "var(--prompt-go-bg)";
+  const fg = bare ? "var(--prompt-go-tint)" : "var(--prompt-go-fg)";
 
   // "go1.21.3" → "1.21.3"
   const display = version?.startsWith("go") ? version.slice(2) : version;
@@ -53,7 +53,14 @@ export default function GoSegment({
       title={`Go ${display}`}
       style={style}
     >
-      <FaGolang size={iconSize + 4} />
+      <img
+        src={goIconUrl}
+        alt=""
+        aria-hidden="true"
+        width={iconSize + 4}
+        height={iconSize + 4}
+        style={{ flexShrink: 0, objectFit: "contain" }}
+      />
       <span
         style={{
           overflow: "hidden",

@@ -15,8 +15,8 @@ export default function PythonSegment({
   const paddingH = bare ? 0 : (compact ? 7 : 10);
   const paddingV = compact ? 0 : 4;
 
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-python-bg)";
+  const fg = "var(--prompt-python-fg)";
 
   const label = venv ? `${version} (${venv})` : version;
 

@@ -12499,6 +12499,42 @@ var clientExports = requireClient();
 const ReactDOM = /* @__PURE__ */ getDefaultExportFromCjs(clientExports);
 var reactExports = requireReact();
 const React = /* @__PURE__ */ getDefaultExportFromCjs(reactExports);
+const store = /* @__PURE__ */ new Map();
+const listeners$1 = /* @__PURE__ */ new Set();
+function emit() {
+  listeners$1.forEach((fn3) => fn3());
+}
+function subscribe(fn3) {
+  listeners$1.add(fn3);
+  return () => listeners$1.delete(fn3);
+}
+function setPaneInfo(paneId, patch) {
+  const prev = store.get(paneId) || {};
+  store.set(paneId, { ...prev, ...patch });
+  emit();
+}
+function deletePaneInfo(paneId) {
+  if (store.delete(paneId)) emit();
+}
+function usePaneInfo(paneId) {
+  return reactExports.useSyncExternalStore(
+    subscribe,
+    () => store.get(paneId)
+  );
+}
+function computeTabTitle(info, fallback) {
+  const cmd = (info?.runningCommand ?? info?.lastCommand)?.trim();
+  if (cmd) return cmd;
+  if (info?.cwd) {
+    const parts = info.cwd.split("/").filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+    return "/";
+  }
+  return fallback;
+}
+function hasCommandTitle(info) {
+  return !!(info?.runningCommand ?? info?.lastCommand)?.trim();
+}
 const t$2 = /* @__PURE__ */ new Map([
   [
     "bold",
@@ -12961,42 +12997,6 @@ const r = reactExports.forwardRef((t2, o2) => /* @__PURE__ */ reactExports.creat
 r.displayName = "TreeStructureIcon";
 const o$1 = reactExports.forwardRef((r2, c) => /* @__PURE__ */ reactExports.createElement(p, { ref: c, ...r2, weights: e$6 }));
 o$1.displayName = "WrenchIcon";
-const store = /* @__PURE__ */ new Map();
-const listeners$1 = /* @__PURE__ */ new Set();
-function emit() {
-  listeners$1.forEach((fn3) => fn3());
-}
-function subscribe(fn3) {
-  listeners$1.add(fn3);
-  return () => listeners$1.delete(fn3);
-}
-function setPaneInfo(paneId, patch) {
-  const prev = store.get(paneId) || {};
-  store.set(paneId, { ...prev, ...patch });
-  emit();
-}
-function deletePaneInfo(paneId) {
-  if (store.delete(paneId)) emit();
-}
-function usePaneInfo(paneId) {
-  return reactExports.useSyncExternalStore(
-    subscribe,
-    () => store.get(paneId)
-  );
-}
-function computeTabTitle(info, fallback) {
-  const cmd = (info?.runningCommand ?? info?.lastCommand)?.trim();
-  if (cmd) return cmd;
-  if (info?.cwd) {
-    const parts = info.cwd.split("/").filter(Boolean);
-    if (parts.length > 0) return parts[parts.length - 1];
-    return "/";
-  }
-  return fallback;
-}
-function hasCommandTitle(info) {
-  return !!(info?.runningCommand ?? info?.lastCommand)?.trim();
-}
 var DefaultContext = {
   color: void 0,
   size: void 0,
@@ -13262,11 +13262,76 @@ function RunningRing({ children, running }) {
     }
   );
 }
-function pickIcon(info) {
-  if (hasCommandTitle(info)) {
-    return commandIcon(info?.runningCommand ?? info?.lastCommand);
+const __vite_glob_0_0 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAAABmJLR0QA/wD/AP+gvaeTAAABuUlEQVRoge3av0sbYRjA8e97ntFcQqMi+VG1pBVCRTQQO9QlJYWOLoKKIqUtpYOLILh0cune3T9AFEGS4Ko4+Ae4WopT505JuNZ4DlkFucsdvPf6fOZ7n+f9ckemgBBCCH0p3yd2PS+CewCws9S+enbmVPb21F1UO6yoBgdRKd6W3Q/t60/n3nBUO7QKBpidup1+4bRuVo68sSjmaxcMUCp08/OvWr9XjtoTYc/WMhjgZbY7slC6u15vuq/DnKttMMDkWNd5U3Sv1hrtt2HN1DoYIJfxEtXS/8uNurscxjztgwEyDta7mc7xZrPztd9ZsQgGSA0rVZtx9z82Wt/7mRObYIChhOL93L8fn+t/fwadEatgAHvAolZW219O/hwGOR+7YADLUtQq6dVvx78u/J61o7hQUJtbp48/ZNmQHIdUDtITVb87tAp+kFIwNAqpfC/SyYIK/mHqGZxI9wKdHKQLYA2GNlqv4OeLvbdoJyNboVdwphj5ilj+SvdDgk0nwaaTYNNJsOkk2HQSbDoJNp0Em06CTSfBppNg00mw6STYdBJsOv//poX10G/RnwM/Dz+5NyyEEEJn99CsRH33FO70AAAAAElFTkSuQmCC";
+const __vite_glob_0_1 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAABPElEQVRoge2YMUoDQRRA38xsETYbBRUSJI14AIsUOYKFl9BjpFJP4BG0sBLBxkb0EhaCiL0gKBgQU4SMRax2VphdZP6C/5V/luG95W+zoCiKovxnTNXQnzNkzgmwC/SibvIcmwOO/k4tjiDgR/4eWKt9m0CEDSbLN19fHsBw6E+lA5Zr05zEEeEKneHJMhj0oeiCrWpMiF94vmYvfM72zd7rbfk4tMsy2N6ClZ68PICxhjzfZH31xl9vjMrHoeGgD84lcauFdYYivwrGwYNFN4lPIzqdYXkUBrRhbX7D2uCbbbFtHBogjQZIowHSaIA0GiCNBkijAdJogDQaIE1VwDS5RTwf5UFVwF0CkWZ4In5seSbAWwqfmryTuUl5GASY8eMT88UOmAvasU5TPJc4Nzajh2dpGUVRFKVdfANy2ze3gaJntAAAAABJRU5ErkJggg==";
+const __vite_glob_0_2 = "" + new URL("go-B49ADvRN.png", import.meta.url).href;
+const __vite_glob_0_3 = "data:image/png;base64,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";
+const __vite_glob_0_4 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAACpklEQVRoge2ZS0hUURjHf8d8Zy8kn2lmZWkYJWUIIkGLwKQWgQ/EjaQJEj0QKi3bFC6LgogIF2Zgj8VUPijUiCAYok2mkAYqNKJiKFY2Ezmnxa0OozM1k3rvovODy/3O+c7j+3Mu53VBo9ForET4csg+pJmB/A2R4T3WILMDWWy0AKvRAqxGC7AaLcBqtACr0QKsRguwmiUTIDLE7+f+E0/f2wEoqRHE5wlCMgWJewVlpwW97wPvx/QR6LbD7kJBSzuMTsD3WRgZh+bHkF0o6LYH1p6pAtxuOHJe4HQZ6bBQSE813gAzTqi9LJABnAVNFdAzAIMffnYcBK/uSfpaJf0dko1JcLwMOhslwudBdz7BSxOqd6amlR0aAls2GHZyPPQ8lESEB96mqSOQmqRspwuKTgmGR4z0vwQPJgtIioP9uSpt64KtBwQV9YKB4X9r0/RZqPGiZGe6SjtdcOsBpBcYQr58Daw90wUkxMCLZkltJURFqvzZWUNITolgctp3/blYshIvj4BLJyRDnZKGk5LYaOXr6YcL1/yfhpZEgNv9Z/+veT56NZypgHftkj3bld/W5X9fCxYwPAKHqgVtz1XeoMOzTESYsm8/guwiwecZlbdqBRTnq9Vr7KP//S9oHbjbAeV1ghknPH0pqCqCtBTJnVbPTyAl0XiX1BhbCICD1YKmBsm6OJj6BLYuVScx1iQBc2eTK00w975483rYtsmwc3ZIWtoN/zM7JO8TJMTAxCS4vqk6xfn+x7CgTygtBdpuSFZGefeHhsD1erU1OFYK56qUX0pwjHkGn7cL6o76vxlalOv10QlouCmwdYFjHNaugdwsOFspycqYX97+Bq42C173wpADIsMhMw1KCyTlhyF4mZdAfVyv6/8DVqMFaDQazf/ND8ttt3KFrySDAAAAAElFTkSuQmCC";
+const __vite_glob_0_5 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAADfElEQVRoge2Y3WtbdRyHn5OTtGkSkyZt05eFpmPt6jJauhe1TAcqqw6982IXm+CN7sY/QPEv0H/AGxVUNhAvRNhgiopDFGVzy9Y0bUxwTddXs7ZJ06anJyfn/LzILHQdLmmynRbOcxM4Oefz+T78OC/8wMKiJqRHnRD965x4HMVCkj46evDC+7Xm2OoxTLU47H4kId67mXzzw1qzTBEItZ/HYQ/URcKcFZB9hNrfqYuEKQJQPwnTBKA+EqYKQO0SpgtAbRK7QgB2LrFrBGBnErtKALZLPOp8+5MY6kGSdz+oW9auW4FqsQTMxhIwG0vAbPa8wI5eZJ98HEMIwfl3BxECbkczTIwtsa7otLQ6OfHCPoLtTQAkE1miNzLkV1S8vkaOHg/S1+8H4MLn4+glwchrYbq6PAgBX34WB+Cttw9XNEvNKzA+tsS13xcA6A4/xb3MOt9dukNR1ZmazHP1p2kURaM77EVRNH7+cZqpdB6AYtFAVXVGo4ubeaqqo6p6xf01C0zfXQXg5EshRk6H6dnvY0PVmZ1ZI3arPNipV8K8+noPL5/qBiB2e3FrxlSeXHZjR/01fwu5XOWIVCJLMOhm5HR487/ffplDkqAz5AFg3/3f3LK6JcPRIDN6a5GTL4aq7q95BYaOBXG7HaSSOb66OEH0RgZdNwBQFA3ZbkO2lbefZLsNWZZQFG1LxqFIgFQyx8YDx5+IgNfbwBtn+hgcaqNUElz/Y4Erl9MIAeJhW2KStO14ZKAVSYL42FLV/RUJaFr5ZjMMsVku3d/TW7ynUChoDD/fyZmz/fiaG5mbWeOf+QJOp4xeMjCM8kW6ITB0A2eTvCW/0WnjYH8z8djy4xH49eosX3waJ5nIsrpaRAiBy+UA4MrlNN98nUJZ1/B4HLQGy49PRSnhDzgRAuZnCwAszBYQAvx+57aOgaEgxSqePv9R0U0cCntIJbP8eW2Bplh58P29PgAOHfZz83qGS99O0trmJP33CnaHjWC7i8hAC/NzBX74forOLhfzc+sARAZatnX4fA2Ee7ykJ1fqL9Db5yefK5KYWGZttcjTkQDPPNcBwLHjHdhsEonxLJN38vgDTp4d7sDtcXCgtxlNM4iPLjEzXcDjtjN8opMDvc0P7Rk80la1gGm705VypP/i/86457+FLAGzsQTMxhIwG0vAbCwBC4s9zr/ivGPQR1k6awAAAABJRU5ErkJggg==";
+const modules = /* @__PURE__ */ Object.assign({
+  "./file.png": __vite_glob_0_0,
+  "./folder.png": __vite_glob_0_1,
+  "./go.png": __vite_glob_0_2,
+  "./java.png": __vite_glob_0_3,
+  "./js.png": __vite_glob_0_4,
+  "./json.png": __vite_glob_0_5
+});
+const iconMap = {};
+for (const path in modules) {
+  const key = path.replace("./", "").replace(/\.(png|svg)$/i, "").toLowerCase();
+  iconMap[key] = modules[path];
+}
+function getFolderIconUrl() {
+  return iconMap["folder"] || null;
+}
+function getFileIconUrl(name2) {
+  if (!name2) return iconMap["file"] || null;
+  const lower = name2.toLowerCase();
+  if (iconMap[lower]) return iconMap[lower];
+  const dot = lower.lastIndexOf(".");
+  if (dot > 0) {
+    const ext = lower.slice(dot + 1);
+    if (iconMap[ext]) return iconMap[ext];
   }
-  return e$4;
+  return iconMap["file"] || null;
+}
+function FsIcon({ kind, size = 14, style }) {
+  const url = kind === "folder" ? getFolderIconUrl() : getFileIconUrl(kind);
+  if (!url) return null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "img",
+    {
+      src: url,
+      alt: "",
+      "aria-hidden": "true",
+      width: size,
+      height: size,
+      style: {
+        width: size,
+        height: size,
+        flexShrink: 0,
+        objectFit: "contain",
+        ...style
+      }
+    }
+  );
+}
+const TAB_ACCENT_PALETTE = [
+  "#ec4899",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#a855f7",
+  "#94a3b8"
+];
+function renderTabIcon(info, size, color, weight = "regular") {
+  if (hasCommandTitle(info)) {
+    const Icon = commandIcon(info?.runningCommand ?? info?.lastCommand);
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { size, color, weight });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(FsIcon, { kind: "folder", size });
 }
 const TAB_WIDTH = 180;
 const TAB_HEIGHT = 32;
@@ -13279,12 +13344,38 @@ function TabBar({
   onNewTab,
   onTogglePosition,
   onSplitRight,
-  onSplitDown
+  onSplitDown,
+  onSetTabAccent
 }) {
+  const [menu, setMenu] = reactExports.useState(null);
+  const openMenu = (e2, tabId) => {
+    e2.preventDefault();
+    setMenu({ x: e2.clientX, y: e2.clientY, tabId });
+  };
+  const closeMenu = () => setMenu(null);
   const isTop = position === "top";
-  return isTop ? /* @__PURE__ */ jsxRuntimeExports.jsx(TopTabBar, { ...{ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTogglePosition, onSplitRight, onSplitDown } }) : /* @__PURE__ */ jsxRuntimeExports.jsx(LeftTabBar, { ...{ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTogglePosition, onSplitRight, onSplitDown } });
+  const shared = { tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTogglePosition, onSplitRight, onSplitDown, onContextMenu: openMenu };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    isTop ? /* @__PURE__ */ jsxRuntimeExports.jsx(TopTabBar, { ...shared }) : /* @__PURE__ */ jsxRuntimeExports.jsx(LeftTabBar, { ...shared }),
+    menu && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      TabAccentMenu,
+      {
+        x: menu.x,
+        y: menu.y,
+        onPick: (color) => {
+          onSetTabAccent?.(menu.tabId, color);
+          closeMenu();
+        },
+        onReset: () => {
+          onSetTabAccent?.(menu.tabId, null);
+          closeMenu();
+        },
+        onClose: closeMenu
+      }
+    )
+  ] });
 }
-function TopTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTogglePosition, onSplitRight, onSplitDown }) {
+function TopTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTogglePosition, onSplitRight, onSplitDown, onContextMenu }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -13297,7 +13388,8 @@ function TopTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTog
             tab,
             isActive: tab.id === activeTabId,
             onSelect: () => onSelectTab(tab.id),
-            onClose: tabs.length > 1 ? () => onCloseTab(tab.id) : null
+            onClose: tabs.length > 1 ? () => onCloseTab(tab.id) : null,
+            onContextMenu: (e2) => onContextMenu(e2, tab.id)
           },
           tab.id
         )) }),
@@ -13321,7 +13413,7 @@ function TopTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTog
     }
   );
 }
-function LeftTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTogglePosition, onSplitRight, onSplitDown }) {
+function LeftTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTogglePosition, onSplitRight, onSplitDown, onContextMenu }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -13339,7 +13431,8 @@ function LeftTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTo
             tab,
             isActive: tab.id === activeTabId,
             onSelect: () => onSelectTab(tab.id),
-            onClose: tabs.length > 1 ? () => onCloseTab(tab.id) : null
+            onClose: tabs.length > 1 ? () => onCloseTab(tab.id) : null,
+            onContextMenu: (e2) => onContextMenu(e2, tab.id)
           },
           tab.id
         )),
@@ -13366,27 +13459,28 @@ function LeftTabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onNewTab, onTo
     }
   );
 }
-function TabPill({ tab, isActive, onSelect, onClose }) {
+function TabPill({ tab, isActive, onSelect, onClose, onContextMenu }) {
   const info = usePaneInfo(tab.activePaneId);
   const title = computeTabTitle(info, tab.fallbackTitle);
   const running = !!info?.runningCommand;
-  const Icon = pickIcon(info);
   const fullCmd = info?.runningCommand ?? info?.lastCommand ?? "";
-  const iconColor = isActive ? "var(--on-accent)" : "var(--text-secondary)";
-  const textColor = isActive ? "var(--on-accent)" : "var(--text-muted)";
+  const iconColor = isActive ? "var(--text-primary)" : "var(--text-secondary)";
+  const textColor = isActive ? "var(--text-primary)" : "var(--text-muted)";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
       onClick: onSelect,
+      onContextMenu,
       title: fullCmd || title,
       className: "group relative flex items-center gap-2 px-2.5 cursor-pointer select-none shrink-0 transition-colors",
       style: {
         width: `${TAB_WIDTH}px`,
         height: `${TAB_HEIGHT}px`,
-        backgroundColor: isActive ? "var(--accent)" : "transparent",
+        backgroundColor: isActive ? "var(--bg-elevated)" : "transparent",
         borderTopLeftRadius: 6,
         borderTopRightRadius: 6,
-        boxShadow: isActive ? "inset 0 -2px 0 var(--accent)" : void 0
+        boxShadow: isActive ? "inset 0 -2px 0 var(--tab-accent)" : void 0,
+        "--tab-accent": tab.accent ?? "var(--accent)"
       },
       onMouseEnter: (e2) => {
         if (!isActive) e2.currentTarget.style.backgroundColor = "var(--bg-elevated)";
@@ -13395,14 +13489,13 @@ function TabPill({ tab, isActive, onSelect, onClose }) {
         if (!isActive) e2.currentTarget.style.backgroundColor = "transparent";
       },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(RunningRing, { running, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { size: 15, color: iconColor, weight: "regular" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(RunningRing, { running, children: renderTabIcon(info, 18, iconColor, "bold") }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "span",
           {
             className: "flex-1 truncate",
             style: {
               fontFamily: "var(--font-mono)",
-              fontSize: "12.5px",
               letterSpacing: "0.01em",
               color: textColor
             },
@@ -13418,12 +13511,12 @@ function TabPill({ tab, isActive, onSelect, onClose }) {
             },
             className: "shrink-0 w-4 h-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity",
             style: {
-              color: isActive ? "var(--on-accent)" : "var(--text-muted)",
+              color: "var(--text-muted)",
               fontSize: "14px",
               lineHeight: 1
             },
             onMouseEnter: (e2) => {
-              e2.currentTarget.style.backgroundColor = isActive ? "rgba(0,0,0,0.15)" : "var(--bg-base)";
+              e2.currentTarget.style.backgroundColor = "var(--bg-base)";
             },
             onMouseLeave: (e2) => {
               e2.currentTarget.style.backgroundColor = "transparent";
@@ -13435,25 +13528,26 @@ function TabPill({ tab, isActive, onSelect, onClose }) {
     }
   );
 }
-function LeftTabPill({ tab, isActive, onSelect, onClose }) {
+function LeftTabPill({ tab, isActive, onSelect, onClose, onContextMenu }) {
   const info = usePaneInfo(tab.activePaneId);
   const title = computeTabTitle(info, tab.fallbackTitle);
   const running = !!info?.runningCommand;
-  const Icon = pickIcon(info);
   const fullCmd = info?.runningCommand ?? info?.lastCommand ?? "";
-  const iconColor = isActive ? "var(--on-accent)" : "var(--text-secondary)";
-  const textColor = isActive ? "var(--on-accent)" : "var(--text-muted)";
+  const iconColor = isActive ? "var(--text-primary)" : "var(--text-secondary)";
+  const textColor = isActive ? "var(--text-primary)" : "var(--text-muted)";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
       onClick: onSelect,
+      onContextMenu,
       title: fullCmd || title,
       className: "group relative flex items-center gap-2 mx-2 px-2.5 cursor-pointer select-none transition-colors",
       style: {
         height: "34px",
-        backgroundColor: isActive ? "var(--accent)" : "transparent",
+        backgroundColor: isActive ? "var(--bg-elevated)" : "transparent",
         borderRadius: 6,
-        boxShadow: isActive ? "inset 2px 0 0 var(--accent)" : void 0
+        boxShadow: isActive ? "inset 2px 0 0 var(--tab-accent)" : void 0,
+        "--tab-accent": tab.accent ?? "var(--accent)"
       },
       onMouseEnter: (e2) => {
         if (!isActive) e2.currentTarget.style.backgroundColor = "var(--bg-elevated)";
@@ -13462,7 +13556,7 @@ function LeftTabPill({ tab, isActive, onSelect, onClose }) {
         if (!isActive) e2.currentTarget.style.backgroundColor = "transparent";
       },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(RunningRing, { running, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { size: 15, color: iconColor, weight: "regular" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(RunningRing, { running, children: renderTabIcon(info, 15, iconColor, "regular") }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "span",
           {
@@ -13485,12 +13579,12 @@ function LeftTabPill({ tab, isActive, onSelect, onClose }) {
             },
             className: "shrink-0 w-4 h-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity",
             style: {
-              color: isActive ? "var(--on-accent)" : "var(--text-muted)",
+              color: "var(--text-muted)",
               fontSize: "14px",
               lineHeight: 1
             },
             onMouseEnter: (e2) => {
-              e2.currentTarget.style.backgroundColor = isActive ? "rgba(0,0,0,0.15)" : "var(--bg-base)";
+              e2.currentTarget.style.backgroundColor = "var(--bg-base)";
             },
             onMouseLeave: (e2) => {
               e2.currentTarget.style.backgroundColor = "transparent";
@@ -13523,6 +13617,79 @@ function IconButton({ title, onClick, children }) {
       className: "w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--bg-elevated)] select-none shrink-0",
       style: { color: "var(--text-muted)", fontSize: "var(--font-size-ui)" },
       children
+    }
+  );
+}
+function TabAccentMenu({ x, y, onPick, onReset, onClose }) {
+  const ref = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    const onKey = (e2) => {
+      if (e2.key === "Escape") onClose();
+    };
+    const onDown = (e2) => {
+      if (ref.current && !ref.current.contains(e2.target)) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [onClose]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      ref,
+      className: "flex items-center gap-1.5 [-webkit-app-region:no-drag]",
+      style: {
+        position: "fixed",
+        left: x,
+        top: y,
+        zIndex: 1e3,
+        padding: "6px 8px",
+        backgroundColor: "var(--bg-elevated)",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+      },
+      children: [
+        TAB_ACCENT_PALETTE.map((color) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            title: color,
+            onClick: () => onPick(color),
+            className: "rounded-full",
+            style: {
+              width: 18,
+              height: 18,
+              backgroundColor: color,
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              padding: 0
+            }
+          },
+          color
+        )),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: onReset,
+            className: "rounded",
+            style: {
+              height: 22,
+              padding: "0 8px",
+              marginLeft: 4,
+              backgroundColor: "transparent",
+              border: "1px solid var(--border)",
+              color: "var(--text-muted)",
+              fontSize: "var(--font-size-ui)",
+              fontFamily: "var(--font-ui)",
+              cursor: "pointer"
+            },
+            children: "Reset"
+          }
+        )
+      ]
     }
   );
 }
@@ -25020,8 +25187,8 @@ function FaDocker(props) {
 function FaStarOfLife(props) {
   return GenIcon({ "attr": { "viewBox": "0 0 480 512" }, "child": [{ "tag": "path", "attr": { "d": "M471.99 334.43L336.06 256l135.93-78.43c7.66-4.42 10.28-14.2 5.86-21.86l-32.02-55.43c-4.42-7.65-14.21-10.28-21.87-5.86l-135.93 78.43V16c0-8.84-7.17-16-16.01-16h-64.04c-8.84 0-16.01 7.16-16.01 16v156.86L56.04 94.43c-7.66-4.42-17.45-1.79-21.87 5.86L2.15 155.71c-4.42 7.65-1.8 17.44 5.86 21.86L143.94 256 8.01 334.43c-7.66 4.42-10.28 14.21-5.86 21.86l32.02 55.43c4.42 7.65 14.21 10.27 21.87 5.86l135.93-78.43V496c0 8.84 7.17 16 16.01 16h64.04c8.84 0 16.01-7.16 16.01-16V339.14l135.93 78.43c7.66 4.42 17.45 1.8 21.87-5.86l32.02-55.43c4.42-7.65 1.8-17.43-5.86-21.85z" }, "child": [] }] })(props);
 }
-function FaFolderOpen(props) {
-  return GenIcon({ "attr": { "viewBox": "0 0 576 512" }, "child": [{ "tag": "path", "attr": { "d": "M572.694 292.093L500.27 416.248A63.997 63.997 0 0 1 444.989 448H45.025c-18.523 0-30.064-20.093-20.731-36.093l72.424-124.155A64 64 0 0 1 152 256h399.964c18.523 0 30.064 20.093 20.73 36.093zM152 224h328v-48c0-26.51-21.49-48-48-48H272l-64-64H48C21.49 64 0 85.49 0 112v278.046l69.077-118.418C86.214 242.25 117.989 224 152 224z" }, "child": [] }] })(props);
+function FaRedo(props) {
+  return GenIcon({ "attr": { "viewBox": "0 0 512 512" }, "child": [{ "tag": "path", "attr": { "d": "M500.33 0h-47.41a12 12 0 0 0-12 12.57l4 82.76A247.42 247.42 0 0 0 256 8C119.34 8 7.9 119.53 8 256.19 8.1 393.07 119.1 504 256 504a247.1 247.1 0 0 0 166.18-63.91 12 12 0 0 0 .48-17.43l-34-34a12 12 0 0 0-16.38-.55A176 176 0 1 1 402.1 157.8l-101.53-4.87a12 12 0 0 0-12.57 12v47.41a12 12 0 0 0 12 12h200.33a12 12 0 0 0 12-12V12a12 12 0 0 0-12-12z" }, "child": [] }] })(props);
 }
 function FaCheck(props) {
   return GenIcon({ "attr": { "viewBox": "0 0 512 512" }, "child": [{ "tag": "path", "attr": { "d": "M173.898 439.404l-166.4-166.4c-9.997-9.997-9.997-26.206 0-36.204l36.203-36.204c9.997-9.998 26.207-9.998 36.204 0L192 312.69 432.095 72.596c9.997-9.997 26.207-9.997 36.204 0l36.203 36.204c9.997 9.997 9.997 26.206 0 36.204l-294.4 294.401c-9.998 9.997-26.207 9.997-36.204-.001z" }, "child": [] }] })(props);
@@ -25034,8 +25201,8 @@ function CwdSegment({ cwd, exitCode = 0, rowHeight, iconSize, onClick, segmentRa
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
   const hasError = exitCode > 0;
-  const bg = bare ? "transparent" : "var(--accent)";
-  const fg = bare ? "var(--accent)" : "var(--on-accent)";
+  const bg = bare ? "transparent" : "var(--prompt-cwd-bg)";
+  const fg = bare ? "var(--accent)" : "var(--prompt-cwd-fg)";
   const style = {
     display: "inline-flex",
     alignItems: "center",
@@ -25053,7 +25220,8 @@ function CwdSegment({ cwd, exitCode = 0, rowHeight, iconSize, onClick, segmentRa
     fontWeight: 500,
     border: "none",
     borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default"
+    cursor: onClick ? "pointer" : "default",
+    boxShadow: bare ? void 0 : "inset 2px 0 0 var(--tab-accent)"
   };
   const stopEvents = (e2) => {
     e2.stopPropagation();
@@ -25068,7 +25236,7 @@ function CwdSegment({ cwd, exitCode = 0, rowHeight, iconSize, onClick, segmentRa
       title: cwd,
       style,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(FaFolderOpen, { size: iconSize, color: fg }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(FsIcon, { kind: "folder", size: iconSize }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "span",
           {
@@ -25136,8 +25304,8 @@ function GitSegment({
   const compact = rowHeight != null;
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
-  const bg = bare ? "transparent" : "var(--bg-elevated)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-git-bg)";
+  const fg = "var(--prompt-git-fg)";
   const dirtyColor = "#edf459";
   const upColor = "#e74c3c";
   const downColor = "#27ae60";
@@ -25174,7 +25342,7 @@ function GitSegment({
       title,
       style,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(DiGitBranch, { size: iconSize + 3, color: "var(--text-primary)" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DiGitBranch, { size: iconSize + 3, color: "var(--prompt-git-fg)" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "span",
           {
@@ -25236,8 +25404,8 @@ function NodeSegment({
   const compact = rowHeight != null;
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-node-bg)";
+  const fg = "var(--prompt-node-fg)";
   const style = {
     display: "inline-flex",
     alignItems: "center",
@@ -25298,8 +25466,8 @@ function GoSegment({
   const compact = rowHeight != null;
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-go-bg)";
+  const fg = bare ? "var(--prompt-go-tint)" : "var(--prompt-go-fg)";
   const display = version?.startsWith("go") ? version.slice(2) : version;
   const style = {
     display: "inline-flex",
@@ -25362,8 +25530,8 @@ function PythonSegment({
   const compact = rowHeight != null;
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-python-bg)";
+  const fg = "var(--prompt-python-fg)";
   const label = venv ? `${version} (${venv})` : version;
   const style = {
     display: "inline-flex",
@@ -25425,8 +25593,8 @@ function DockerSegment({
   const compact = rowHeight != null;
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-docker-bg)";
+  const fg = "var(--prompt-docker-fg)";
   const label = kind === "compose" ? "compose" : "docker";
   const style = {
     display: "inline-flex",
@@ -25489,8 +25657,8 @@ function K8sSegment({
   const compact = rowHeight != null;
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-k8s-bg)";
+  const fg = "var(--prompt-k8s-fg)";
   const label = namespace && namespace !== "default" ? `${context}:${namespace}` : context;
   const style = {
     display: "inline-flex",
@@ -25558,7 +25726,7 @@ function WaveSeparator({ running }) {
     d += ` C ${x + 25} ${cy}, ${x + 35} ${cy}, ${x + 40} 0`;
   }
   const pathStyle = {
-    stroke: "rgba(255,255,255,0.4)",
+    stroke: "var(--tab-accent)",
     strokeWidth: 1,
     fill: "none",
     animation: running ? "waveDrift 1s linear infinite" : "none"
@@ -25573,7 +25741,7 @@ function WaveSeparator({ running }) {
           height: "12px",
           overflow: "hidden",
           minWidth: 0,
-          opacity: 0.7
+          opacity: 0.4
         },
         preserveAspectRatio: "none",
         "aria-hidden": "true",
@@ -25677,14 +25845,7 @@ function subscribePromptStyle(fn3) {
   return () => listeners.delete(fn3);
 }
 function segmentBg(kind) {
-  if (kind === "cwd") return "var(--accent)";
-  if (kind === "git") return "var(--bg-elevated)";
-  if (kind === "node") return "var(--border)";
-  if (kind === "go") return "var(--border)";
-  if (kind === "python") return "var(--border)";
-  if (kind === "docker") return "var(--border)";
-  if (kind === "k8s") return "var(--border)";
-  return "transparent";
+  return `var(--prompt-${kind}-bg)`;
 }
 function Prompt({
   command: command2,
@@ -25692,6 +25853,7 @@ function Prompt({
   exitCode,
   rowHeight,
   onCopy,
+  onReplay,
   gitData,
   onGitClick,
   nodeData,
@@ -25726,6 +25888,10 @@ function Prompt({
     onCopy?.();
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+  function handleReplay(e2) {
+    e2.stopPropagation();
+    onReplay?.();
   }
   const hasCwd = Boolean(cwd);
   const hasGit = Boolean(gitData);
@@ -25922,6 +26088,35 @@ function Prompt({
             children: [
               renderGroup(),
               /* @__PURE__ */ jsxRuntimeExports.jsx(WaveSeparator, { running }),
+              onReplay && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleReplay,
+                  onMouseDown: (e2) => {
+                    e2.stopPropagation();
+                    e2.preventDefault();
+                  },
+                  onPointerDown: (e2) => {
+                    e2.stopPropagation();
+                    e2.preventDefault();
+                  },
+                  style: {
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: `${iconSize + 10}px`,
+                    height: `${iconSize + 10}px`,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--text-secondary)",
+                    flexShrink: 0,
+                    transition: "color 0.15s"
+                  },
+                  title: "Run this command again",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaRedo, { size: iconSize })
+                }
+              ),
               onCopy && /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "button",
                 {
@@ -25996,7 +26191,14 @@ class PromptAddon {
     this._decorations = [];
     this._elements = [];
     this._tuiActive = false;
+    this._onReplay = null;
     this._commands = [];
+  }
+  // Registers a pane-level replay handler. Called by OutputArea so per-command
+  // onReplay closures can invoke the pane's submit pipeline (which sets running
+  // state, updates history, etc.) rather than sending input straight to the PTY.
+  setOnReplay(fn3) {
+    this._onReplay = fn3;
   }
   activate(terminal) {
     this._term = terminal;
@@ -26048,7 +26250,8 @@ class PromptAddon {
       pythonData: best.pythonData ?? null,
       dockerData: best.dockerData ?? null,
       k8sData: best.k8sData ?? null,
-      onCopy: best.onCopy
+      onCopy: best.onCopy,
+      onReplay: best.onReplay
     };
   }
   // Reads the command's output from the xterm buffer as plain text.
@@ -26096,6 +26299,7 @@ class PromptAddon {
           onK8sClick,
           rowHeight: entry.cellHeight,
           onCopy: entry.onCopy,
+          onReplay: entry.onReplay,
           running: entry.running
         }
       )
@@ -26197,7 +26401,8 @@ class PromptAddon {
       running: true,
       root: null,
       cellHeight,
-      onCopy: null
+      onCopy: null,
+      onReplay: null
     };
     entry.onCopy = () => {
       const output = this._getOutput(entry);
@@ -26206,6 +26411,7 @@ class PromptAddon {
       navigator.clipboard.writeText(text).catch(() => {
       });
     };
+    entry.onReplay = entry.command ? () => this._onReplay?.(entry.command) : null;
     const termContainer = this._term.element?.parentElement;
     const paddingLeft = termContainer ? parseInt(getComputedStyle(termContainer).paddingLeft) || 0 : 0;
     const paddingTop = Math.round(cellHeight * 0.5);
@@ -26460,6 +26666,7 @@ function OutputArea({
   callbacksRef,
   sendRaw,
   sendResize,
+  onReplay,
   isActive,
   isVisible,
   renderer = DEFAULT_RENDERER
@@ -26472,11 +26679,13 @@ function OutputArea({
   const promptAddonRef = reactExports.useRef(null);
   const cellHeightRef = reactExports.useRef(28);
   const sendResizeRef = reactExports.useRef(sendResize);
+  const onReplayRef = reactExports.useRef(onReplay);
   const pendingRef = reactExports.useRef([]);
   const pendingSizeRef = reactExports.useRef(0);
   const isVisibleRef = reactExports.useRef(isVisible);
   const [stickyCommand, setStickyCommand] = reactExports.useState(null);
   sendResizeRef.current = sendResize;
+  onReplayRef.current = onReplay;
   reactExports.useEffect(() => {
     isVisibleRef.current = isVisible;
     if (!isVisible) return;
@@ -26518,6 +26727,7 @@ function OutputArea({
       term.loadAddon(fitAddon);
       term.loadAddon(promptAddon);
       promptAddonRef.current = promptAddon;
+      promptAddon.setOnReplay((command2) => onReplayRef.current?.(command2));
       term.onData((data) => {
         sendRaw(data);
         term.scrollToBottom();
@@ -26676,6 +26886,7 @@ function OutputArea({
             exitCode: stickyCommand.exitCode,
             rowHeight: cellHeightRef.current,
             onCopy: stickyCommand.onCopy,
+            onReplay: stickyCommand.onReplay,
             gitData: stickyCommand.gitData,
             onGitClick: stickyCommand.gitData?.branch ? () => navigator.clipboard.writeText(stickyCommand.gitData.branch) : void 0,
             nodeData: stickyCommand.nodeData,
@@ -30183,11 +30394,11 @@ class StyleModule {
   //
   // If a Content Security Policy nonce is provided, it is added to
   // the `<style>` tag generated by the library.
-  static mount(root, modules, options) {
+  static mount(root, modules2, options) {
     let set = root[SET], nonce = options && options.nonce;
     if (!set) set = new StyleSet(root, nonce);
     else if (nonce) set.setNonce(nonce);
-    set.mount(Array.isArray(modules) ? modules : [modules], root);
+    set.mount(Array.isArray(modules2) ? modules2 : [modules2], root);
   }
 }
 let adoptedSet = /* @__PURE__ */ new Map();
@@ -30206,11 +30417,11 @@ class StyleSet {
     this.modules = [];
     root[SET] = this;
   }
-  mount(modules, root) {
+  mount(modules2, root) {
     let sheet = this.sheet;
     let pos = 0, j2 = 0;
-    for (let i8 = 0; i8 < modules.length; i8++) {
-      let mod = modules[i8], index = this.modules.indexOf(mod);
+    for (let i8 = 0; i8 < modules2.length; i8++) {
+      let mod = modules2[i8], index = this.modules.indexOf(mod);
       if (index < j2 && index > -1) {
         this.modules.splice(index, 1);
         j2--;
@@ -45256,6 +45467,13 @@ const completionKeymap = [
   { key: "Enter", run: acceptCompletion }
 ];
 const completionKeymapExt = /* @__PURE__ */ Prec.highest(/* @__PURE__ */ keymap.computeN([completionConfig], (state) => state.facet(completionConfig).defaultKeymap ? [completionKeymap] : []));
+function completionStatus(state) {
+  let cState = state.field(completionState, false);
+  return cState && cState.active.some((a2) => a2.isPending) ? "pending" : cState && cState.active.some(
+    (a2) => a2.state != 0
+    /* State.Inactive */
+  ) ? "active" : null;
+}
 const SHELL_COLORS = {
   string: "#a8d8a8",
   // soft green — consistent across themes
@@ -45357,6 +45575,81 @@ function makeSlashCommandSource(callbacksRef) {
     };
   };
 }
+function parseTokenAtCursor(state, head) {
+  const before = state.sliceDoc(0, head);
+  const match = before.match(/\S*$/);
+  const tokenStart = head - (match ? match[0].length : 0);
+  const token = before.slice(tokenStart);
+  const lastSlash = token.lastIndexOf("/");
+  if (lastSlash === -1) {
+    return { tokenStart, parentDirPath: "", basenamePrefix: token, basenameStart: tokenStart };
+  }
+  return {
+    tokenStart,
+    parentDirPath: token.slice(0, lastSlash + 1),
+    // include trailing '/'
+    basenamePrefix: token.slice(lastSlash + 1),
+    basenameStart: tokenStart + lastSlash + 1
+  };
+}
+function resolveDir(parentDirPath, cwd) {
+  if (!parentDirPath) return cwd || ".";
+  if (parentDirPath.startsWith("/") || parentDirPath.startsWith("~")) return parentDirPath;
+  if (!cwd) return null;
+  const base2 = cwd.endsWith("/") ? cwd.slice(0, -1) : cwd;
+  return `${base2}/${parentDirPath}`;
+}
+function shellEscape(name2) {
+  return name2.replace(/([ \t'"\\$`()&;|<>*?#\[\]])/g, "\\$1");
+}
+function makeFilePathSource(callbacksRef) {
+  return async function filePathSource(context) {
+    if (!context.explicit) return null;
+    const cwd = callbacksRef.current?.cwd;
+    const { parentDirPath, basenamePrefix, basenameStart } = parseTokenAtCursor(
+      context.state,
+      context.pos
+    );
+    const dir = resolveDir(parentDirPath, cwd);
+    if (!dir) return null;
+    let entries;
+    try {
+      entries = await window.electron?.listFiles(dir);
+    } catch {
+      return null;
+    }
+    if (!Array.isArray(entries) || entries.length === 0) return null;
+    const showHidden = basenamePrefix.startsWith(".");
+    const filtered = showHidden ? entries : entries.filter((e2) => !e2.name.startsWith("."));
+    filtered.sort((a2, b2) => {
+      if (a2.isDir !== b2.isDir) return a2.isDir ? -1 : 1;
+      return a2.name.localeCompare(b2.name, void 0, { sensitivity: "base" });
+    });
+    const total = filtered.length;
+    const folderUrl = getFolderIconUrl();
+    const options = filtered.map((entry, idx) => ({
+      label: entry.name,
+      type: entry.isDir ? "folder" : "file",
+      iconUrl: entry.isDir ? folderUrl : getFileIconUrl(entry.name),
+      boost: total - idx,
+      apply: (view, _completion, from, to) => {
+        const insert2 = entry.isDir ? `${shellEscape(entry.name)}/` : shellEscape(entry.name);
+        view.dispatch({
+          changes: { from, to, insert: insert2 },
+          selection: { anchor: from + insert2.length }
+        });
+      }
+    }));
+    return {
+      from: basenameStart,
+      to: context.pos,
+      options,
+      // Keep the popup live while the user types more basename chars; it
+      // closes naturally on '/' or whitespace, which is exactly what we want.
+      validFor: /^[\w.-]*$/
+    };
+  };
+}
 function tryExecuteSlashCommand(line, ctx) {
   if (!ctx) return false;
   const trimmed = line.trim();
@@ -45406,7 +45699,73 @@ function buildTheme(cssVar) {
       background: cssVar("--accent") + "44"
     },
     ".cm-activeLine": { background: "transparent" },
-    ".cm-gutters": { display: "none" }
+    ".cm-gutters": { display: "none" },
+    // Autocomplete dropdown — matches the active theme via CSS vars.
+    ".cm-tooltip.cm-tooltip-autocomplete": {
+      background: cssVar("--bg-elevated"),
+      border: `1px solid ${cssVar("--border")}`,
+      borderRadius: "6px",
+      boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+      fontFamily: cssVar("--font-mono"),
+      fontSize: cssVar("--font-size-mono"),
+      padding: "4px",
+      overflow: "hidden"
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul": {
+      maxHeight: "14em",
+      fontFamily: cssVar("--font-mono"),
+      padding: 0,
+      margin: 0,
+      scrollbarWidth: "thin",
+      // Firefox
+      scrollbarColor: `${cssVar("--border")} transparent`
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul::-webkit-scrollbar": {
+      width: "3px",
+      height: "3px"
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul::-webkit-scrollbar-track": {
+      background: "transparent"
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul::-webkit-scrollbar-thumb": {
+      background: cssVar("--border"),
+      borderRadius: "2px"
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul > li": {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      padding: "4px 8px",
+      borderRadius: "4px",
+      color: cssVar("--text-primary"),
+      lineHeight: "1.3"
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]": {
+      background: cssVar("--accent"),
+      color: cssVar("--on-accent")
+    },
+    ".cm-completionLabel": { color: "inherit" },
+    ".cm-completionMatchedText": {
+      textDecoration: "none",
+      color: cssVar("--accent"),
+      fontWeight: 600
+    },
+    ".cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText": {
+      color: cssVar("--on-accent")
+    },
+    ".cm-completionDetail": {
+      color: cssVar("--text-muted"),
+      fontStyle: "normal",
+      marginLeft: "auto",
+      paddingLeft: "12px",
+      fontSize: "0.85em"
+    },
+    ".cm-file-icon": {
+      width: "14px",
+      height: "14px",
+      flexShrink: 0,
+      objectFit: "contain"
+    }
   }, { dark: true });
 }
 function buildHighlightStyle(cssVar) {
@@ -45551,6 +45910,7 @@ function useShellEditor(callbacksRef) {
     const cssVar = (name2) => style.getPropertyValue(name2).trim();
     const ghostPlugin = makeGhostPlugin(callbacksRef);
     const slashSource = makeSlashCommandSource(callbacksRef);
+    const filePathSource = makeFilePathSource(callbacksRef);
     const submitKeymap = keymap.of([
       {
         key: "Enter",
@@ -45612,8 +45972,23 @@ function useShellEditor(callbacksRef) {
         }
       },
       {
+        // Tab precedence (first match wins):
+        //   1. popup open                → accept highlighted item
+        //   2. doc start (no chars)      → noop (first token is a command)
+        //   3. preceding char is space   → open file dropdown (cwd)
+        //   4. current word contains '/' → open file dropdown (parent dir)
+        //   5. mid-word with ghost text  → accept ghost text
+        //   6. otherwise                 → noop
         key: "Tab",
         run(view2) {
+          if (completionStatus(view2.state) != null) return acceptCompletion(view2);
+          const { head } = view2.state.selection.main;
+          if (head === 0) return false;
+          const before = view2.state.sliceDoc(Math.max(0, head - 1), head);
+          if (/\s/.test(before)) return startCompletion(view2);
+          const lineFrom = view2.state.doc.lineAt(head).from;
+          const wordSoFar = view2.state.sliceDoc(lineFrom, head).match(/\S*$/)?.[0] ?? "";
+          if (wordSoFar.includes("/")) return startCompletion(view2);
           const plugin = view2.plugin(ghostPlugin);
           if (plugin?.suggestion) return plugin.accept(view2);
           return false;
@@ -45639,14 +46014,29 @@ function useShellEditor(callbacksRef) {
           buildTheme(cssVar),
           EditorView.lineWrapping,
           autoHeightPlugin,
-          // Slash-command completions. `activateOnTyping` ensures the popup
-          // opens as soon as the user types `/` in an empty doc; the source
-          // itself gates everything else (line 1, starts with `/`, etc.).
+          // Slash-command + file-path completions.
+          //   - slashSource: gates on doc starting with '/'; activates on typing.
+          //   - filePathSource: gates on context.explicit (Tab-only). Will not
+          //     spontaneously open while typing — protects Up/Down history nav.
           autocompletion({
-            override: [slashSource],
+            override: [slashSource, filePathSource],
             activateOnTyping: true,
             closeOnBlur: true,
-            icons: false
+            icons: false,
+            addToOptions: [{
+              // Render a 14×14 icon before the label for completions that
+              // carry an iconUrl (file-path entries). Slash commands have
+              // no iconUrl → render nothing for them.
+              render(completion) {
+                if (!completion.iconUrl) return null;
+                const img = document.createElement("img");
+                img.src = completion.iconUrl;
+                img.className = "cm-file-icon";
+                img.alt = "";
+                return img;
+              },
+              position: 20
+            }]
           }),
           submitKeymap,
           keymap.of(defaultKeymap),
@@ -45691,6 +46081,7 @@ const InputBar = reactExports.forwardRef(function InputBar2({
   callbacksRef.current.getHistory = getHistory;
   callbacksRef.current.isNavigatingHistory = isNavigatingHistory;
   callbacksRef.current.commandContext = commandContext;
+  callbacksRef.current.cwd = cwd;
   const { editorContainerRef, viewRef } = useShellEditor(callbacksRef);
   reactExports.useImperativeHandle(ref, () => ({
     focus: () => viewRef.current?.focus(),
@@ -45853,6 +46244,7 @@ function TerminalPane({
             callbacksRef,
             sendRaw,
             sendResize,
+            onReplay: handleSubmit,
             isActive,
             isVisible
           }
@@ -46691,7 +47083,8 @@ function createTab(counter) {
     id: crypto.randomUUID(),
     fallbackTitle: `Terminal ${counter}`,
     layout: leaf,
-    activePaneId: leaf.paneId
+    activePaneId: leaf.paneId,
+    accent: null
   };
 }
 function App() {
@@ -46757,6 +47150,9 @@ function App() {
   const splitActivePane = reactExports.useCallback((direction) => {
     splitPane(activeTab.id, activeTab.activePaneId, direction);
   }, [activeTab, splitPane]);
+  const setTabAccent = reactExports.useCallback((tabId, accent) => {
+    setTabs((prev) => prev.map((t2) => t2.id === tabId ? { ...t2, accent } : t2));
+  }, []);
   useKeyboardShortcuts({
     "Meta+t": addTab,
     "Meta+w": closeActivePane,
@@ -46766,7 +47162,7 @@ function App() {
   });
   collectPaneIds(activeTab.layout).length;
   const tabBarProps = {
-    tabs: tabs.map((t2) => ({ id: t2.id, activePaneId: t2.activePaneId, fallbackTitle: t2.fallbackTitle })),
+    tabs: tabs.map((t2) => ({ id: t2.id, activePaneId: t2.activePaneId, fallbackTitle: t2.fallbackTitle, accent: t2.accent })),
     activeTabId,
     position: tabBarPosition,
     onSelectTab: setActiveTabId,
@@ -46774,7 +47170,8 @@ function App() {
     onNewTab: addTab,
     onTogglePosition: toggleTabBarPosition,
     onSplitRight: () => splitActivePane("horizontal"),
-    onSplitDown: () => splitActivePane("vertical")
+    onSplitDown: () => splitActivePane("vertical"),
+    onSetTabAccent: setTabAccent
   };
   const allPaneContainers = tabs.map((tab) => {
     const paneIds = collectPaneIds(tab.layout);
@@ -46790,7 +47187,8 @@ function App() {
           top: 0,
           left: 0,
           right: 0,
-          bottom: 0
+          bottom: 0,
+          "--tab-accent": tab.accent ?? "var(--accent)"
         },
         children: [
           dividers.map((d) => /* @__PURE__ */ jsxRuntimeExports.jsx(

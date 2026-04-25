@@ -82,6 +82,8 @@ export class PromptAddon {
       k8sData: best.k8sData ?? null,
       onCopy: best.onCopy,
       onReplay: best.onReplay,
+      startTime: best.startTime,
+      duration: best.duration,
     };
   }
 
@@ -148,6 +150,8 @@ export class PromptAddon {
         onCopy={entry.onCopy}
         onReplay={entry.onReplay}
         running={entry.running}
+        startTime={entry.startTime}
+        duration={entry.duration}
       />,
     );
   }
@@ -166,6 +170,7 @@ export class PromptAddon {
     if (!entry) return;
     entry.exitCode = code;
     entry.running = false;
+    entry.duration = Date.now() - entry.startTime;
     this._renderEntry(entry);
   }
 
@@ -270,6 +275,8 @@ export class PromptAddon {
       cellHeight,
       onCopy: null,
       onReplay: null,
+      startTime: Date.now(),
+      duration: null,
     };
 
     // onCopy reads the buffer at call-time so it always captures the final output.
@@ -299,7 +306,7 @@ export class PromptAddon {
       el.style.width = `calc(100% + ${paddingLeft}px)`;
       el.style.paddingTop = `${paddingTop}px`;
       el.style.boxSizing = "border-box";
-      el.style.overflow = "hidden";
+      el.style.overflow = "visible";
       el.style.backgroundColor =
         getComputedStyle(document.documentElement)
           .getPropertyValue("--bg-surface")

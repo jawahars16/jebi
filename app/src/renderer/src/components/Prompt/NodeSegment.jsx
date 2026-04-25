@@ -1,5 +1,4 @@
-import { FaNodeJs } from "react-icons/fa";
-import { RiNpmjsFill } from "react-icons/ri";
+import nodeIconUrl from "../../assets/node.png";
 
 // NodeSegment — Node.js version and package manager badge.
 // onClick: in InputBar → runs `npm/yarn/pnpm/bun run`; in xterm decoration → copies version.
@@ -16,8 +15,8 @@ export default function NodeSegment({
   const paddingH = bare ? 0 : (compact ? 7 : 10);
   const paddingV = compact ? 0 : 4;
 
-  const bg = bare ? "transparent" : "var(--border)";
-  const fg = "var(--text-primary)";
+  const bg = bare ? "transparent" : "var(--prompt-node-bg)";
+  const fg = "var(--prompt-node-fg)";
 
   const style = {
     display: "inline-flex",
@@ -52,7 +51,14 @@ export default function NodeSegment({
       title={`Node ${version} · ${packageManager}`}
       style={style}
     >
-      <FaNodeJs size={iconSize + 2} />
+      <img
+        src={nodeIconUrl}
+        alt=""
+        aria-hidden="true"
+        width={iconSize + 2}
+        height={iconSize + 2}
+        style={{ flexShrink: 0, objectFit: "contain" }}
+      />
       <span
         style={{
           overflow: "hidden",

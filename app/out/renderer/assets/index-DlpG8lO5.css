@@ -599,6 +599,10 @@
     position: sticky;
   }
 
+  .start {
+    inset-inline-start: var(--spacing);
+  }
+
   .container {
     width: 100%;
   }
@@ -807,6 +811,10 @@
     border-radius: .25rem;
   }
 
+  .rounded-full {
+    border-radius: 3.40282e38px;
+  }
+
   .border {
     border-style: var(--tw-border-style);
     border-width: 1px;
@@ -1000,6 +1008,91 @@
   --font-ui: "Inter", system-ui, sans-serif;
   --font-size-mono: 15px;
   --font-size-ui: 15px;
+  --prompt-tint-strength: 8%;
+  --prompt-cwd-tint: #a855f7;
+  --prompt-git-tint: #f97316;
+  --prompt-node-tint: #22c55e;
+  --prompt-go-tint: #01a7d0;
+  --prompt-python-tint: #eab308;
+  --prompt-docker-tint: #3b82f6;
+  --prompt-k8s-tint: #6366f1;
+  --prompt-cwd-bg: var(--prompt-cwd-tint);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --prompt-cwd-bg: color-mix(in srgb, var(--prompt-cwd-tint)    var(--prompt-tint-strength), var(--bg-elevated));
+  }
+}
+
+:root {
+  --prompt-cwd-fg: var(--text-primary);
+  --prompt-git-bg: var(--prompt-git-tint);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --prompt-git-bg: color-mix(in srgb, var(--prompt-git-tint)    var(--prompt-tint-strength), var(--bg-elevated));
+  }
+}
+
+:root {
+  --prompt-git-fg: var(--text-primary);
+  --prompt-node-bg: var(--prompt-node-tint);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --prompt-node-bg: color-mix(in srgb, var(--prompt-node-tint)   var(--prompt-tint-strength), var(--bg-elevated));
+  }
+}
+
+:root {
+  --prompt-node-fg: var(--text-primary);
+  --prompt-go-bg: var(--prompt-go-tint);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --prompt-go-bg: color-mix(in srgb, var(--prompt-go-tint)     var(--prompt-tint-strength), var(--bg-elevated));
+  }
+}
+
+:root {
+  --prompt-go-fg: var(--text-primary);
+  --prompt-python-bg: var(--prompt-python-tint);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --prompt-python-bg: color-mix(in srgb, var(--prompt-python-tint) var(--prompt-tint-strength), var(--bg-elevated));
+  }
+}
+
+:root {
+  --prompt-python-fg: var(--text-primary);
+  --prompt-docker-bg: var(--prompt-docker-tint);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --prompt-docker-bg: color-mix(in srgb, var(--prompt-docker-tint) var(--prompt-tint-strength), var(--bg-elevated));
+  }
+}
+
+:root {
+  --prompt-docker-fg: var(--text-primary);
+  --prompt-k8s-bg: var(--prompt-k8s-tint);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --prompt-k8s-bg: color-mix(in srgb, var(--prompt-k8s-tint)    var(--prompt-tint-strength), var(--bg-elevated));
+  }
+}
+
+:root {
+  --prompt-k8s-fg: var(--text-primary);
 }
 
 html, body, #root {

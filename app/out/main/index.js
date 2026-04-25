@@ -2,6 +2,8 @@
 const electron = require("electron");
 const path = require("path");
 require("child_process");
+const fs = require("fs");
+const os = require("os");
 function createWindow() {
   const win = new electron.BrowserWindow({
     width: 1200,
@@ -20,6 +22,21 @@ function createWindow() {
   }
 }
 electron.ipcMain.handle("open-path", (_, path2) => electron.shell.openPath(path2));
+electron.ipcMain.handle("list-files", async (_, dirPath) => {
+  if (typeof dirPath !== "string" || dirPath === "") return [];
+  let abs = dirPath;
+  if (abs === "~" || abs.startsWith("~/")) {
+    abs = abs === "~" ? os.homedir() : path.join(os.homedir(), abs.slice(2));
+  }
+  if (!path.isAbsolute(abs)) return [];
+  abs = path.resolve(abs);
+  try {
+    const entries = await fs.promises.readdir(abs, { withFileTypes: true });
+    return entries.map((e) => ({ name: e.name, isDir: e.isDirectory() }));
+  } catch {
+    return [];
+  }
+});
 electron.app.whenReady().then(() => {
   createWindow();
 });

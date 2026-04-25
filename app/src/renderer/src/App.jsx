@@ -16,6 +16,7 @@ function createTab(counter) {
     fallbackTitle: `Terminal ${counter}`,
     layout: leaf,
     activePaneId: leaf.paneId,
+    accent: null,
   }
 }
 
@@ -98,6 +99,48 @@ export default function App() {
     splitPane(activeTab.id, activeTab.activePaneId, direction)
   }, [activeTab, splitPane])
 
+  const setTabAccent = useCallback((tabId, accent) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, accent } : t))
+  }, [])
+
+  // --- Bulk tab close + per-tab split (driven by right-click menu) ---
+
+  const closeTabsToRight = useCallback((tabId) => {
+    setTabs(prev => {
+      const idx = prev.findIndex(t => t.id === tabId)
+      if (idx === -1 || idx === prev.length - 1) return prev
+      const kept = prev.slice(0, idx + 1)
+      setActiveTabId(curr => kept.find(t => t.id === curr) ? curr : tabId)
+      return kept
+    })
+  }, [])
+
+  const closeOtherTabs = useCallback((tabId) => {
+    setTabs(prev => {
+      if (prev.length <= 1) return prev
+      const target = prev.find(t => t.id === tabId)
+      if (!target) return prev
+      setActiveTabId(tabId)
+      return [target]
+    })
+  }, [])
+
+  const closeAllTabs = useCallback(() => {
+    tabCounterRef.current += 1
+    const fresh = createTab(tabCounterRef.current)
+    setTabs([fresh])
+    setActiveTabId(fresh.id)
+  }, [])
+
+  const splitTabPane = useCallback((tabId, direction) => {
+    setTabs(prev => prev.map(t => {
+      if (t.id !== tabId) return t
+      const { tree, newPaneId } = splitLeaf(t.layout, t.activePaneId, direction)
+      return { ...t, layout: tree, activePaneId: newPaneId }
+    }))
+    setActiveTabId(tabId)
+  }, [])
+
   // --- Keyboard shortcuts ---
 
   useKeyboardShortcuts({
@@ -114,7 +157,7 @@ export default function App() {
   // --- Render ---
 
   const tabBarProps = {
-    tabs: tabs.map(t => ({ id: t.id, activePaneId: t.activePaneId, fallbackTitle: t.fallbackTitle })),
+    tabs: tabs.map(t => ({ id: t.id, activePaneId: t.activePaneId, fallbackTitle: t.fallbackTitle, accent: t.accent })),
     activeTabId,
     position: tabBarPosition,
     onSelectTab: setActiveTabId,
@@ -123,6 +166,11 @@ export default function App() {
     onTogglePosition: toggleTabBarPosition,
     onSplitRight: () => splitActivePane('horizontal'),
     onSplitDown: () => splitActivePane('vertical'),
+    onSetTabAccent: setTabAccent,
+    onCloseTabsToRight: closeTabsToRight,
+    onCloseOtherTabs: closeOtherTabs,
+    onCloseAllTabs: closeAllTabs,
+    onSplitTabPane: splitTabPane,
   }
 
   // Render all tabs but hide inactive ones — keeps xterm + WebSocket alive across tab switches.
@@ -141,6 +189,7 @@ export default function App() {
           display: tab.id === activeTabId ? 'block' : 'none',
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
+          '--tab-accent': tab.accent ?? 'var(--accent)',
         }}
       >
         {/* Dividers — 8px hit area with a centered 1px visual bar */}

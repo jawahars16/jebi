@@ -4,7 +4,7 @@ import { useShellEditor } from './useShellEditor'
 
 const InputBar = forwardRef(function InputBar(
   {
-    onSubmit, onNavigateHistory, getHistory, isNavigatingHistory, commandContext,
+    onSubmit, onNavigateHistory, resetNavigation, getHistory, isNavigatingHistory, commandContext,
     cwd, exitCode,
     gitData, onGitClick,
     nodeData, onNodeClick,
@@ -20,9 +20,11 @@ const InputBar = forwardRef(function InputBar(
   const callbacksRef = useRef({})
   callbacksRef.current.onSubmit = onSubmit
   callbacksRef.current.onNavigateHistory = onNavigateHistory
+  callbacksRef.current.resetNavigation = resetNavigation
   callbacksRef.current.getHistory = getHistory
   callbacksRef.current.isNavigatingHistory = isNavigatingHistory
   callbacksRef.current.commandContext = commandContext
+  callbacksRef.current.cwd = cwd
 
   const { editorContainerRef, viewRef } = useShellEditor(callbacksRef)
 
@@ -41,7 +43,6 @@ const InputBar = forwardRef(function InputBar(
       <div>
         <Prompt
           cwd={cwd}
-          exitCode={exitCode}
           gitData={gitData}
           onGitClick={onGitClick}
           nodeData={nodeData}
