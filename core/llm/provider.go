@@ -10,6 +10,20 @@ type QueryRequest struct {
 	OS    string
 }
 
+// HistoryEntry is one command + its output, used to build suggestion context.
+type HistoryEntry struct {
+	Command string `json:"command"`
+	Output  string `json:"output"`
+}
+
+// SuggestRequest is the input for the next-command suggestion feature.
+type SuggestRequest struct {
+	Entries []HistoryEntry
+	Cwd     string
+	Shell   string
+	OS      string
+}
+
 // Step is one action in a multi-step plan returned by the LLM.
 type Step struct {
 	Description string `json:"description"` // Human-readable label shown before the command runs
@@ -32,6 +46,7 @@ type ResponseChunk struct {
 // main.go calls IsAvailable before selecting a provider at startup.
 type Provider interface {
 	IsAvailable() bool
-	StreamQuery(ctx context.Context, req QueryRequest) (<-chan ResponseChunk, error)
 	Name() string
+	StreamQuery(ctx context.Context, req QueryRequest) (<-chan ResponseChunk, error)
+	StreamMessages(ctx context.Context, messages []ChatMessage) (<-chan ResponseChunk, error)
 }

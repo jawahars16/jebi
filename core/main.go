@@ -86,7 +86,7 @@ func main() {
 			return
 		}
 
-		s, err := session.New(conn)
+		s, err := session.New(conn, provider)
 		if err != nil {
 			log.Println("session:", err)
 			conn.Close()

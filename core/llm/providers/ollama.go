@@ -87,3 +87,7 @@ func (p *OllamaProvider) CheckAvailability() (string, bool) {
 func (p *OllamaProvider) StreamQuery(ctx context.Context, req llm.QueryRequest) (<-chan llm.ResponseChunk, error) {
 	return p.client.Stream(ctx, llm.BuildMessages(req))
 }
+
+func (p *OllamaProvider) StreamMessages(ctx context.Context, msgs []llm.ChatMessage) (<-chan llm.ResponseChunk, error) {
+	return p.client.Stream(ctx, msgs)
+}

@@ -87,6 +87,17 @@ export class PromptAddon {
     };
   }
 
+  // Returns the most recently completed command + its output (read once for AI context).
+  getLastEntry() {
+    const completed = this._commands.filter((e) => !e.running);
+    const last = completed[completed.length - 1];
+    if (!last) return null;
+    return {
+      command: last.command,
+      output: (this._getOutput(last) || "").slice(0, 500),
+    };
+  }
+
   // Reads the command's output from the xterm buffer as plain text.
   _getOutput(entry) {
     const buffer = this._term.buffer.active;

@@ -15,3 +15,7 @@ export const TypeConfig   = 'config'
 export const TypeKill     = 'kill'
 export const TypeResize   = 'resize'
 
+export const TypeAIAppend       = 'ai_append'
+export const TypeAISuggestion   = 'ai_suggestion'
+export const TypeAISuggestError = 'ai_suggest_error'
+

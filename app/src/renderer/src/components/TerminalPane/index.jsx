@@ -17,7 +17,7 @@ export default function TerminalPane({
   onToggleTabPosition,
 }) {
   const callbacksRef = useRef({});
-  const { sendInput, sendRaw, sendResize } = useTerminal(paneId, callbacksRef);
+  const { sendInput, sendRaw, sendResize, sendAIAppend } = useTerminal(paneId, callbacksRef);
   const {
     push: pushHistory,
     navigate: navigateHistory,
@@ -77,8 +77,18 @@ export default function TerminalPane({
     pendingCommandRef.current = null;
     setRunning(false);
     setPaneInfo(paneId, { runningCommand: null });
-    setTimeout(() => inputBarRef.current?.focus(), 0);
+    setTimeout(() => {
+      inputBarRef.current?.focus();
+      // Send the just-completed command + output to the backend for AI suggestion.
+      const entry = callbacksRef.current.getLastEntry?.();
+      if (entry) sendAIAppend(entry);
+    }, 0);
   };
+
+  callbacksRef.current.onAISuggestion = (cmd) => {
+    inputBarRef.current?.setSuggestion(cmd);
+  };
+  callbacksRef.current.onAISuggestError = () => {};
 
   callbacksRef.current.onGit = (data) => {
     setGitData(data);

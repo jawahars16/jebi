@@ -26,7 +26,7 @@ const InputBar = forwardRef(function InputBar(
   callbacksRef.current.commandContext = commandContext
   callbacksRef.current.cwd = cwd
 
-  const { editorContainerRef, viewRef } = useShellEditor(callbacksRef)
+  const { editorContainerRef, viewRef, dispatchAISuggestionRef } = useShellEditor(callbacksRef)
 
   useImperativeHandle(ref, () => ({
     focus: () => viewRef.current?.focus(),
@@ -36,6 +36,7 @@ const InputBar = forwardRef(function InputBar(
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } })
       view.focus()
     },
+    setSuggestion: (cmd) => dispatchAISuggestionRef.current?.(cmd),
   }))
 
   return (

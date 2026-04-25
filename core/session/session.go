@@ -7,9 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
+	"terminal/core/llm"
 	"terminal/core/wire"
 
 	"github.com/creack/pty"
@@ -29,6 +32,8 @@ type connection interface {
 	Close() error
 }
 
+const maxContextEntries = 20
+
 // Session represents one terminal tab — one WebSocket connection, one PTY.
 type Session struct {
 	conn connection
@@ -43,6 +48,12 @@ type Session struct {
 
 	// cancelDetect cancels any in-flight git/node detection goroutine.
 	cancelDetect context.CancelFunc
+
+	// AI suggestion state — session-scoped, not persisted.
+	provider       llm.Provider
+	currentCwd     string
+	contextEntries []llm.HistoryEntry
+	cancelSuggest  context.CancelFunc
 }
 
 // resolveShell returns cfg.Shell if set, then $SHELL, then /bin/zsh.
@@ -58,11 +69,12 @@ func resolveShell(cfg Config) string {
 
 // New creates a Session, opens a PTY, spawns the shell, and injects the shell hook.
 // The caller must call Close when the session ends.
-func New(conn connection) (*Session, error) {
+func New(conn connection, provider llm.Provider) (*Session, error) {
 	s := &Session{
-		conn: conn,
-		w:    wire.New(conn),
-		cfg:  DefaultConfig,
+		conn:     conn,
+		w:        wire.New(conn),
+		cfg:      DefaultConfig,
+		provider: provider,
 	}
 	shell := resolveShell(s.cfg)
 
@@ -152,6 +164,45 @@ func (s *Session) Start() {
 				pty.Setsize(s.ptm, &pty.Winsize{Rows: r.Rows, Cols: r.Cols})
 				// s.ptm.Write([]byte("\x0c")) // Ctrl+L
 			}
+		case wire.TypeAIAppend:
+			if s.provider == nil {
+				break
+			}
+			var entry llm.HistoryEntry
+			if err := json.Unmarshal(msg.Data, &entry); err != nil {
+				break
+			}
+			s.contextEntries = append(s.contextEntries, entry)
+			if len(s.contextEntries) > maxContextEntries {
+				s.contextEntries = s.contextEntries[len(s.contextEntries)-maxContextEntries:]
+			}
+			if len(s.contextEntries) < 2 {
+				break
+			}
+			if s.cancelSuggest != nil {
+				s.cancelSuggest()
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			s.cancelSuggest = cancel
+			entries := make([]llm.HistoryEntry, len(s.contextEntries))
+			copy(entries, s.contextEntries)
+			cwd := s.currentCwd
+			go func() {
+				defer cancel()
+				result, err := llm.Suggest(ctx, s.provider, llm.SuggestRequest{
+					Entries: entries,
+					Cwd:     cwd,
+					Shell:   resolveShell(s.cfg),
+					OS:      runtime.GOOS + "/" + runtime.GOARCH,
+				})
+				if err != nil || result == "" {
+					s.w.Send(wire.Message{Type: wire.TypeAISuggestError})
+					return
+				}
+				data, _ := json.Marshal(result)
+				s.w.Send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
+			}()
+
 		case wire.TypeKill:
 			return
 		}
@@ -191,6 +242,7 @@ func (s *Session) pipe() {
 					switch {
 					case strings.HasPrefix(p, "7;"):
 						cwd := strings.TrimPrefix(p, "7;")
+						s.currentCwd = cwd
 						s.w.Send(wire.StringMessage(wire.TypeCwd, cwd))
 						// Cancel previous detection and start fresh for the new directory.
 						if s.cancelDetect != nil {

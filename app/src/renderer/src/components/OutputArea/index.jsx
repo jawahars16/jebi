@@ -140,6 +140,7 @@ export default function OutputArea({
       // via the pane's commandContext.
       callbacksRef.current.clearScrollback = () => term.clear();
       callbacksRef.current.copyLastOutput = () => promptAddon.copyLastOutput();
+      callbacksRef.current.getLastEntry = () => promptAddon.getLastEntry();
 
       callbacksRef.current.onOutput = (data) => {
         if (data.includes(TUI_ENTER)) promptAddon.enterTui();

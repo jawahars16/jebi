@@ -73,6 +73,48 @@ type finalResponse struct {
 	Explanation string `json:"explanation"`
 }
 
+const suggestPromptTemplate = `You are a terminal assistant. Given a shell session history, suggest the single most useful next command to run.
+
+Environment:
+Shell: %s
+OS: %s
+Current directory: %s
+
+Rules:
+- Understand the history of commands and their outputs to suggest the most helpful next command. Don't give some random command — it should be relevant to the user's workflow and the current context.
+- Output ONLY the raw shell command. No explanation. No backticks. No markdown. No leading $ or prompt symbol. Just the command.
+- If no sensible next command exists, output an empty string.`
+
+// BuildSuggestMessages returns the message list for a next-command suggestion request.
+func BuildSuggestMessages(req SuggestRequest) []ChatMessage {
+	system := fmt.Sprintf(suggestPromptTemplate, req.Shell, req.OS, req.Cwd)
+	var sb strings.Builder
+	for _, e := range req.Entries {
+		fmt.Fprintf(&sb, "$ %s\n%s\n", e.Command, e.Output)
+	}
+	return []ChatMessage{
+		{Role: "system", Content: system},
+		{Role: "user", Content: sb.String()},
+	}
+}
+
+// ParseSuggestResponse extracts a single command from the raw LLM response.
+func ParseSuggestResponse(raw string) string {
+	raw = strings.TrimSpace(raw)
+	raw = strings.Trim(raw, "`")
+	for _, line := range strings.Split(raw, "\n") {
+		t := strings.TrimSpace(line)
+		if t == "" {
+			continue
+		}
+		// Strip any leading shell prompt symbol the model may have echoed
+		t = strings.TrimPrefix(t, "$ ")
+		t = strings.TrimPrefix(t, "% ")
+		return t
+	}
+	return ""
+}
+
 // ParseFinalResponse extracts the structured response from the accumulated
 // token string. Tries full unmarshal first, then falls back to extracting
 // the first '{' … last '}' substring to handle preamble text from the model.

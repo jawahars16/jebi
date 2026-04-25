@@ -76,6 +76,14 @@ func (p *LlamaServerProvider) StreamQuery(ctx context.Context, req llm.QueryRequ
 	return p.client.Stream(ctx, llm.BuildMessages(req))
 }
 
+// StreamMessages lazily starts the server and streams using the provided messages directly.
+func (p *LlamaServerProvider) StreamMessages(ctx context.Context, msgs []llm.ChatMessage) (<-chan llm.ResponseChunk, error) {
+	if err := p.ensureStarted(); err != nil {
+		return nil, err
+	}
+	return p.client.Stream(ctx, msgs)
+}
+
 // Stop sends SIGTERM to the subprocess and waits up to 5 seconds, then SIGKILLs.
 func (p *LlamaServerProvider) Stop() {
 	p.mu.Lock()

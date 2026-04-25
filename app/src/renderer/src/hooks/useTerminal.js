@@ -56,6 +56,12 @@ export function useTerminal(paneId, callbacksRef) {
           callbacksRef.current.onK8s?.({ context, namespace })
           break
         }
+        case wire.TypeAISuggestion:
+          callbacksRef.current.onAISuggestion?.(msg.data)
+          break
+        case wire.TypeAISuggestError:
+          callbacksRef.current.onAISuggestError?.()
+          break
       }
     }
 
@@ -83,5 +89,10 @@ export function useTerminal(paneId, callbacksRef) {
     ws.current.send(JSON.stringify({ type: wire.TypeResize, data: { cols, rows } }))
   }, [paneId])
 
-  return { sendInput, sendRaw, sendResize }
+  const sendAIAppend = useCallback((entry) => {
+    if (ws.current?.readyState !== WebSocket.OPEN) return
+    ws.current.send(JSON.stringify({ type: wire.TypeAIAppend, data: entry }))
+  }, [paneId])
+
+  return { sendInput, sendRaw, sendResize, sendAIAppend }
 }
