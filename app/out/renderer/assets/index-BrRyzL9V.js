@@ -13160,6 +13160,7 @@ const TypeResize = "resize";
 const TypeAIAppend = "ai_append";
 const TypeAISuggestion = "ai_suggestion";
 const TypeAISuggestError = "ai_suggest_error";
+const TypeAIExplanation = "ai_explanation";
 function useTerminal(paneId, callbacksRef) {
   const ws2 = reactExports.useRef(null);
   const terminalSizeRef = reactExports.useRef(null);
@@ -13218,6 +13219,9 @@ function useTerminal(paneId, callbacksRef) {
           break;
         case TypeAISuggestError:
           callbacksRef.current.onAISuggestError?.();
+          break;
+        case TypeAIExplanation:
+          callbacksRef.current.onAIExplanation?.(msg.data);
           break;
       }
     };
@@ -25943,7 +25947,8 @@ class PromptAddon {
     if (!last) return null;
     return {
       command: last.command,
-      output: (this._getOutput(last) || "").slice(0, 500)
+      output: (this._getOutput(last) || "").slice(0, 500),
+      exitCode: last.exitCode ?? 0
     };
   }
   // Reads the command's output from the xterm buffer as plain text.
@@ -45179,6 +45184,7 @@ const SHELL_COLORS = {
   // soft green — consistent across themes
   variable: "#f0c674"
 };
+const bulbIconUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAADzElEQVRoge3ZWahVdRTH8X2s63AzK5PoWtFIECXSIBhFlEH1EFEPEZE0UJFEQgVZDz1cyFIIzMyHAqMJgwakQqICowiSIHpIlOaybLCSuqnl1dv99LDX4fw9nnPPfLeGv5fN/g9rffd/Xv+dZQf1PxCm4m38iWVF87QsDNpblxbN1LTQh58C/M14rimaq2nhuoDeiGOwCyM4sWi2poT34gMWxPuL8f5Q0WwNhdkBO4TDI+3CSPsFU4pmHFN4I2CXV6V/EumLimJrKFwQkLtwQlXetZG3DUcUxVhXOAyfBuSSGvklfBj5zxTBWFcB91LAfYGpdcrNwj9R7q7x5qypgF8SUH/jnAblF0TZ3bhqvDjrwUzC6gDag6ubrPdo1BnB3b3mrAcxBx8lk/aaFuqWsFRFq3FcL3lT5yfheYyG882Y06atm7Az7OyQn596s0LhfLwc3V4eMisxrUO7p+GdpDf+wmM4uRvQJfn6vT5xMIxncXrHDvb2NQ/rEj8jeBVzOzH6ZGLwdzyMgS5y1/I5OxpoOPz+i/ntGhsKIyvR32XWRr4H8H74X9uukXfDwKg8uroCpS6zVvucjFuxIen9wXaNHYUV2J4Y24jbMLHL4DNiFdqa+NqCe3FIp8aPxCJ8nxjfLF8GO+oR9GNxVSN9jBvQ1xF4DWd9uB6bEmfr2p3YmItvEltv4aKuQtdxfCjuxK/h+Gec26KNW+TnITHeL+8V71gQAyrHiSGc12S9O1R28qe7PZ9aEqbId+jypBtzOOGSaPlR3DdenGMq5kZ5yV2PSXXKnSLfEGHxeHOOKUzHlwE3WKdM+Y7oNUwYZ8TGiuFBHnVVx8TzIu8PHF0UY0NhbYCuTNJKsbbD/W3YPF6+By3tLm1tZ2fFBN2J6ZF2WTLJW74XUglZhzGz+9T7OiyP9Qdqvbdoa4bKoRKe6D7xvk7LLf5DVY+0PPaxKmytkQc7wzi7F9yp05L80Aefx/OpNuwsjLq/RU/cE+/f6nUMjZuTbt+NM1qoO1El6N+NiyO9hFeS+dR+tNYEREl+gl2jyRsL+YY4H18F5HZcWVVmssrOP4oXcGZvvqIFyWOPr5Ne+6AeWDTOQvnvq/KHPFjOL2qH7M+y7NjkfVOWZVtrFSyVSrIs+yzJL2VZdmpP6ZqR/M5pmcpd0ZbqFSda/5GkpzbgRt0OfjqRfOd9PQCHMCvJezzSd+B2++OZKsuyDBOwPGC/w7RkZdumwSXyfqH4iHJPPCc/io84wH7ZzozhUtaqoplalsp1/B4Hyq/aVDGpf8SKolkOqhn9B6c1+wX1ZmpYAAAAAElFTkSuQmCC";
 const ALL_COMMANDS = [
   {
     id: "split-right",
@@ -45499,6 +45505,30 @@ class GhostWidget extends WidgetType {
     return other.text === this.text;
   }
 }
+class AIGhostWidget extends WidgetType {
+  constructor(text) {
+    super();
+    this.text = text;
+  }
+  toDOM() {
+    const wrap = document.createElement("span");
+    wrap.setAttribute("aria-hidden", "true");
+    wrap.style.cssText = "display:inline-flex;align-items:center;gap:5px;pointer-events:none;user-select:none;opacity:0.4;";
+    const icon = document.createElement("img");
+    icon.src = bulbIconUrl;
+    icon.className = "ai-suggestion-icon";
+    icon.style.cssText = "width:16px;height:16px;flex-shrink:0;";
+    const text = document.createElement("span");
+    text.textContent = this.text;
+    text.style.cssText = "color:var(--text-muted);";
+    wrap.appendChild(icon);
+    wrap.appendChild(text);
+    return wrap;
+  }
+  eq(other) {
+    return other.text === this.text;
+  }
+}
 function makeGhostPlugin(callbacksRef) {
   class GhostTextPlugin {
     constructor(view) {
@@ -45603,7 +45633,7 @@ function makeGhostPlugin(callbacksRef) {
         this.decorations = Decoration.none;
         return;
       }
-      const widget = new GhostWidget(this.aiSuggestion);
+      const widget = new AIGhostWidget(this.aiSuggestion);
       this.decorations = RangeSet.of([
         Decoration.widget({ widget, side: 1 }).range(0)
       ]);
@@ -45676,7 +45706,13 @@ function useShellEditor(callbacksRef) {
             plugin._clear();
             return true;
           }
-          if (view2.state.doc.length === 0) return false;
+          if (view2.state.doc.length === 0) {
+            if (callbacksRef.current.onDismissExplanation) {
+              callbacksRef.current.onDismissExplanation();
+              return true;
+            }
+            return false;
+          }
           view2.dispatch({ changes: { from: 0, to: view2.state.doc.length, insert: "" } });
           callbacksRef.current.resetNavigation?.();
           return true;
@@ -45743,7 +45779,11 @@ function useShellEditor(callbacksRef) {
         run(view2) {
           if (completionStatus(view2.state) != null) return acceptCompletion(view2);
           const { head } = view2.state.selection.main;
-          if (head === 0) return false;
+          if (head === 0) {
+            const plugin2 = view2.plugin(ghostPlugin);
+            if (plugin2?.aiSuggestion) return plugin2.accept(view2);
+            return false;
+          }
           const before = view2.state.sliceDoc(Math.max(0, head - 1), head);
           if (/\s/.test(before)) return startCompletion(view2);
           const lineFrom = view2.state.doc.lineAt(head).from;
@@ -45879,6 +45919,47 @@ const InputBar = reactExports.forwardRef(function InputBar2({
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: editorContainerRef })
   ] });
 });
+function ExplanationPanel({ text, onDismiss }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        padding: "6px 12px",
+        background: "color-mix(in srgb, var(--error) 8%, var(--bg-elevated))",
+        borderTop: "1px solid color-mix(in srgb, var(--error) 20%, transparent)",
+        fontFamily: "var(--font-mono)",
+        fontSize: "calc(var(--font-size-mono) * 0.88)",
+        color: "var(--text-secondary)",
+        lineHeight: 1.5
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--error)", opacity: 0.7, flexShrink: 0, marginTop: 2 }, children: "✦" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1 }, children: text }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: onDismiss,
+            onMouseDown: (e) => e.preventDefault(),
+            style: {
+              color: "var(--text-muted)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              fontSize: "0.85em",
+              flexShrink: 0,
+              lineHeight: 1
+            },
+            children: "✕"
+          }
+        )
+      ]
+    }
+  );
+}
 function TerminalPane({
   paneId,
   isActive,
@@ -45900,6 +45981,7 @@ function TerminalPane({
     resetNavigation
   } = useSharedHistory();
   const [running, setRunning] = reactExports.useState(false);
+  const [explanation, setExplanation] = reactExports.useState(null);
   const [cwd, setCwd] = reactExports.useState("");
   const [exitCode, setExitCode] = reactExports.useState(0);
   const [gitData, setGitData] = reactExports.useState(null);
@@ -45950,6 +46032,8 @@ function TerminalPane({
   };
   callbacksRef.current.onAISuggestError = () => {
   };
+  callbacksRef.current.onAIExplanation = (text) => setExplanation(text);
+  callbacksRef.current.onDismissExplanation = () => setExplanation(null);
   callbacksRef.current.onGit = (data) => {
     setGitData(data);
     callbacksRef.current.onGitDecoration?.(data);
@@ -45976,6 +46060,7 @@ function TerminalPane({
   };
   const handleSubmit = reactExports.useCallback(
     (command2) => {
+      setExplanation(null);
       const trimmed = command2.trim();
       pendingCommandRef.current = trimmed;
       sendInput(command2);
@@ -46021,6 +46106,13 @@ function TerminalPane({
             onReplay: handleSubmit,
             isActive,
             isVisible
+          }
+        ),
+        explanation && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ExplanationPanel,
+          {
+            text: explanation,
+            onDismiss: () => setExplanation(null)
           }
         ),
         !running && /* @__PURE__ */ jsxRuntimeExports.jsx(

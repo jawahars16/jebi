@@ -4,6 +4,7 @@ import { useSharedHistory } from "../../hooks/useSharedHistory";
 import { setPaneInfo } from "../../hooks/usePaneInfo";
 import OutputArea from "../OutputArea";
 import InputBar from "../InputBar";
+import ExplanationPanel from "../ExplanationPanel";
 
 export default function TerminalPane({
   paneId,
@@ -26,6 +27,7 @@ export default function TerminalPane({
     resetNavigation,
   } = useSharedHistory();
   const [running, setRunning] = useState(false);
+  const [explanation, setExplanation] = useState(null);
   const [cwd, setCwd] = useState("");
   const [exitCode, setExitCode] = useState(0);
   const [gitData, setGitData] = useState(null);
@@ -89,6 +91,8 @@ export default function TerminalPane({
     inputBarRef.current?.setSuggestion(cmd);
   };
   callbacksRef.current.onAISuggestError = () => {};
+  callbacksRef.current.onAIExplanation = (text) => setExplanation(text);
+  callbacksRef.current.onDismissExplanation = () => setExplanation(null);
 
   callbacksRef.current.onGit = (data) => {
     setGitData(data);
@@ -122,6 +126,7 @@ export default function TerminalPane({
 
   const handleSubmit = useCallback(
     (command) => {
+      setExplanation(null);
       const trimmed = command.trim();
       pendingCommandRef.current = trimmed;
       sendInput(command);
@@ -178,6 +183,12 @@ export default function TerminalPane({
         isVisible={isVisible}
       />
 
+      {explanation && (
+        <ExplanationPanel
+          text={explanation}
+          onDismiss={() => setExplanation(null)}
+        />
+      )}
       {!running && (
         <InputBar
           ref={inputBarRef}

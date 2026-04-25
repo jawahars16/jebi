@@ -176,9 +176,6 @@ func (s *Session) Start() {
 			if len(s.contextEntries) > maxContextEntries {
 				s.contextEntries = s.contextEntries[len(s.contextEntries)-maxContextEntries:]
 			}
-			if len(s.contextEntries) < 2 {
-				break
-			}
 			if s.cancelSuggest != nil {
 				s.cancelSuggest()
 			}
@@ -187,21 +184,38 @@ func (s *Session) Start() {
 			entries := make([]llm.HistoryEntry, len(s.contextEntries))
 			copy(entries, s.contextEntries)
 			cwd := s.currentCwd
-			go func() {
-				defer cancel()
-				result, err := llm.Suggest(ctx, s.provider, llm.SuggestRequest{
-					Entries: entries,
-					Cwd:     cwd,
-					Shell:   resolveShell(s.cfg),
-					OS:      runtime.GOOS + "/" + runtime.GOARCH,
-				})
-				if err != nil || result == "" {
-					s.w.Send(wire.Message{Type: wire.TypeAISuggestError})
-					return
-				}
-				data, _ := json.Marshal(result)
-				s.w.Send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
-			}()
+			req := llm.SuggestRequest{
+				Entries: entries,
+				Cwd:     cwd,
+				Shell:   resolveShell(s.cfg),
+				OS:      runtime.GOOS + "/" + runtime.GOARCH,
+			}
+			if entry.ExitCode != 0 {
+				// Error path: explain what went wrong
+				go func() {
+					defer cancel()
+					result, err := llm.Explain(ctx, s.provider, req)
+					if err != nil || result == "" {
+						return
+					}
+					data, _ := json.Marshal(result)
+					s.w.Send(wire.Message{Type: wire.TypeAIExplanation, Data: data})
+				}()
+			} else if len(s.contextEntries) >= 2 {
+				// Success path: suggest next command
+				go func() {
+					defer cancel()
+					result, err := llm.Suggest(ctx, s.provider, req)
+					if err != nil || result == "" {
+						s.w.Send(wire.Message{Type: wire.TypeAISuggestError})
+						return
+					}
+					data, _ := json.Marshal(result)
+					s.w.Send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
+				}()
+			} else {
+				cancel()
+			}
 
 		case wire.TypeKill:
 			return

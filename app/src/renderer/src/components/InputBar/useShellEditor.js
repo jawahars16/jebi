@@ -176,7 +176,7 @@ class AIGhostWidget extends WidgetType {
     const icon = document.createElement('img')
     icon.src = bulbIconUrl
     icon.className = 'ai-suggestion-icon'
-    icon.style.cssText = 'width:16px;height:16px;flex-shrink:0;'
+    icon.style.cssText = 'width:20px;height:20px;flex-shrink:0;'
 
     const text = document.createElement('span')
     text.textContent = this.text
@@ -380,7 +380,13 @@ export function useShellEditor(callbacksRef) {
         run(view) {
           const plugin = view.plugin(ghostPlugin)
           if (plugin?.aiSuggestion) { plugin._clear(); return true }
-          if (view.state.doc.length === 0) return false
+          if (view.state.doc.length === 0) {
+            if (callbacksRef.current.onDismissExplanation) {
+              callbacksRef.current.onDismissExplanation()
+              return true
+            }
+            return false
+          }
           view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
           callbacksRef.current.resetNavigation?.()
           return true

@@ -12,8 +12,9 @@ type QueryRequest struct {
 
 // HistoryEntry is one command + its output, used to build suggestion context.
 type HistoryEntry struct {
-	Command string `json:"command"`
-	Output  string `json:"output"`
+	Command  string `json:"command"`
+	Output   string `json:"output"`
+	ExitCode int    `json:"exitCode"`
 }
 
 // SuggestRequest is the input for the next-command suggestion feature.

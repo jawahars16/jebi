@@ -930,6 +930,11 @@
     outline-width: 1px;
   }
 
+  .blur {
+    --tw-blur: blur(8px);
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+
   .filter {
     filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
   }
@@ -1165,6 +1170,23 @@ body {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+@keyframes ai-pulse {
+  0%, 100% {
+    opacity: .35;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: .75;
+    transform: scale(1.15);
+  }
+}
+
+.ai-suggestion-icon {
+  transform-origin: center;
+  animation: 1.8s ease-in-out infinite ai-pulse;
 }
 
 @keyframes tab-icon-spin {

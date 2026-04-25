@@ -115,6 +115,42 @@ func ParseSuggestResponse(raw string) string {
 	return ""
 }
 
+const explainPromptTemplate = `You are a terminal assistant. A shell command failed. Briefly explain what went wrong and how to fix it.
+
+Environment:
+Shell: %s
+OS: %s
+Current directory: %s
+
+Rules:
+- Output 1-2 plain sentences. No markdown. No bullet points. No leading label.
+- Focus on the most likely cause and the simplest fix.
+- If the error is trivial (obvious typo, command not found for garbage input, permission already correct, etc.), output an empty string.
+- If you are not confident about the cause, output an empty string.`
+
+// BuildExplainMessages returns the message list for an error explanation request.
+// Prior commands are included as context so the LLM understands what the user was doing.
+func BuildExplainMessages(req SuggestRequest) []ChatMessage {
+	system := fmt.Sprintf(explainPromptTemplate, req.Shell, req.OS, req.Cwd)
+	var sb strings.Builder
+	for i, e := range req.Entries {
+		if i < len(req.Entries)-1 {
+			fmt.Fprintf(&sb, "$ %s\n%s\n", e.Command, e.Output)
+		} else {
+			fmt.Fprintf(&sb, "$ %s\n%s\nExit code: %d", e.Command, e.Output, e.ExitCode)
+		}
+	}
+	return []ChatMessage{
+		{Role: "system", Content: system},
+		{Role: "user", Content: sb.String()},
+	}
+}
+
+// ParseExplainResponse cleans up the raw LLM explanation response.
+func ParseExplainResponse(raw string) string {
+	return strings.TrimSpace(raw)
+}
+
 // ParseFinalResponse extracts the structured response from the accumulated
 // token string. Tries full unmarshal first, then falls back to extracting
 // the first '{' … last '}' substring to handle preamble text from the model.

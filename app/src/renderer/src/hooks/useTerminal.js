@@ -62,6 +62,9 @@ export function useTerminal(paneId, callbacksRef) {
         case wire.TypeAISuggestError:
           callbacksRef.current.onAISuggestError?.()
           break
+        case wire.TypeAIExplanation:
+          callbacksRef.current.onAIExplanation?.(msg.data)
+          break
       }
     }
 

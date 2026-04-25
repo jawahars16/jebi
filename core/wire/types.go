@@ -20,4 +20,5 @@ const (
 	TypeAIAppend       = "ai_append"
 	TypeAISuggestion   = "ai_suggestion"
 	TypeAISuggestError = "ai_suggest_error"
+	TypeAIExplanation  = "ai_explanation"
 )

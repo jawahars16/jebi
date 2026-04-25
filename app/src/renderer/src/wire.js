@@ -18,4 +18,5 @@ export const TypeResize   = 'resize'
 export const TypeAIAppend       = 'ai_append'
 export const TypeAISuggestion   = 'ai_suggestion'
 export const TypeAISuggestError = 'ai_suggest_error'
+export const TypeAIExplanation  = 'ai_explanation'
 

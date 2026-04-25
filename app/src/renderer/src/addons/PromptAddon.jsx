@@ -95,6 +95,7 @@ export class PromptAddon {
     return {
       command: last.command,
       output: (this._getOutput(last) || "").slice(0, 500),
+      exitCode: last.exitCode ?? 0,
     };
   }
 
