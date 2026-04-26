@@ -24,6 +24,7 @@ export function TabContextMenu({
   onSplitDown,
   onPickAccent,
   onResetAccent,
+  onTogglePosition,
 }) {
   const ref = useRef(null)
 
@@ -81,6 +82,7 @@ export function TabContextMenu({
 
       <MenuItem onClick={fire(onSplitRight)} shortcut="⌘D">Split Right</MenuItem>
       <MenuItem onClick={fire(onSplitDown)}  shortcut="⌘⇧D">Split Down</MenuItem>
+      <MenuItem onClick={fire(onTogglePosition)}>Toggle Tab Bar</MenuItem>
 
       <MenuSeparator />
 

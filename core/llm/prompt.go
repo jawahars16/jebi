@@ -251,7 +251,7 @@ func BuildProjectContextMessages(info ProjectInfo) []ChatMessage {
 		parts = append(parts, "Kubernetes context: "+fields[0])
 	}
 
-	detected := strings.Join(parts, ", ")
+	detected := "- " + strings.Join(parts, "\n- ")
 
 	system := "You are a terminal assistant. A user just cd'd into a directory.\n" +
 		"You will receive structured facts about the project. Write ONE short sentence surfacing something genuinely useful the user should know.\n\n" +

@@ -4,6 +4,7 @@ import { useSharedHistory } from "../../hooks/useSharedHistory";
 import { setPaneInfo } from "../../hooks/usePaneInfo";
 import { usePreferences } from "../../hooks/usePreferences";
 import { registerCopy, unregisterCopy } from "../../hooks/paneCopyRegistry";
+import { registerFocus, unregisterFocus } from "../../hooks/paneFocusRegistry";
 import OutputArea from "../OutputArea";
 import InputBar from "../InputBar";
 import ExplanationPanel from "../ExplanationPanel";
@@ -51,6 +52,11 @@ export default function TerminalPane({
   useEffect(() => {
     registerCopy(paneId, () => callbacksRef.current.copySelection?.())
     return () => unregisterCopy(paneId)
+  }, [paneId])
+
+  useEffect(() => {
+    registerFocus(paneId, () => inputBarRef.current?.focus())
+    return () => unregisterFocus(paneId)
   }, [paneId])
   // pendingCommandRef holds the command that was just submitted but whose exit
   // code hasn't arrived yet. The OSC 9001 exit-code signal fires asynchronously

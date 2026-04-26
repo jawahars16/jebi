@@ -13,9 +13,11 @@ import (
 )
 
 type chatRequest struct {
-	Model    string        `json:"model"`
-	Messages []ChatMessage `json:"messages"`
-	Stream   bool          `json:"stream"`
+	Model       string        `json:"model"`
+	Messages    []ChatMessage `json:"messages"`
+	Stream      bool          `json:"stream"`
+	Temperature float64       `json:"temperature"`
+	MaxTokens   int           `json:"max_tokens"`
 }
 
 type streamDelta struct {
@@ -48,7 +50,7 @@ func NewStreamClient(endpointURL, model string) *StreamClient {
 // Stream sends a chat completions request and streams tokens back on the
 // returned channel. Closed when the stream ends or ctx is cancelled.
 func (c *StreamClient) Stream(ctx context.Context, messages []ChatMessage) (<-chan ResponseChunk, error) {
-	body, err := json.Marshal(chatRequest{Model: c.model, Messages: messages, Stream: true})
+	body, err := json.Marshal(chatRequest{Model: c.model, Messages: messages, Stream: true, Temperature: 0, MaxTokens: 120})
 	if err != nil {
 		return nil, err
 	}

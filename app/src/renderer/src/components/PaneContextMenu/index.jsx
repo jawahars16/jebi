@@ -1,7 +1,7 @@
 // Right-click context menu for terminal panes.
 // Pure presentational — all actions are passed in as callbacks from App.jsx.
 
-export default function PaneContextMenu({ x, y, canClose, onSplitRight, onSplitDown, onClose, onNewTab, onCopy }) {
+export default function PaneContextMenu({ x, y, canClose, onSplitRight, onSplitDown, onClose, onNewTab, onCopy, onToggleTabPosition }) {
   const menuStyle = {
     position: 'fixed',
     top: y,
@@ -26,6 +26,7 @@ export default function PaneContextMenu({ x, y, canClose, onSplitRight, onSplitD
       <PaneMenuItem onMouseDown={onSplitDown} shortcut="⌘⇧D">Split Down</PaneMenuItem>
       <div style={divStyle} />
       <PaneMenuItem onMouseDown={onNewTab} shortcut="⌘T">New Tab</PaneMenuItem>
+      <PaneMenuItem onMouseDown={onToggleTabPosition}>Toggle Tab Bar</PaneMenuItem>
       {canClose && (
         <>
           <div style={divStyle} />

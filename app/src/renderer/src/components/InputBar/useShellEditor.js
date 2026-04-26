@@ -182,7 +182,7 @@ class AIGhostWidget extends WidgetType {
     text.textContent = this.text
     text.style.cssText = 'color:var(--text-secondary);'
 
-    wrap.appendChild(icon)
+    // wrap.appendChild(icon)
     wrap.appendChild(text)
     return wrap
   }

@@ -36,15 +36,34 @@ export default function ExplanationPanel({ text, onDismiss }) {
   return (
     <div className="relative z-20 flex flex-col">
       {/* Header: bulb icon centered on the AI gradient divider line */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "3px",
+        }}
+      >
         <img
           src={bulbIconUrl}
           className="bg-[var(--bg-surface)]"
-          style={{ width: 24, height: 24, flexShrink: 0, opacity: 0.85, left: 25, position: "absolute" }}
+          style={{
+            width: 24,
+            height: 24,
+            flexShrink: 0,
+            opacity: 1,
+            left: 25,
+            top: -12,
+            position: "absolute",
+          }}
         />
         <div
           className="mx-1"
-          style={{ flex: 1, height: 1, background: "linear-gradient(90deg, #a855f7, #3b82f6)" }}
+          style={{
+            flex: 1,
+            height: 1,
+            background: "linear-gradient(90deg, #a855f7, #3b82f6)",
+          }}
         />
       </div>
       {/* Explanation text */}
@@ -55,7 +74,7 @@ export default function ExplanationPanel({ text, onDismiss }) {
           fontSize: "calc(var(--font-size-mono) * 0.88)",
           color: "#ffffff",
           lineHeight: 1.5,
-        }}
+        }} className="mt-2 -mb-2"
       >
         {renderWithCode(text)}
       </div>

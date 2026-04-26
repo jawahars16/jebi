@@ -6,6 +6,7 @@ import { useSessionStore } from './hooks/useSessionStore.jsx'
 import { usePaneResize } from './hooks/usePaneResize'
 import { deletePaneInfo } from './hooks/usePaneInfo'
 import { triggerCopy } from './hooks/paneCopyRegistry'
+import { triggerFocus } from './hooks/paneFocusRegistry'
 import { createLeaf, splitLeaf, removeLeaf, collectPaneIds, computePaneRects, computeDividers } from './utils/layoutTree'
 import StatusBar from './components/StatusBar/index.jsx'
 import PreferencesModal from './components/Preferences'
@@ -209,6 +210,20 @@ export default function App() {
 
   // --- Keyboard shortcuts ---
 
+  const switchToTab = useCallback((t) => {
+    if (!t) return
+    setActiveTabId(t.id)
+    setTimeout(() => triggerFocus(t.activePaneId), 0)
+  }, [])
+
+  const tabShortcuts = Object.fromEntries(
+    [1,2,3,4,5,6,7,8].map(n => [
+      `Meta+${n}`,
+      () => switchToTab(tabs[n - 1]),
+    ])
+  )
+  tabShortcuts['Meta+9'] = () => switchToTab(tabs[tabs.length - 1])
+
   useKeyboardShortcuts({
     'Meta+t': addTab,
     'Meta+w': closeActivePane,
@@ -219,6 +234,7 @@ export default function App() {
     'Meta+Alt+ArrowLeft':  () => navigatePane('left'),
     'Meta+Alt+ArrowUp':    () => navigatePane('up'),
     'Meta+Alt+ArrowDown':  () => navigatePane('down'),
+    ...tabShortcuts,
   })
 
   // --- Pane count for current tab (to show/hide close button) ---
@@ -230,7 +246,7 @@ export default function App() {
     tabs: tabs.map(t => ({ id: t.id, activePaneId: t.activePaneId, fallbackTitle: t.fallbackTitle, accent: t.accent })),
     activeTabId,
     position: tabBarPosition,
-    onSelectTab: setActiveTabId,
+    onSelectTab: (tabId) => switchToTab(tabs.find(t => t.id === tabId)),
     onCloseTab: closeTab,
     onNewTab: addTab,
     onTogglePosition: toggleTabBarPosition,
@@ -389,6 +405,7 @@ export default function App() {
           onClose={() => { closePane(ctxMenu.tabId, ctxMenu.paneId); setCtxMenu(null) }}
           onNewTab={() => { addTab(); setCtxMenu(null) }}
           onCopy={() => { triggerCopy(ctxMenu.paneId); setCtxMenu(null) }}
+          onToggleTabPosition={() => { toggleTabBarPosition(); setCtxMenu(null) }}
         />
       )}
     </div>
