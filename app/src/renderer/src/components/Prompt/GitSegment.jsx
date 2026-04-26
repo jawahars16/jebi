@@ -5,6 +5,7 @@ import {
   FaArrowUpLong,
 } from "react-icons/fa6";
 import gitIconUrl from "../../assets/git.png";
+import { pillStyle, stopSegmentEvents } from "./segmentStyle";
 
 // GitSegment — branch name, dirty indicator, ahead/behind counts.
 // onClick: in InputBar → runs `git status`; in xterm decoration → copies branch to clipboard.
@@ -20,47 +21,21 @@ export default function GitSegment({
   bare,
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : (compact ? 7 : 10);
-  const paddingV = compact ? 0 : 4;
-
   const bg = bare ? "transparent" : "var(--prompt-git-bg)";
   const fg = "var(--prompt-git-fg)";
   const dirtyColor = "#edf459";
   const upColor = "#e74c3c";
   const downColor = "#27ae60";
 
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : undefined,
-    minHeight: compact ? `${rowHeight}px` : undefined,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default",
-  };
-
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
 
   const title = `Branch: ${branch}${dirty ? " (dirty)" : ""}${ahead ? ` ↑${ahead}` : ""}${behind ? ` ↓${behind}` : ""}`;
 
   return (
     <button
       onClick={onClick}
-      onMouseDown={stopEvents}
-      onPointerDown={stopEvents}
+      onMouseDown={stopSegmentEvents}
+      onPointerDown={stopSegmentEvents}
       title={title}
       style={style}
     >

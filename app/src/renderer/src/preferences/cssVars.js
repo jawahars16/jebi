@@ -12,6 +12,10 @@ const COLOR_TO_VAR = {
 }
 
 // Converts a 6-digit hex color to rgba(r, g, b, alpha).
+// We use manual hex parsing instead of CSS color-mix() because this function
+// runs at cold-start (before any stylesheet is applied) to avoid a flash of
+// default colors on first paint. CSS functions require the browser to have
+// already resolved its cascade, which hasn't happened yet at that point.
 function hexToRgba(hex, alpha) {
   const h = hex.replace('#', '')
   const r = parseInt(h.slice(0, 2), 16)

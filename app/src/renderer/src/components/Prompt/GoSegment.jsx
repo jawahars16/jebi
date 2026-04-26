@@ -1,4 +1,5 @@
 import goIconUrl from "../../assets/go.png";
+import { pillStyle, stopSegmentEvents } from "./segmentStyle";
 
 // GoSegment — Go toolchain version badge.
 // Shown whenever dir is inside a Go module (go.mod walk-up).
@@ -11,45 +12,19 @@ export default function GoSegment({
   bare,
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
-
   const bg = bare ? "transparent" : "var(--prompt-go-bg)";
   const fg = bare ? "var(--prompt-go-tint)" : "var(--prompt-go-fg)";
 
   // "go1.21.3" → "1.21.3"
   const display = version?.startsWith("go") ? version.slice(2) : version;
 
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : undefined,
-    minHeight: compact ? `${rowHeight}px` : undefined,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default",
-  };
-
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
 
   return (
     <button
       onClick={onClick}
-      onMouseDown={stopEvents}
-      onPointerDown={stopEvents}
+      onMouseDown={stopSegmentEvents}
+      onPointerDown={stopSegmentEvents}
       title={`Go ${display}`}
       style={style}
     >

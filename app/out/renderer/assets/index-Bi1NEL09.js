@@ -12683,6 +12683,142 @@ const TAB_ACCENT_PALETTE = [
   "#a855f7",
   "#94a3b8"
 ];
+function TabContextMenu({
+  x,
+  y,
+  tabIndex,
+  totalTabs,
+  currentAccent,
+  onClose,
+  onCloseTab,
+  onCloseToRight,
+  onCloseOthers,
+  onCloseAll,
+  onSplitRight,
+  onSplitDown,
+  onPickAccent,
+  onResetAccent
+}) {
+  const ref = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [onClose]);
+  const MENU_WIDTH = 220;
+  const MENU_HEIGHT = 280;
+  const left = Math.min(x, window.innerWidth - MENU_WIDTH - 8);
+  const top2 = Math.min(y, window.innerHeight - MENU_HEIGHT - 8);
+  const fire = (fn3) => () => {
+    fn3?.();
+    onClose();
+  };
+  const canClose = totalTabs > 1;
+  const canCloseToRight = tabIndex < totalTabs - 1;
+  const canCloseOthers = totalTabs > 1;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      ref,
+      className: "[-webkit-app-region:no-drag]",
+      style: {
+        position: "fixed",
+        left,
+        top: top2,
+        zIndex: 1e3,
+        minWidth: MENU_WIDTH,
+        padding: "6px",
+        backgroundColor: "var(--bg-elevated)",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+        fontFamily: "var(--font-ui)",
+        fontSize: "var(--font-size-ui)"
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseTab), disabled: !canClose, children: "Close" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseToRight), disabled: !canCloseToRight, children: "Close to Right" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseOthers), disabled: !canCloseOthers, children: "Close Others" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseAll), children: "Close All" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuSeparator, {}),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onSplitRight), shortcut: "⌘D", children: "Split Right" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onSplitDown), shortcut: "⌘⇧D", children: "Split Down" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuSeparator, {}),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+          padding: "4px 8px 2px",
+          color: "var(--text-muted)",
+          fontSize: "11px",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em"
+        }, children: "Accent" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-1.5", style: { padding: "6px 8px 4px" }, children: TAB_ACCENT_PALETTE.map((color) => {
+          const selected = currentAccent != null && currentAccent.toLowerCase() === color.toLowerCase();
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              title: color,
+              onClick: fire(() => onPickAccent?.(color)),
+              className: "rounded-full",
+              style: {
+                width: 18,
+                height: 18,
+                backgroundColor: color,
+                border: selected ? "2px solid var(--text-primary)" : "1px solid var(--border)",
+                boxShadow: selected ? `0 0 0 2px ${color}55` : void 0,
+                cursor: "pointer",
+                padding: 0
+              }
+            },
+            color
+          );
+        }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onResetAccent), children: "Reset Accent" })
+      ]
+    }
+  );
+}
+function MenuItem({ children, onClick, disabled, shortcut }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "button",
+    {
+      onClick,
+      disabled,
+      className: "w-full flex items-center justify-between rounded text-left transition-colors",
+      style: {
+        padding: "6px 8px",
+        background: "transparent",
+        border: "none",
+        color: disabled ? "var(--text-muted)" : "var(--text-primary)",
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? "default" : "pointer",
+        fontFamily: "var(--font-ui)",
+        fontSize: "var(--font-size-ui)"
+      },
+      onMouseEnter: (e) => {
+        if (!disabled) e.currentTarget.style.backgroundColor = "var(--bg-base)";
+      },
+      onMouseLeave: (e) => {
+        e.currentTarget.style.backgroundColor = "transparent";
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children }),
+        shortcut && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-muted)", fontSize: "12px", marginLeft: 12 }, children: shortcut })
+      ]
+    }
+  );
+}
+function MenuSeparator() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: 1, backgroundColor: "var(--border)", margin: "4px 0" } });
+}
 function renderTabIcon(info, size) {
   const cmd = info?.runningCommand ?? info?.lastCommand;
   const url = commandIconUrl(hasCommandTitle(info) ? cmd : null);
@@ -12847,7 +12983,7 @@ function TabPill({ tab, isActive, onSelect, onClose, onContextMenu }) {
         borderTopLeftRadius: 6,
         borderTopRightRadius: 6,
         boxShadow: isActive ? "inset 0 -2px 0 var(--tab-accent)" : void 0,
-        "--tab-accent": tab.accent ?? "var(--accent)"
+        "--tab-accent": tab.accent ?? "#3b82f6"
       },
       onMouseEnter: (e) => {
         if (!isActive) e.currentTarget.style.backgroundColor = "var(--bg-elevated)";
@@ -12919,7 +13055,7 @@ function LeftTabPill({ tab, isActive, onSelect, onClose, onContextMenu }) {
         backgroundColor: isActive ? "var(--bg-elevated)" : "transparent",
         borderRadius: 6,
         boxShadow: isActive ? "inset 2px 0 0 var(--tab-accent)" : void 0,
-        "--tab-accent": tab.accent ?? "var(--accent)"
+        "--tab-accent": tab.accent ?? "#3b82f6"
       },
       onMouseEnter: (e) => {
         if (!isActive) e.currentTarget.style.backgroundColor = "var(--bg-elevated)";
@@ -12997,155 +13133,6 @@ function IconButton({ title, onClick, children }) {
     }
   );
 }
-function TabContextMenu({
-  x,
-  y,
-  tabIndex,
-  totalTabs,
-  currentAccent,
-  onClose,
-  onCloseTab,
-  onCloseToRight,
-  onCloseOthers,
-  onCloseAll,
-  onSplitRight,
-  onSplitDown,
-  onPickAccent,
-  onResetAccent
-}) {
-  const ref = reactExports.useRef(null);
-  reactExports.useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    const onDown = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onDown);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDown);
-    };
-  }, [onClose]);
-  const MENU_WIDTH = 220;
-  const MENU_HEIGHT = 280;
-  const left = Math.min(x, window.innerWidth - MENU_WIDTH - 8);
-  const top2 = Math.min(y, window.innerHeight - MENU_HEIGHT - 8);
-  const fire = (fn3) => () => {
-    fn3?.();
-    onClose();
-  };
-  const canClose = totalTabs > 1;
-  const canCloseToRight = tabIndex < totalTabs - 1;
-  const canCloseOthers = totalTabs > 1;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      ref,
-      className: "[-webkit-app-region:no-drag]",
-      style: {
-        position: "fixed",
-        left,
-        top: top2,
-        zIndex: 1e3,
-        minWidth: MENU_WIDTH,
-        padding: "6px",
-        backgroundColor: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: 6,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
-        fontFamily: "var(--font-ui)",
-        fontSize: "var(--font-size-ui)"
-      },
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseTab), disabled: !canClose, children: "Close" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseToRight), disabled: !canCloseToRight, children: "Close to Right" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseOthers), disabled: !canCloseOthers, children: "Close Others" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onCloseAll), children: "Close All" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuSeparator, {}),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onSplitRight), shortcut: "⌘D", children: "Split Right" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onSplitDown), shortcut: "⌘⇧D", children: "Split Down" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuSeparator, {}),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: {
-              padding: "4px 8px 2px",
-              color: "var(--text-muted)",
-              fontSize: "11px",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em"
-            },
-            children: "Accent"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: "flex items-center gap-1.5",
-            style: { padding: "6px 8px 4px" },
-            children: TAB_ACCENT_PALETTE.map((color) => {
-              const selected = currentAccent != null && currentAccent.toLowerCase() === color.toLowerCase();
-              return /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  title: color,
-                  onClick: fire(() => onPickAccent?.(color)),
-                  className: "rounded-full",
-                  style: {
-                    width: 18,
-                    height: 18,
-                    backgroundColor: color,
-                    border: selected ? "2px solid var(--text-primary)" : "1px solid var(--border)",
-                    boxShadow: selected ? `0 0 0 2px ${color}55` : void 0,
-                    cursor: "pointer",
-                    padding: 0
-                  }
-                },
-                color
-              );
-            })
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(MenuItem, { onClick: fire(onResetAccent), children: "Reset Accent" })
-      ]
-    }
-  );
-}
-function MenuItem({ children, onClick, disabled, shortcut }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "button",
-    {
-      onClick,
-      disabled,
-      className: "w-full flex items-center justify-between rounded text-left transition-colors",
-      style: {
-        padding: "6px 8px",
-        background: "transparent",
-        border: "none",
-        color: disabled ? "var(--text-muted)" : "var(--text-primary)",
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? "default" : "pointer",
-        fontFamily: "var(--font-ui)",
-        fontSize: "var(--font-size-ui)"
-      },
-      onMouseEnter: (e) => {
-        if (!disabled) e.currentTarget.style.backgroundColor = "var(--bg-base)";
-      },
-      onMouseLeave: (e) => {
-        e.currentTarget.style.backgroundColor = "transparent";
-      },
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children }),
-        shortcut && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-muted)", fontSize: "12px", marginLeft: 12 }, children: shortcut })
-      ]
-    }
-  );
-}
-function MenuSeparator() {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: 1, backgroundColor: "var(--border)", margin: "4px 0" } });
-}
 const TypeInput = "input";
 const TypeOutput = "output";
 const TypeCwd = "cwd";
@@ -13161,6 +13148,9 @@ const TypeAIAppend = "ai_append";
 const TypeAISuggestion = "ai_suggestion";
 const TypeAISuggestError = "ai_suggest_error";
 const TypeAIExplanation = "ai_explanation";
+const TypeAIBannerStart = "ai_banner_start";
+const TypeAIBannerToken = "ai_banner_token";
+const TypeAIBannerCancel = "ai_banner_cancel";
 function useTerminal(paneId, callbacksRef) {
   const ws2 = reactExports.useRef(null);
   const terminalSizeRef = reactExports.useRef(null);
@@ -13221,7 +13211,17 @@ function useTerminal(paneId, callbacksRef) {
           callbacksRef.current.onAISuggestError?.();
           break;
         case TypeAIExplanation:
-          callbacksRef.current.onAIExplanation?.(msg.data);
+          callbacksRef.current.onAIBannerStart?.("error");
+          callbacksRef.current.onAIBannerToken?.(msg.data);
+          break;
+        case TypeAIBannerStart:
+          callbacksRef.current.onAIBannerStart?.(msg.data?.type ?? "error");
+          break;
+        case TypeAIBannerToken:
+          callbacksRef.current.onAIBannerToken?.(msg.data);
+          break;
+        case TypeAIBannerCancel:
+          callbacksRef.current.onAIBannerCancel?.();
           break;
       }
     };
@@ -13324,6 +13324,277 @@ function useSharedHistory() {
   }
   return { push, navigate, getAll, isNavigating, resetNavigation };
 }
+const THEME_IDS = [
+  "default",
+  "catppuccin-mocha",
+  "tokyo-night",
+  "gruvbox",
+  "nord",
+  "dracula"
+];
+const THEMES = {
+  "default": {
+    id: "default",
+    name: "Default",
+    colors: {
+      bgBase: "#141416",
+      bgSurface: "#141416",
+      bgElevated: "#1c1c1f",
+      border: "#2a2a2e",
+      textPrimary: "#e8e8ea",
+      textSecondary: "#9898a6",
+      textMuted: "#6b6b72",
+      accent: "#7c6af7",
+      onAccent: "#ffffff",
+      error: "#f85149"
+    }
+  },
+  "catppuccin-mocha": {
+    id: "catppuccin-mocha",
+    name: "Catppuccin Mocha",
+    colors: {
+      bgBase: "#1e1e2e",
+      bgSurface: "#181825",
+      bgElevated: "#313244",
+      border: "#45475a",
+      textPrimary: "#cdd6f4",
+      textSecondary: "#a6adc8",
+      textMuted: "#585b70",
+      accent: "#cba6f7",
+      onAccent: "#1e1e2e",
+      error: "#f38ba8"
+    }
+  },
+  "tokyo-night": {
+    id: "tokyo-night",
+    name: "Tokyo Night",
+    colors: {
+      bgBase: "#1a1b26",
+      bgSurface: "#16161e",
+      bgElevated: "#24283b",
+      border: "#292e42",
+      textPrimary: "#c0caf5",
+      textSecondary: "#9aa5ce",
+      textMuted: "#565f89",
+      accent: "#7aa2f7",
+      onAccent: "#1a1b26",
+      error: "#f7768e"
+    }
+  },
+  "gruvbox": {
+    id: "gruvbox",
+    name: "Gruvbox Dark",
+    colors: {
+      bgBase: "#282828",
+      bgSurface: "#1d2021",
+      bgElevated: "#3c3836",
+      border: "#504945",
+      textPrimary: "#ebdbb2",
+      textSecondary: "#bdae93",
+      textMuted: "#7c6f64",
+      accent: "#d3869b",
+      onAccent: "#282828",
+      error: "#fb4934"
+    }
+  },
+  "nord": {
+    id: "nord",
+    name: "Nord",
+    colors: {
+      bgBase: "#2e3440",
+      bgSurface: "#242933",
+      bgElevated: "#3b4252",
+      border: "#434c5e",
+      textPrimary: "#eceff4",
+      textSecondary: "#d8dee9",
+      textMuted: "#616e88",
+      accent: "#88c0d0",
+      onAccent: "#2e3440",
+      error: "#bf616a"
+    }
+  },
+  "dracula": {
+    id: "dracula",
+    name: "Dracula",
+    colors: {
+      bgBase: "#282a36",
+      bgSurface: "#21222c",
+      bgElevated: "#373844",
+      border: "#44475a",
+      textPrimary: "#f8f8f2",
+      textSecondary: "#6272a4",
+      textMuted: "#44475a",
+      accent: "#bd93f9",
+      onAccent: "#282a36",
+      error: "#ff5555"
+    }
+  }
+};
+const FONT_OPTIONS = [
+  { label: "JetBrains Mono", value: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" },
+  { label: "Fira Code", value: "'Fira Code', 'Cascadia Code', monospace" },
+  { label: "Cascadia Code", value: "'Cascadia Code', 'Consolas', monospace" },
+  { label: "SF Mono", value: "'SF Mono', ui-monospace, monospace" },
+  { label: "Menlo", value: "Menlo, 'DejaVu Sans Mono', monospace" },
+  { label: "Monaco", value: "Monaco, 'Lucida Console', monospace" },
+  { label: "IBM Plex Mono", value: "'IBM Plex Mono', 'Courier New', monospace" },
+  { label: "Courier New", value: "'Courier New', Courier, monospace" }
+];
+const DEFAULT_PREFS = {
+  themeId: "default",
+  customColors: { ...THEMES["default"].colors },
+  fontFamily: FONT_OPTIONS[0].value,
+  fontSize: 15,
+  promptStyleId: "wave",
+  aiExplainErrors: true,
+  aiDirectoryContext: true
+};
+const COLOR_TO_VAR = {
+  bgBase: "--bg-base",
+  bgSurface: "--bg-surface",
+  bgElevated: "--bg-elevated",
+  border: "--border",
+  textPrimary: "--text-primary",
+  textSecondary: "--text-secondary",
+  textMuted: "--text-muted",
+  accent: "--accent",
+  onAccent: "--on-accent",
+  error: "--error"
+};
+function hexToRgba(hex, alpha) {
+  const h2 = hex.replace("#", "");
+  const r = parseInt(h2.slice(0, 2), 16);
+  const g = parseInt(h2.slice(2, 4), 16);
+  const b2 = parseInt(h2.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b2}, ${alpha})`;
+}
+function applyThemeToCSSVars(colors, fontSize, fontFamily) {
+  const el2 = document.documentElement;
+  for (const [key, varName] of Object.entries(COLOR_TO_VAR)) {
+    if (colors[key]) el2.style.setProperty(varName, colors[key]);
+  }
+  if (colors.accent) {
+    el2.style.setProperty("--accent-glow", hexToRgba(colors.accent, 0.15));
+  }
+  if (fontSize) {
+    el2.style.setProperty("--font-size-mono", `${fontSize}px`);
+  }
+  if (fontFamily) {
+    el2.style.setProperty("--font-mono", fontFamily);
+  }
+}
+const PROMPT_STYLES = [
+  {
+    id: "wave",
+    name: "Rounded",
+    group: { radius: "dynamic", connected: true, rightCap: "round" },
+    separator: "wave"
+  },
+  {
+    id: "pill",
+    name: "Pill",
+    group: { radius: "pill", connected: false, rightCap: "round" },
+    separator: "none"
+  },
+  {
+    id: "minimal",
+    name: "Minimal",
+    group: { radius: 0, connected: false, rightCap: "none" },
+    separator: "dot"
+  }
+];
+function getPromptStyle(id) {
+  return PROMPT_STYLES.find((s15) => s15.id === id) ?? PROMPT_STYLES[0];
+}
+let currentId = PROMPT_STYLES[0].id;
+const listeners = /* @__PURE__ */ new Set();
+function getPromptStyleId() {
+  return currentId;
+}
+function setPromptStyleId(id) {
+  if (id === currentId) return;
+  currentId = id;
+  listeners.forEach((fn3) => fn3());
+}
+function subscribePromptStyle(fn3) {
+  listeners.add(fn3);
+  return () => listeners.delete(fn3);
+}
+const STORAGE_KEY = "term-prefs";
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+  } catch {
+  }
+  return DEFAULT_PREFS;
+}
+const PreferencesContext = reactExports.createContext(null);
+function PreferencesProvider({ children }) {
+  const [prefs, setPrefs] = reactExports.useState(() => {
+    const loaded = loadPrefs();
+    const colors = loaded.themeId === "custom" ? loaded.customColors : THEMES[loaded.themeId]?.colors ?? THEMES["default"].colors;
+    applyThemeToCSSVars(colors, loaded.fontSize, loaded.fontFamily);
+    setPromptStyleId(loaded.promptStyleId);
+    return loaded;
+  });
+  reactExports.useEffect(() => {
+    const colors = prefs.themeId === "custom" ? prefs.customColors : THEMES[prefs.themeId]?.colors ?? THEMES["default"].colors;
+    applyThemeToCSSVars(colors, prefs.fontSize, prefs.fontFamily);
+    setPromptStyleId(prefs.promptStyleId);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    } catch {
+    }
+  }, [prefs]);
+  const activeColors = reactExports.useMemo(
+    () => prefs.themeId === "custom" ? prefs.customColors : THEMES[prefs.themeId]?.colors ?? THEMES["default"].colors,
+    [prefs.themeId, prefs.customColors]
+  );
+  function setTheme(id) {
+    setPrefs((prev) => {
+      if (id === "custom") {
+        const base2 = THEMES[prev.themeId]?.colors ?? prev.customColors;
+        return { ...prev, themeId: "custom", customColors: { ...base2 } };
+      }
+      return { ...prev, themeId: id };
+    });
+  }
+  function setCustomColor(key, value2) {
+    setPrefs((prev) => ({
+      ...prev,
+      themeId: "custom",
+      customColors: { ...prev.customColors, [key]: value2 }
+    }));
+  }
+  function setFontFamily(value2) {
+    setPrefs((prev) => ({ ...prev, fontFamily: value2 }));
+  }
+  function setFontSize(value2) {
+    const clamped = Math.min(22, Math.max(11, Math.round(Number(value2))));
+    setPrefs((prev) => ({ ...prev, fontSize: clamped }));
+  }
+  function setPromptStyle(id) {
+    setPrefs((prev) => ({ ...prev, promptStyleId: id }));
+  }
+  function setAiExplainErrors(value2) {
+    setPrefs((prev) => ({ ...prev, aiExplainErrors: value2 }));
+  }
+  function setAiDirectoryContext(value2) {
+    setPrefs((prev) => ({ ...prev, aiDirectoryContext: value2 }));
+  }
+  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle, setAiExplainErrors, setAiDirectoryContext };
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(PreferencesContext.Provider, { value, children });
+}
+function usePreferences() {
+  const ctx = reactExports.useContext(PreferencesContext);
+  if (!ctx) throw new Error("usePreferences must be used inside PreferencesProvider");
+  return ctx;
+}
+const registry = /* @__PURE__ */ new Map();
+const registerCopy = (paneId, fn3) => registry.set(paneId, fn3);
+const unregisterCopy = (paneId) => registry.delete(paneId);
+const triggerCopy = (paneId) => registry.get(paneId)?.();
 /**
  * Copyright (c) 2014-2024 The xterm.js authors. All rights reserved.
  * @license MIT
@@ -24775,22 +25046,10 @@ function FaRegCopy(props) {
   return GenIcon({ "attr": { "viewBox": "0 0 448 512" }, "child": [{ "tag": "path", "attr": { "d": "M433.941 65.941l-51.882-51.882A48 48 0 0 0 348.118 0H176c-26.51 0-48 21.49-48 48v48H48c-26.51 0-48 21.49-48 48v320c0 26.51 21.49 48 48 48h224c26.51 0 48-21.49 48-48v-48h80c26.51 0 48-21.49 48-48V99.882a48 48 0 0 0-14.059-33.941zM266 464H54a6 6 0 0 1-6-6V150a6 6 0 0 1 6-6h74v224c0 26.51 21.49 48 48 48h96v42a6 6 0 0 1-6 6zm128-96H182a6 6 0 0 1-6-6V54a6 6 0 0 1 6-6h106v88c0 13.255 10.745 24 24 24h88v202a6 6 0 0 1-6 6zm6-256h-64V48h9.632c1.591 0 3.117.632 4.243 1.757l48.368 48.368a6 6 0 0 1 1.757 4.243V112z" }, "child": [] }] })(props);
 }
 const errorIconUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAAClUlEQVRoge2YPWsUQRzGf3N3u3NqcSGJpLWICEqwF4kmCAq+VWIhWEkQo4V2gqBgKSSCYucHMJ9ACzlPREurCBKENBJBjFho7nLJjcXp3bp3u/Oysyi4v2phZv8v98w++9+DgoKCgoL/GZFXYNWoToN6jECwLS6JmeaLPPLk0oCqM0JJrgDjv9KsEzT3ikOs+85V8h2wG1Xeplc8gBplU97KI5V3BVRdTlJiGQhjS23KTInDrfc+8/lXQLDIYPEAAdvc85/OI6pRnQX1XJPxhJhuPfOV01sDaokyE/ItMKXZ+o5O66CYYctHXn9HaEJeRl88wH6EnPOV1osCg7apTevNVv0oMGCbOvzZamYFkmzz+sIBvnwLABirtVm8sRy/1YutZlcgwTaDSqd3HQad+DJ4stVMDahGdRbBqWFr0aKjzcQ4rV7K41lqcG5ALVEGdT9pPaio3nUYuR4MxIKqU3Gtw10BjW2GFSMFIKOtOjWg6owAd9L2RIsOhj8DfYS4q14z6lKLmwIGthkE/WMTpB0hIIutWjeg6nISuKLbFz1CYfoR6iK4ql7Jfbb12CuQPG3+QfRX1yvQ3eZiq1YNpNnmQDX698AwrG3VuAGdbcYxfA8MSWRnq+YKmE+bgLMCYGmrRrOQ/bSZFfNp1UwB62kzK+a2qlUg5SM9ldW1nTx9s5uw0uHskU+M1do2t4PhtKp/WAxtM86DJ3v4/LV72/eNMtfOr9qG+G2rZ9I2pR4hG9uM86PZD73RKruEAANbTWzA1jbjXDz5kV07thivbXLu2JprGK2tJj4DqiHngYfumT2imBdHW4+GLaUdoZs5lWOPSK4ln/9G/ZM4TKU1MIfgQw7F2LKCEhf+dhEFBQUFBf8mPwFJK7u37cmRmgAAAABJRU5ErkJggg==";
-function CwdSegment({
-  cwd,
-  exitCode = 0,
-  rowHeight,
-  iconSize,
-  onClick,
-  segmentRadius,
-  bare
-}) {
-  const compact = rowHeight != null;
+function pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick }) {
   const paddingH = bare ? 0 : compact ? 7 : 10;
   const paddingV = compact ? 0 : 4;
-  const hasError = exitCode > 0;
-  const bg = bare ? "transparent" : "color-mix(in srgb, var(--tab-accent) var(--prompt-tint-strength), var(--bg-elevated))";
-  const fg = bare ? "var(--accent)" : "var(--prompt-cwd-fg)";
-  const style = {
+  return {
     display: "inline-flex",
     alignItems: "center",
     gap: "5px",
@@ -24807,19 +25066,37 @@ function CwdSegment({
     fontWeight: 500,
     border: "none",
     borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default",
-    boxShadow: bare ? void 0 : "inset 6px 0 0 var(--tab-accent)"
+    cursor: onClick ? "pointer" : "default"
   };
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
+}
+function stopSegmentEvents(e) {
+  e.stopPropagation();
+  e.preventDefault();
+}
+function CwdSegment({
+  cwd,
+  exitCode = 0,
+  rowHeight,
+  iconSize,
+  onClick,
+  segmentRadius,
+  bare
+}) {
+  const compact = rowHeight != null;
+  const hasError = exitCode > 0;
+  const bg = bare ? "transparent" : "color-mix(in srgb, var(--tab-accent) var(--prompt-tint-strength), var(--bg-elevated))";
+  const fg = bare ? "var(--accent)" : "var(--prompt-cwd-fg)";
+  const style = {
+    ...pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick }),
+    // Left accent bar — a thin inset shadow that matches the tab accent color.
+    boxShadow: bare ? void 0 : "inset 6px 0 0 var(--tab-accent)"
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       onClick,
-      onMouseDown: stopEvents,
-      onPointerDown: stopEvents,
+      onMouseDown: stopSegmentEvents,
+      onPointerDown: stopSegmentEvents,
       title: cwd,
       style,
       children: [
@@ -24882,43 +25159,19 @@ function GitSegment({
   bare
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
   const bg = bare ? "transparent" : "var(--prompt-git-bg)";
   const fg = "var(--prompt-git-fg)";
   const dirtyColor = "#edf459";
   const upColor = "#e74c3c";
   const downColor = "#27ae60";
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : void 0,
-    minHeight: compact ? `${rowHeight}px` : void 0,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default"
-  };
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
   const title = `Branch: ${branch}${dirty ? " (dirty)" : ""}${ahead ? ` ↑${ahead}` : ""}${behind ? ` ↓${behind}` : ""}`;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       onClick,
-      onMouseDown: stopEvents,
-      onPointerDown: stopEvents,
+      onMouseDown: stopSegmentEvents,
+      onPointerDown: stopSegmentEvents,
       title,
       style,
       children: [
@@ -24992,39 +25245,15 @@ function NodeSegment({
   bare
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
   const bg = bare ? "transparent" : "var(--prompt-node-bg)";
   const fg = "var(--prompt-node-fg)";
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : void 0,
-    minHeight: compact ? `${rowHeight}px` : void 0,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default"
-  };
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       onClick,
-      onMouseDown: stopEvents,
-      onPointerDown: stopEvents,
+      onMouseDown: stopSegmentEvents,
+      onPointerDown: stopSegmentEvents,
       title: `Node ${version} · ${packageManager}`,
       style,
       children: [
@@ -25064,40 +25293,16 @@ function GoSegment({
   bare
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
   const bg = bare ? "transparent" : "var(--prompt-go-bg)";
   const fg = bare ? "var(--prompt-go-tint)" : "var(--prompt-go-fg)";
   const display = version?.startsWith("go") ? version.slice(2) : version;
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : void 0,
-    minHeight: compact ? `${rowHeight}px` : void 0,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default"
-  };
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       onClick,
-      onMouseDown: stopEvents,
-      onPointerDown: stopEvents,
+      onMouseDown: stopSegmentEvents,
+      onPointerDown: stopSegmentEvents,
       title: `Go ${display}`,
       style,
       children: [
@@ -25138,40 +25343,16 @@ function PythonSegment({
   bare
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
   const bg = bare ? "transparent" : "var(--prompt-python-bg)";
   const fg = "var(--prompt-python-fg)";
   const label = venv ? `${version} (${venv})` : version;
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : void 0,
-    minHeight: compact ? `${rowHeight}px` : void 0,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default"
-  };
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       onClick,
-      onMouseDown: stopEvents,
-      onPointerDown: stopEvents,
+      onMouseDown: stopSegmentEvents,
+      onPointerDown: stopSegmentEvents,
       title: `Python ${label}`,
       style,
       children: [
@@ -25201,40 +25382,16 @@ function DockerSegment({
   bare
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
   const bg = bare ? "transparent" : "var(--prompt-docker-bg)";
   const fg = "var(--prompt-docker-fg)";
   const label = kind === "compose" ? "compose" : "docker";
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : void 0,
-    minHeight: compact ? `${rowHeight}px` : void 0,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default"
-  };
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       onClick,
-      onMouseDown: stopEvents,
-      onPointerDown: stopEvents,
+      onMouseDown: stopSegmentEvents,
+      onPointerDown: stopSegmentEvents,
       title: kind === "compose" ? "Docker Compose project" : "Dockerfile present",
       style,
       children: [
@@ -25268,40 +25425,16 @@ function K8sSegment({
   bare
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
   const bg = bare ? "transparent" : "var(--prompt-k8s-bg)";
   const fg = "var(--prompt-k8s-fg)";
   const label = namespace && namespace !== "default" ? `${context}:${namespace}` : context;
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : void 0,
-    minHeight: compact ? `${rowHeight}px` : void 0,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default"
-  };
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       onClick,
-      onMouseDown: stopEvents,
-      onPointerDown: stopEvents,
+      onMouseDown: stopSegmentEvents,
+      onPointerDown: stopSegmentEvents,
       title: `kubectl context: ${context} · namespace: ${namespace || "default"}`,
       style,
       children: [
@@ -25407,55 +25540,6 @@ function DotSeparator() {
       children: "·"
     }
   );
-}
-const PROMPT_STYLES = [
-  {
-    id: "wave",
-    name: "Wave",
-    group: { radius: "dynamic", connected: true, rightCap: "round" },
-    separator: "wave"
-  },
-  {
-    id: "powerline",
-    name: "Powerline",
-    group: { radius: 0, connected: true, rightCap: "triangle" },
-    separator: "triangle"
-  },
-  {
-    id: "pill",
-    name: "Pill",
-    group: { radius: "pill", connected: false, rightCap: "round" },
-    separator: "none"
-  },
-  {
-    id: "slant",
-    name: "Slant",
-    group: { radius: 0, connected: true, rightCap: "slant" },
-    separator: "slash"
-  },
-  {
-    id: "minimal",
-    name: "Minimal",
-    group: { radius: 0, connected: false, rightCap: "none" },
-    separator: "dot"
-  }
-];
-function getPromptStyle(id) {
-  return PROMPT_STYLES.find((s15) => s15.id === id) ?? PROMPT_STYLES[0];
-}
-let currentId = PROMPT_STYLES[0].id;
-const listeners = /* @__PURE__ */ new Set();
-function getPromptStyleId() {
-  return currentId;
-}
-function setPromptStyleId(id) {
-  if (id === currentId) return;
-  currentId = id;
-  listeners.forEach((fn3) => fn3());
-}
-function subscribePromptStyle(fn3) {
-  listeners.add(fn3);
-  return () => listeners.delete(fn3);
 }
 const infoIconUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAABmJLR0QA/wD/AP+gvaeTAAAENUlEQVRoge2a3W+URRTGn6GmdtsCmxJFa7wxFFqMemskCpKgNxJIjHeoIRI0RBMjF/ofiInxysQExb9DYpMWgmwFJaZFURTUmPJlNEIL1aTk58Wcd3eAZT9mZtfG8Nyc7LxznnPOzjtnZs470h0sLbhcRMCQpI2SNkhaL+khSfdKGrAuVyVdknRG0ilJRyQdds79mcuHaAAl4GVgHLhO+7gOfA68BJRSfIkaEWBA0huS3pS02poXJB2VNClpRtJpSRckzdvzQUn3SVon6RFJmyQ9IanPnl+U9IGkD51z12L8agvAduDX4F+tADuBFRFcK0x3KuD7BdjWCd8Lo/3Ap4HBKeDpjPybgS8D/gNAfy7+wsgDwLQZmAN2A8uyGvF2lgGvmQ2Ab4DhXOQjNtxYMOuyEDe2OQrMmM2fgZFUwmEjApgEVmbytRXbg5bRAH4DHowl6g9epwmgr7lWXuDT+6HgNWs/RQcTezpmJIBe4D3gHDAL7AN6I3jKwEnz5eN2lbcHEztqTpjjN2NfJNcYMG8cW1tVGqC2TuyOMWw8s3UCmU3g22McZ1t6xYB3TKFCQortQCA9wHHj2duscwm4YJ2TFrvbvFrvJnJuMZ5zNEo++A0gQCXFoHH1WjCzJEz2OrzF6r+jUadx67Qz1WCnAOwyHw/ersMQflt9jYgNYLcArAT+BhaBctEeTuZN9vuoc+5Ktx1sFc65y5IqknokPVW0h4FsMDnZPbeiMWHyyaLhruDhmMnpVCsA9dqdc7mO1jMmR4uGcETWmDydyVgn8YPJ6q44DGSVyUupVpwhlacBCh+HioYwkEGT81r6mDNZza7ZT3n/FcJAwmrHUsdyk9VlIgzkD5OrtfRR+Fgt7oWB/Ggy7XzcHaw1Wc2wYSCnTD7WNXfi8ajJ74uGMJAvTG7smjvxKI4YR255YpvGRWAh16bx5sNIJs5yw02jVcUn5Wuxz+cw2iG8IOluSePOub/q9sBXxQGmcljs0Igca+Vg1WfHyOSjrvFlDQR41qjO06wAAbxtnY+TWN/NGQi+Llwcc99qRaGfWq331UijDRHJ+bqpn2k6GoHSNlOaA0aba9yinzUQ4GHgqqk/167yAVOcoYvF6zp+lIFvzZf9MQT9+MIx+Ep80je+GODrbIfNhxPRPnDjZ4UKsKq5Vh7YSBSV+LPA/amEI0EwJ4Gx5lppANYD3wVBrGmu1RrxcPCazeMLyp349NZj2amY2CeSR6KOkRLwSZB8vgK2ZOR/Bvg64N/f0XkJbLXhLnAMeCUms9k82EVt2wF+nWgvxSr+wkBJ0h5JeyUVQ/+PfAVwQjdeGCgKBcvlLwyslb8wsFnS4/IbQEk6L+l9SR855xZi/IoGfm/2InAQv61uF4vAZ8AOEr9R5rxUU1btUs2YfMHvHtUKBXOSfpf0k2qXag5ZLfcO/nf4F4R5bN5b+fzpAAAAAElFTkSuQmCC";
 function formatDuration(ms3) {
@@ -25794,7 +25878,7 @@ function Prompt({
                         animation: "slideInRight 0.15s ease-out"
                       },
                       children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: new Date(startTime).toLocaleTimeString() }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: new Date(startTime).toLocaleTimeString(void 0, { hour: "numeric", minute: "2-digit", hour12: true }) }),
                         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { opacity: 0.5 }, children: "·" }),
                         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatDuration(duration) })
                       ]
@@ -26138,228 +26222,6 @@ class PromptAddon {
     this._commands.push(entry);
   }
 }
-const THEME_IDS = [
-  "default",
-  "catppuccin-mocha",
-  "tokyo-night",
-  "gruvbox",
-  "nord",
-  "dracula"
-];
-const THEMES = {
-  "default": {
-    id: "default",
-    name: "Default",
-    colors: {
-      bgBase: "#141416",
-      bgSurface: "#141416",
-      bgElevated: "#1c1c1f",
-      border: "#2a2a2e",
-      textPrimary: "#e8e8ea",
-      textSecondary: "#9898a6",
-      textMuted: "#6b6b72",
-      accent: "#7c6af7",
-      onAccent: "#ffffff",
-      error: "#f85149"
-    }
-  },
-  "catppuccin-mocha": {
-    id: "catppuccin-mocha",
-    name: "Catppuccin Mocha",
-    colors: {
-      bgBase: "#1e1e2e",
-      bgSurface: "#181825",
-      bgElevated: "#313244",
-      border: "#45475a",
-      textPrimary: "#cdd6f4",
-      textSecondary: "#a6adc8",
-      textMuted: "#585b70",
-      accent: "#cba6f7",
-      onAccent: "#1e1e2e",
-      error: "#f38ba8"
-    }
-  },
-  "tokyo-night": {
-    id: "tokyo-night",
-    name: "Tokyo Night",
-    colors: {
-      bgBase: "#1a1b26",
-      bgSurface: "#16161e",
-      bgElevated: "#24283b",
-      border: "#292e42",
-      textPrimary: "#c0caf5",
-      textSecondary: "#9aa5ce",
-      textMuted: "#565f89",
-      accent: "#7aa2f7",
-      onAccent: "#1a1b26",
-      error: "#f7768e"
-    }
-  },
-  "gruvbox": {
-    id: "gruvbox",
-    name: "Gruvbox Dark",
-    colors: {
-      bgBase: "#282828",
-      bgSurface: "#1d2021",
-      bgElevated: "#3c3836",
-      border: "#504945",
-      textPrimary: "#ebdbb2",
-      textSecondary: "#bdae93",
-      textMuted: "#7c6f64",
-      accent: "#d3869b",
-      onAccent: "#282828",
-      error: "#fb4934"
-    }
-  },
-  "nord": {
-    id: "nord",
-    name: "Nord",
-    colors: {
-      bgBase: "#2e3440",
-      bgSurface: "#242933",
-      bgElevated: "#3b4252",
-      border: "#434c5e",
-      textPrimary: "#eceff4",
-      textSecondary: "#d8dee9",
-      textMuted: "#616e88",
-      accent: "#88c0d0",
-      onAccent: "#2e3440",
-      error: "#bf616a"
-    }
-  },
-  "dracula": {
-    id: "dracula",
-    name: "Dracula",
-    colors: {
-      bgBase: "#282a36",
-      bgSurface: "#21222c",
-      bgElevated: "#373844",
-      border: "#44475a",
-      textPrimary: "#f8f8f2",
-      textSecondary: "#6272a4",
-      textMuted: "#44475a",
-      accent: "#bd93f9",
-      onAccent: "#282a36",
-      error: "#ff5555"
-    }
-  }
-};
-const FONT_OPTIONS = [
-  { label: "JetBrains Mono", value: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" },
-  { label: "Fira Code", value: "'Fira Code', 'Cascadia Code', monospace" },
-  { label: "Cascadia Code", value: "'Cascadia Code', 'Consolas', monospace" },
-  { label: "SF Mono", value: "'SF Mono', ui-monospace, monospace" },
-  { label: "Menlo", value: "Menlo, 'DejaVu Sans Mono', monospace" },
-  { label: "Monaco", value: "Monaco, 'Lucida Console', monospace" },
-  { label: "IBM Plex Mono", value: "'IBM Plex Mono', 'Courier New', monospace" },
-  { label: "Courier New", value: "'Courier New', Courier, monospace" }
-];
-const DEFAULT_PREFS = {
-  themeId: "default",
-  customColors: { ...THEMES["default"].colors },
-  fontFamily: FONT_OPTIONS[0].value,
-  fontSize: 15,
-  promptStyleId: "wave"
-};
-const COLOR_TO_VAR = {
-  bgBase: "--bg-base",
-  bgSurface: "--bg-surface",
-  bgElevated: "--bg-elevated",
-  border: "--border",
-  textPrimary: "--text-primary",
-  textSecondary: "--text-secondary",
-  textMuted: "--text-muted",
-  accent: "--accent",
-  onAccent: "--on-accent",
-  error: "--error"
-};
-function hexToRgba(hex, alpha) {
-  const h2 = hex.replace("#", "");
-  const r = parseInt(h2.slice(0, 2), 16);
-  const g = parseInt(h2.slice(2, 4), 16);
-  const b2 = parseInt(h2.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b2}, ${alpha})`;
-}
-function applyThemeToCSSVars(colors, fontSize, fontFamily) {
-  const el2 = document.documentElement;
-  for (const [key, varName] of Object.entries(COLOR_TO_VAR)) {
-    if (colors[key]) el2.style.setProperty(varName, colors[key]);
-  }
-  if (colors.accent) {
-    el2.style.setProperty("--accent-glow", hexToRgba(colors.accent, 0.15));
-  }
-  if (fontSize) {
-    el2.style.setProperty("--font-size-mono", `${fontSize}px`);
-  }
-  if (fontFamily) {
-    el2.style.setProperty("--font-mono", fontFamily);
-  }
-}
-const STORAGE_KEY = "term-prefs";
-function loadPrefs() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
-  } catch {
-  }
-  return DEFAULT_PREFS;
-}
-const PreferencesContext = reactExports.createContext(null);
-function PreferencesProvider({ children }) {
-  const [prefs, setPrefs] = reactExports.useState(() => {
-    const loaded = loadPrefs();
-    const colors = loaded.themeId === "custom" ? loaded.customColors : THEMES[loaded.themeId]?.colors ?? THEMES["default"].colors;
-    applyThemeToCSSVars(colors, loaded.fontSize, loaded.fontFamily);
-    setPromptStyleId(loaded.promptStyleId);
-    return loaded;
-  });
-  reactExports.useEffect(() => {
-    const colors = prefs.themeId === "custom" ? prefs.customColors : THEMES[prefs.themeId]?.colors ?? THEMES["default"].colors;
-    applyThemeToCSSVars(colors, prefs.fontSize, prefs.fontFamily);
-    setPromptStyleId(prefs.promptStyleId);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-    } catch {
-    }
-  }, [prefs]);
-  const activeColors = reactExports.useMemo(
-    () => prefs.themeId === "custom" ? prefs.customColors : THEMES[prefs.themeId]?.colors ?? THEMES["default"].colors,
-    [prefs.themeId, prefs.customColors]
-  );
-  function setTheme(id) {
-    setPrefs((prev) => {
-      if (id === "custom") {
-        const base2 = THEMES[prev.themeId]?.colors ?? prev.customColors;
-        return { ...prev, themeId: "custom", customColors: { ...base2 } };
-      }
-      return { ...prev, themeId: id };
-    });
-  }
-  function setCustomColor(key, value2) {
-    setPrefs((prev) => ({
-      ...prev,
-      themeId: "custom",
-      customColors: { ...prev.customColors, [key]: value2 }
-    }));
-  }
-  function setFontFamily(value2) {
-    setPrefs((prev) => ({ ...prev, fontFamily: value2 }));
-  }
-  function setFontSize(value2) {
-    const clamped = Math.min(22, Math.max(11, Math.round(Number(value2))));
-    setPrefs((prev) => ({ ...prev, fontSize: clamped }));
-  }
-  function setPromptStyle(id) {
-    setPrefs((prev) => ({ ...prev, promptStyleId: id }));
-  }
-  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle };
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(PreferencesContext.Provider, { value, children });
-}
-function usePreferences() {
-  const ctx = reactExports.useContext(PreferencesContext);
-  if (!ctx) throw new Error("usePreferences must be used inside PreferencesProvider");
-  return ctx;
-}
 const BUFFER_CAP = 512 * 1024;
 const TUI_ENTER = "\x1B[?1049h";
 const TUI_EXIT = "\x1B[?1049l";
@@ -26437,6 +26299,13 @@ function OutputArea({
       term.onResize(({ cols, rows }) => sendResizeRef.current?.(cols, rows));
       term.open(xtermContainerRef.current);
       term.attachCustomKeyEventHandler((e) => {
+        if (e.type === "keydown" && e.metaKey && e.key === "c" && !e.shiftKey && !e.altKey) {
+          const sel = term.getSelection();
+          if (sel && !promptAddonRef.current?._tuiActive) {
+            navigator.clipboard.writeText(sel);
+            return false;
+          }
+        }
         if (e.type === "keydown" && !callbacksRef.current.isRunning?.()) {
           callbacksRef.current.focusInput?.();
           return false;
@@ -26461,6 +26330,10 @@ function OutputArea({
       callbacksRef.current.focusTerm = () => term.focus();
       callbacksRef.current.clearScrollback = () => term.clear();
       callbacksRef.current.copyLastOutput = () => promptAddon.copyLastOutput();
+      callbacksRef.current.copySelection = () => {
+        const sel = term.getSelection();
+        if (sel) navigator.clipboard.writeText(sel);
+      };
       callbacksRef.current.getLastEntry = () => promptAddon.getLastEntry();
       callbacksRef.current.onOutput = (data) => {
         if (data.includes(TUI_ENTER)) promptAddon.enterTui();
@@ -45184,7 +45057,7 @@ const SHELL_COLORS = {
   // soft green — consistent across themes
   variable: "#f0c674"
 };
-const bulbIconUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAADzElEQVRoge3ZWahVdRTH8X2s63AzK5PoWtFIECXSIBhFlEH1EFEPEZE0UJFEQgVZDz1cyFIIzMyHAqMJgwakQqICowiSIHpIlOaybLCSuqnl1dv99LDX4fw9nnPPfLeGv5fN/g9rffd/Xv+dZQf1PxCm4m38iWVF87QsDNpblxbN1LTQh58C/M14rimaq2nhuoDeiGOwCyM4sWi2poT34gMWxPuL8f5Q0WwNhdkBO4TDI+3CSPsFU4pmHFN4I2CXV6V/EumLimJrKFwQkLtwQlXetZG3DUcUxVhXOAyfBuSSGvklfBj5zxTBWFcB91LAfYGpdcrNwj9R7q7x5qypgF8SUH/jnAblF0TZ3bhqvDjrwUzC6gDag6ubrPdo1BnB3b3mrAcxBx8lk/aaFuqWsFRFq3FcL3lT5yfheYyG882Y06atm7Az7OyQn596s0LhfLwc3V4eMisxrUO7p+GdpDf+wmM4uRvQJfn6vT5xMIxncXrHDvb2NQ/rEj8jeBVzOzH6ZGLwdzyMgS5y1/I5OxpoOPz+i/ntGhsKIyvR32XWRr4H8H74X9uukXfDwKg8uroCpS6zVvucjFuxIen9wXaNHYUV2J4Y24jbMLHL4DNiFdqa+NqCe3FIp8aPxCJ8nxjfLF8GO+oR9GNxVSN9jBvQ1xF4DWd9uB6bEmfr2p3YmItvEltv4aKuQtdxfCjuxK/h+Gec26KNW+TnITHeL+8V71gQAyrHiSGc12S9O1R28qe7PZ9aEqbId+jypBtzOOGSaPlR3DdenGMq5kZ5yV2PSXXKnSLfEGHxeHOOKUzHlwE3WKdM+Y7oNUwYZ8TGiuFBHnVVx8TzIu8PHF0UY0NhbYCuTNJKsbbD/W3YPF6+By3tLm1tZ2fFBN2J6ZF2WTLJW74XUglZhzGz+9T7OiyP9Qdqvbdoa4bKoRKe6D7xvk7LLf5DVY+0PPaxKmytkQc7wzi7F9yp05L80Aefx/OpNuwsjLq/RU/cE+/f6nUMjZuTbt+NM1qoO1El6N+NiyO9hFeS+dR+tNYEREl+gl2jyRsL+YY4H18F5HZcWVVmssrOP4oXcGZvvqIFyWOPr5Ne+6AeWDTOQvnvq/KHPFjOL2qH7M+y7NjkfVOWZVtrFSyVSrIs+yzJL2VZdmpP6ZqR/M5pmcpd0ZbqFSda/5GkpzbgRt0OfjqRfOd9PQCHMCvJezzSd+B2++OZKsuyDBOwPGC/w7RkZdumwSXyfqH4iHJPPCc/io84wH7ZzozhUtaqoplalsp1/B4Hyq/aVDGpf8SKolkOqhn9B6c1+wX1ZmpYAAAAAElFTkSuQmCC";
+const bulbIconUrl$1 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAADzElEQVRoge3ZWahVdRTH8X2s63AzK5PoWtFIECXSIBhFlEH1EFEPEZE0UJFEQgVZDz1cyFIIzMyHAqMJgwakQqICowiSIHpIlOaybLCSuqnl1dv99LDX4fw9nnPPfLeGv5fN/g9rffd/Xv+dZQf1PxCm4m38iWVF87QsDNpblxbN1LTQh58C/M14rimaq2nhuoDeiGOwCyM4sWi2poT34gMWxPuL8f5Q0WwNhdkBO4TDI+3CSPsFU4pmHFN4I2CXV6V/EumLimJrKFwQkLtwQlXetZG3DUcUxVhXOAyfBuSSGvklfBj5zxTBWFcB91LAfYGpdcrNwj9R7q7x5qypgF8SUH/jnAblF0TZ3bhqvDjrwUzC6gDag6ubrPdo1BnB3b3mrAcxBx8lk/aaFuqWsFRFq3FcL3lT5yfheYyG882Y06atm7Az7OyQn596s0LhfLwc3V4eMisxrUO7p+GdpDf+wmM4uRvQJfn6vT5xMIxncXrHDvb2NQ/rEj8jeBVzOzH6ZGLwdzyMgS5y1/I5OxpoOPz+i/ntGhsKIyvR32XWRr4H8H74X9uukXfDwKg8uroCpS6zVvucjFuxIen9wXaNHYUV2J4Y24jbMLHL4DNiFdqa+NqCe3FIp8aPxCJ8nxjfLF8GO+oR9GNxVSN9jBvQ1xF4DWd9uB6bEmfr2p3YmItvEltv4aKuQtdxfCjuxK/h+Gec26KNW+TnITHeL+8V71gQAyrHiSGc12S9O1R28qe7PZ9aEqbId+jypBtzOOGSaPlR3DdenGMq5kZ5yV2PSXXKnSLfEGHxeHOOKUzHlwE3WKdM+Y7oNUwYZ8TGiuFBHnVVx8TzIu8PHF0UY0NhbYCuTNJKsbbD/W3YPF6+By3tLm1tZ2fFBN2J6ZF2WTLJW74XUglZhzGz+9T7OiyP9Qdqvbdoa4bKoRKe6D7xvk7LLf5DVY+0PPaxKmytkQc7wzi7F9yp05L80Aefx/OpNuwsjLq/RU/cE+/f6nUMjZuTbt+NM1qoO1El6N+NiyO9hFeS+dR+tNYEREl+gl2jyRsL+YY4H18F5HZcWVVmssrOP4oXcGZvvqIFyWOPr5Ne+6AeWDTOQvnvq/KHPFjOL2qH7M+y7NjkfVOWZVtrFSyVSrIs+yzJL2VZdmpP6ZqR/M5pmcpd0ZbqFSda/5GkpzbgRt0OfjqRfOd9PQCHMCvJezzSd+B2++OZKsuyDBOwPGC/w7RkZdumwSXyfqH4iHJPPCc/io84wH7ZzozhUtaqoplalsp1/B4Hyq/aVDGpf8SKolkOqhn9B6c1+wX1ZmpYAAAAAElFTkSuQmCC";
 const ALL_COMMANDS = [
   {
     id: "split-right",
@@ -45337,6 +45210,8 @@ function makeFilePathSource(callbacksRef) {
       label: entry.name,
       type: entry.isDir ? "folder" : "file",
       iconUrl: entry.isDir ? folderUrl : getFileIconUrl(entry.name),
+      // Descending boost preserves our folder-first alpha sort against
+      // CodeMirror's default fuzzy-match re-ranking by relevance score.
       boost: total - idx,
       apply: (view, _completion, from, to) => {
         const insert2 = entry.isDir ? `${shellEscape(entry.name)}/` : shellEscape(entry.name);
@@ -45498,7 +45373,7 @@ class GhostWidget extends WidgetType {
     const span = document.createElement("span");
     span.textContent = this.text;
     span.setAttribute("aria-hidden", "true");
-    span.style.cssText = "color:var(--text-muted);opacity:0.4;pointer-events:none;user-select:none;";
+    span.style.cssText = "color:var(--text-secondary);opacity:0.65;pointer-events:none;user-select:none;";
     return span;
   }
   eq(other) {
@@ -45513,14 +45388,14 @@ class AIGhostWidget extends WidgetType {
   toDOM() {
     const wrap = document.createElement("span");
     wrap.setAttribute("aria-hidden", "true");
-    wrap.style.cssText = "display:inline-flex;align-items:center;gap:5px;pointer-events:none;user-select:none;opacity:0.4;";
+    wrap.style.cssText = "display:inline-flex;align-items:center;gap:5px;pointer-events:none;user-select:none;opacity:0.65;";
     const icon = document.createElement("img");
-    icon.src = bulbIconUrl;
+    icon.src = bulbIconUrl$1;
     icon.className = "ai-suggestion-icon";
-    icon.style.cssText = "width:16px;height:16px;flex-shrink:0;";
+    icon.style.cssText = "width:20px;height:20px;flex-shrink:0;";
     const text = document.createElement("span");
     text.textContent = this.text;
-    text.style.cssText = "color:var(--text-muted);";
+    text.style.cssText = "color:var(--text-secondary);";
     wrap.appendChild(icon);
     wrap.appendChild(text);
     return wrap;
@@ -45701,26 +45576,29 @@ function useShellEditor(callbacksRef) {
       {
         key: "Escape",
         run(view2) {
+          callbacksRef.current.onDismissExplanation?.();
           const plugin = view2.plugin(ghostPlugin);
           if (plugin?.aiSuggestion) {
             plugin._clear();
             return true;
           }
-          if (view2.state.doc.length === 0) {
-            if (callbacksRef.current.onDismissExplanation) {
-              callbacksRef.current.onDismissExplanation();
-              return true;
-            }
-            return false;
-          }
+          if (view2.state.doc.length === 0) return false;
           view2.dispatch({ changes: { from: 0, to: view2.state.doc.length, insert: "" } });
           callbacksRef.current.resetNavigation?.();
           return true;
         }
       },
       {
+        key: "Ctrl-d",
+        run() {
+          callbacksRef.current.onDismissExplanation?.();
+          return false;
+        }
+      },
+      {
         key: "Ctrl-c",
         run(view2) {
+          callbacksRef.current.onDismissExplanation?.();
           if (view2.state.doc.length === 0) return false;
           view2.dispatch({ changes: { from: 0, to: view2.state.doc.length, insert: "" } });
           callbacksRef.current.resetNavigation?.();
@@ -45769,12 +45647,13 @@ function useShellEditor(callbacksRef) {
       },
       {
         // Tab precedence (first match wins):
-        //   1. popup open                → accept highlighted item
-        //   2. doc start (no chars)      → noop (first token is a command)
-        //   3. preceding char is space   → open file dropdown (cwd)
-        //   4. current word contains '/' → open file dropdown (parent dir)
-        //   5. mid-word with ghost text  → accept ghost text
-        //   6. otherwise                 → noop
+        //   1. popup open                   → accept highlighted item
+        //   2. doc start (no chars)         → noop (first token is a command)
+        //   3. preceding char is space      → open file dropdown (cwd)
+        //   4. current word contains '/'    → open file dropdown (parent dir)
+        //   5. word is an argument (not cmd)→ open file dropdown (cwd, filtered)
+        //   6. mid-word with ghost text     → accept ghost text
+        //   7. otherwise                    → noop
         key: "Tab",
         run(view2) {
           if (completionStatus(view2.state) != null) return acceptCompletion(view2);
@@ -45789,6 +45668,7 @@ function useShellEditor(callbacksRef) {
           const lineFrom = view2.state.doc.lineAt(head).from;
           const wordSoFar = view2.state.sliceDoc(lineFrom, head).match(/\S*$/)?.[0] ?? "";
           if (wordSoFar.includes("/")) return startCompletion(view2);
+          if (wordSoFar && head - wordSoFar.length > lineFrom) return startCompletion(view2);
           const plugin = view2.plugin(ghostPlugin);
           if (plugin?.suggestion) return plugin.accept(view2);
           return false;
@@ -45863,6 +45743,7 @@ const InputBar = reactExports.forwardRef(function InputBar2({
   getHistory,
   isNavigatingHistory,
   commandContext,
+  onDismissExplanation,
   cwd,
   exitCode,
   gitData,
@@ -45886,6 +45767,7 @@ const InputBar = reactExports.forwardRef(function InputBar2({
   callbacksRef.current.isNavigatingHistory = isNavigatingHistory;
   callbacksRef.current.commandContext = commandContext;
   callbacksRef.current.cwd = cwd;
+  callbacksRef.current.onDismissExplanation = onDismissExplanation;
   const { editorContainerRef, viewRef, dispatchAISuggestionRef } = useShellEditor(callbacksRef);
   reactExports.useImperativeHandle(ref, () => ({
     focus: () => viewRef.current?.focus(),
@@ -45919,46 +45801,73 @@ const InputBar = reactExports.forwardRef(function InputBar2({
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: editorContainerRef })
   ] });
 });
+const bulbIconUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABmJLR0QA/wD/AP+gvaeTAAAC8klEQVRoge2ZzUtUURjGf+/MVJswBIv8GDDQFAnJaFct3PVhSsv+hIQWraIPinZtWrStRZDjqpAQC1rURlpEighG6Qhmo+ZULrQQypnztpgxlZS554NcOM9iuNx5n/d5nnPOnHvvXCijjJ0NCdlM07V1mFgXaAdCPZAsfpVBmAIZANMvjbMzoTSDBND0wf1o4ibQDSRKlBuUXvLxq9Iy/cVX2zuATtR2gPQCFZbUJZSL0jTzwkc/5kPWdLIb5Bn25gEqEPo1nbzk48F5BnSy7jSGASDuYwAwoF1yeHbAhewUQD8ma4jpB9xGfjMssivRLIc+zdsS3ZZQXO8QzjzAPlbyt12I1jOg6do6VKYovdvYIodSL00zszYk+xlQuUB48wAJYtJlS7IPIJyx5kSF6llbisMM0GDNiQ7r3i4/4moHTjQotbYUlwDqwCndURUUY0t1CTDnwNkaqqvmQY11b5cA0w6cf7HB+N/jz7ZtXHah19ac9djM+Op5eGXbziGAPLfmwFYjvvGYvPWdqXUAaciMAW8jE6IYLxwPSUt2zNaP4+203C9ZEt14cfT1nosTtwCzmScIE0GMF9b+BN+yT/9bAGknh3Ld2/ja9nlN2sk5eXEhFf0Kk8lBjDlROFH80LWCiOff0Pr1lIjbBdL5kbIgmL+MYjxG32DyV1zNewUAkMa5EVR7CqZYZzDKsYLqY2lbeOfjwSsAABK/juqy/QywjNEbvvLeAaQ5M4eSclhGPXLsu/d9lf8MFJCyX//SG0I4TIDdv0atl9BKfjSEdLD/RnX0QGEnibidyvGFINrhHs5trwOBECzAuVsnLRl9QXRD/Yi3DeUA241gAQR+Rq/WpVC6wQIovI9cKxK5thQCBpBUZFFD5NqSvUI12rsn9gAYKV0pw/PVVQ9D6QZ9S9nZ2VmTIzEAtG0hN5xP6PmXfX3eL/dW4ft6aAPGx8d/HG098mjFmKyKVMagUuA3MCTK3Wx1VfdgKrUYUrOMMnY6/gARCuEuySzXAAAAAABJRU5ErkJggg==";
+function renderWithCode(text) {
+  const re2 = /`+([^`]+)`+/g;
+  if (!re2.test(text)) return text;
+  re2.lastIndex = 0;
+  const nodes = [];
+  let key = 0;
+  const raw = text;
+  let last = 0;
+  let m;
+  while ((m = re2.exec(raw)) !== null) {
+    if (m.index > last) nodes.push(raw.slice(last, m.index));
+    nodes.push(
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "code",
+        {
+          style: {
+            background: "color-mix(in srgb, var(--tab-accent) 30%, transparent)",
+            color: "#ffffff",
+            fontWeight: 600,
+            borderRadius: 3,
+            padding: "1px 5px",
+            fontFamily: "var(--font-mono)"
+          },
+          children: m[1]
+        },
+        key++
+      )
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < raw.length) nodes.push(raw.slice(last));
+  return nodes;
+}
 function ExplanationPanel({ text, onDismiss }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      style: {
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 8,
-        padding: "6px 12px",
-        background: "color-mix(in srgb, var(--error) 8%, var(--bg-elevated))",
-        borderTop: "1px solid color-mix(in srgb, var(--error) 20%, transparent)",
-        fontFamily: "var(--font-mono)",
-        fontSize: "calc(var(--font-size-mono) * 0.88)",
-        color: "var(--text-secondary)",
-        lineHeight: 1.5
-      },
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--error)", opacity: 0.7, flexShrink: 0, marginTop: 2 }, children: "✦" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1 }, children: text }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: onDismiss,
-            onMouseDown: (e) => e.preventDefault(),
-            style: {
-              color: "var(--text-muted)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-              fontSize: "0.85em",
-              flexShrink: 0,
-              lineHeight: 1
-            },
-            children: "✕"
-          }
-        )
-      ]
-    }
-  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative z-20 flex flex-col", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "3px" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "img",
+        {
+          src: bulbIconUrl,
+          className: "bg-[var(--bg-surface)]",
+          style: { width: 24, height: 24, flexShrink: 0, opacity: 0.85, left: 25, position: "absolute" }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "mx-1",
+          style: { flex: 1, height: 1, background: "linear-gradient(90deg, #a855f7, #3b82f6)" }
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          padding: "10px",
+          fontFamily: "var(--font-mono)",
+          fontSize: "calc(var(--font-size-mono) * 0.88)",
+          color: "#ffffff",
+          lineHeight: 1.5
+        },
+        children: renderWithCode(text)
+      }
+    )
+  ] });
 }
 function TerminalPane({
   paneId,
@@ -45972,6 +45881,7 @@ function TerminalPane({
   onToggleTabPosition
 }) {
   const callbacksRef = reactExports.useRef({});
+  const { prefs } = usePreferences();
   const { sendInput, sendRaw, sendResize, sendAIAppend } = useTerminal(paneId, callbacksRef);
   const {
     push: pushHistory,
@@ -45981,7 +45891,7 @@ function TerminalPane({
     resetNavigation
   } = useSharedHistory();
   const [running, setRunning] = reactExports.useState(false);
-  const [explanation, setExplanation] = reactExports.useState(null);
+  const [banner, setBanner] = reactExports.useState(null);
   const [cwd, setCwd] = reactExports.useState("");
   const [exitCode, setExitCode] = reactExports.useState(0);
   const [gitData, setGitData] = reactExports.useState(null);
@@ -45992,6 +45902,10 @@ function TerminalPane({
   const [k8sData, setK8sData] = reactExports.useState(null);
   const inputBarRef = reactExports.useRef(null);
   const runningRef = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    registerCopy(paneId, () => callbacksRef.current.copySelection?.());
+    return () => unregisterCopy(paneId);
+  }, [paneId]);
   const pendingCommandRef = reactExports.useRef(null);
   runningRef.current = running;
   callbacksRef.current.isRunning = () => runningRef.current;
@@ -46018,6 +45932,7 @@ function TerminalPane({
     callbacksRef.current.onExitCodeDecoration?.(code);
     if (code === 0 && pendingCommandRef.current)
       pushHistory(pendingCommandRef.current);
+    if (code === 0) setBanner(null);
     pendingCommandRef.current = null;
     setRunning(false);
     setPaneInfo(paneId, { runningCommand: null });
@@ -46032,8 +45947,14 @@ function TerminalPane({
   };
   callbacksRef.current.onAISuggestError = () => {
   };
-  callbacksRef.current.onAIExplanation = (text) => setExplanation(text);
-  callbacksRef.current.onDismissExplanation = () => setExplanation(null);
+  callbacksRef.current.onAIBannerStart = (type) => {
+    if (type === "error" && !prefs.aiExplainErrors) return;
+    if (type === "info" && !prefs.aiDirectoryContext) return;
+    setBanner({ text: "", type });
+  };
+  callbacksRef.current.onAIBannerToken = (token) => setBanner((prev) => prev ? { ...prev, text: prev.text + token } : null);
+  callbacksRef.current.onAIBannerCancel = () => setBanner(null);
+  callbacksRef.current.onDismissExplanation = () => setBanner(null);
   callbacksRef.current.onGit = (data) => {
     setGitData(data);
     callbacksRef.current.onGitDecoration?.(data);
@@ -46060,7 +45981,7 @@ function TerminalPane({
   };
   const handleSubmit = reactExports.useCallback(
     (command2) => {
-      setExplanation(null);
+      setBanner(null);
       const trimmed = command2.trim();
       pendingCommandRef.current = trimmed;
       sendInput(command2);
@@ -46108,11 +46029,12 @@ function TerminalPane({
             isVisible
           }
         ),
-        explanation && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        banner?.text && /* @__PURE__ */ jsxRuntimeExports.jsx(
           ExplanationPanel,
           {
-            text: explanation,
-            onDismiss: () => setExplanation(null)
+            text: banner.text,
+            type: banner.type,
+            onDismiss: () => setBanner(null)
           }
         ),
         !running && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -46125,6 +46047,7 @@ function TerminalPane({
             getHistory,
             isNavigatingHistory,
             commandContext,
+            onDismissExplanation: () => setBanner(null),
             cwd,
             exitCode,
             gitData,
@@ -46158,8 +46081,8 @@ function useKeyboardShortcuts(handlers2) {
         }
       }
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
 }
 function matchesShortcut(e, shortcut) {
@@ -46348,13 +46271,7 @@ function usePaneResize(paneWrapperRef, setTabs) {
   return { startDrag, dragCursor };
 }
 function StatusBar() {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "div",
-    {
-      className: "flex items-center gap-2 p-1 \n    text-sm text-[var(--text-muted)] b-g-[var(--bg-base)] border-t border-[var(--border)]",
-      children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-[var(--text-primary)]", children: "Ready" })
-    }
-  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2 p-1 text-sm text-[var(--text-muted)] bg-[var(--bg-base)] border-t border-[var(--border)]", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-[var(--text-primary)]", children: "Ready" }) });
 }
 function ThemeSwatch({ theme: theme2, isActive, onSelect }) {
   const { colors, name: name2 } = theme2;
@@ -46781,7 +46698,7 @@ function PromptStyleGrid() {
     }
   );
 }
-const sectionLabel = {
+const sectionLabel$1 = {
   fontSize: "11px",
   fontWeight: 600,
   letterSpacing: "0.06em",
@@ -46806,19 +46723,19 @@ function AppearanceSection() {
   const { prefs, setFontFamily } = usePreferences();
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: "28px" }, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel, children: "Theme" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel$1, children: "Theme" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(ThemeGrid, {})
     ] }),
     prefs.themeId === "custom" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel, children: "Custom Colors" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel$1, children: "Custom Colors" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(CustomColorPickers, {})
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel, children: "Prompt Style" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel$1, children: "Prompt Style" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(PromptStyleGrid, {})
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel, children: "Font" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionLabel$1, children: "Font" }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: "12px" }, children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: "60px", fontSize: "13px", color: "var(--text-secondary)", fontFamily: "var(--font-ui)", flexShrink: 0 }, children: "Family" }),
@@ -46840,7 +46757,90 @@ function AppearanceSection() {
     ] })
   ] });
 }
+function Toggle({ checked, onChange }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      onClick: () => onChange(!checked),
+      style: {
+        width: 36,
+        height: 20,
+        borderRadius: 10,
+        background: checked ? "var(--accent)" : "var(--border)",
+        position: "relative",
+        cursor: "pointer",
+        flexShrink: 0,
+        transition: "background 0.2s"
+      },
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+        position: "absolute",
+        top: 2,
+        left: checked ? 18 : 2,
+        width: 16,
+        height: 16,
+        borderRadius: "50%",
+        background: "#fff",
+        transition: "left 0.2s",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.3)"
+      } })
+    }
+  );
+}
+function ToggleRow({ label, description, checked, onChange }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 16,
+    padding: "12px 0",
+    borderBottom: "1px solid var(--border)"
+  }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "13px", color: "var(--text-primary)", fontFamily: "var(--font-ui)", marginBottom: 2 }, children: label }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text-muted)", fontFamily: "var(--font-ui)", lineHeight: 1.4 }, children: description })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Toggle, { checked, onChange })
+  ] });
+}
+const sectionLabel = {
+  fontSize: "11px",
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "var(--text-muted)",
+  marginBottom: "10px",
+  fontFamily: "var(--font-ui)"
+};
+function AISection() {
+  const { prefs, setAiExplainErrors, setAiDirectoryContext } = usePreferences();
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...sectionLabel, marginBottom: 4 }, children: "Suggestions" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ToggleRow,
+      {
+        label: "Explain command errors",
+        description: "Show an AI explanation banner when a command exits with an error.",
+        checked: prefs.aiExplainErrors,
+        onChange: setAiExplainErrors
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ToggleRow,
+      {
+        label: "Directory context",
+        description: "Show an AI summary when switching into a new directory.",
+        checked: prefs.aiDirectoryContext,
+        onChange: setAiDirectoryContext
+      }
+    )
+  ] });
+}
+const TABS = [
+  { id: "appearance", label: "Appearance" },
+  { id: "ai", label: "AI" }
+];
 function PreferencesModal({ isOpen, onClose }) {
+  const [activeTab, setActiveTab] = reactExports.useState("appearance");
   reactExports.useEffect(() => {
     if (!isOpen) return;
     function handleKey(e) {
@@ -46874,6 +46874,7 @@ function PreferencesModal({ isOpen, onClose }) {
           transform: "translate(-50%, -50%)",
           zIndex: 1e4,
           width: "560px",
+          height: "620px",
           maxWidth: "calc(100vw - 40px)",
           maxHeight: "calc(100vh - 80px)",
           background: "var(--bg-base)",
@@ -46924,25 +46925,108 @@ function PreferencesModal({ isOpen, onClose }) {
             display: "flex",
             borderBottom: "1px solid var(--border)",
             padding: "0 20px",
-            flexShrink: 0
-          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
-            padding: "10px 0",
-            fontSize: "13px",
-            fontFamily: "var(--font-ui)",
-            fontWeight: 500,
-            color: "var(--accent)",
-            borderBottom: "2px solid var(--accent)",
-            marginBottom: "-1px"
-          }, children: "Appearance" }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+            flexShrink: 0,
+            gap: 4
+          }, children: TABS.map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setActiveTab(tab.id),
+              style: {
+                padding: "10px 12px",
+                fontSize: "13px",
+                fontFamily: "var(--font-ui)",
+                fontWeight: 500,
+                background: "none",
+                border: "none",
+                borderBottom: activeTab === tab.id ? "2px solid var(--accent)" : "2px solid transparent",
+                marginBottom: "-1px",
+                color: activeTab === tab.id ? "var(--accent)" : "var(--text-muted)",
+                cursor: "pointer",
+                transition: "color 0.15s"
+              },
+              children: tab.label
+            },
+            tab.id
+          )) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
             flex: 1,
             overflowY: "auto",
-            padding: "24px 20px"
-          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(AppearanceSection, {}) })
+            padding: "24px 20px",
+            scrollbarWidth: "thin",
+            scrollbarColor: "var(--border) transparent"
+          }, children: [
+            activeTab === "appearance" && /* @__PURE__ */ jsxRuntimeExports.jsx(AppearanceSection, {}),
+            activeTab === "ai" && /* @__PURE__ */ jsxRuntimeExports.jsx(AISection, {})
+          ] })
         ]
       }
     )
   ] });
+}
+function PaneContextMenu({ x, y, canClose, onSplitRight, onSplitDown, onClose, onNewTab, onCopy }) {
+  const menuStyle = {
+    position: "fixed",
+    top: y,
+    left: x,
+    zIndex: 1e4,
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: 6,
+    padding: "4px 0",
+    minWidth: 168,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+    fontFamily: "var(--font-ui, system-ui)",
+    fontSize: "var(--font-size-ui)"
+  };
+  const divStyle = { height: 1, background: "var(--border)", margin: "4px 0" };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: menuStyle, onMouseDown: (e) => e.stopPropagation(), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(PaneMenuItem, { onMouseDown: onCopy, shortcut: "⌘⇧C", children: "Copy" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: divStyle }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(PaneMenuItem, { onMouseDown: onSplitRight, shortcut: "⌘D", children: "Split Right" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(PaneMenuItem, { onMouseDown: onSplitDown, shortcut: "⌘⇧D", children: "Split Down" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: divStyle }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(PaneMenuItem, { onMouseDown: onNewTab, shortcut: "⌘T", children: "New Tab" }),
+    canClose && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: divStyle }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(PaneMenuItem, { onMouseDown: onClose, shortcut: "⌘W", danger: true, children: "Close Pane" })
+    ] })
+  ] });
+}
+function PaneMenuItem({ children, onMouseDown, shortcut, danger }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "button",
+    {
+      onMouseDown,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 24,
+        padding: "6px 8px",
+        width: "calc(100% - 8px)",
+        textAlign: "left",
+        background: "transparent",
+        border: "none",
+        borderRadius: 4,
+        margin: "0 4px",
+        cursor: "pointer",
+        color: danger ? "#f87171" : "var(--text-primary)",
+        fontFamily: "var(--font-ui, system-ui)",
+        fontSize: "var(--font-size-ui)",
+        transition: "background-color 0.1s"
+      },
+      onMouseEnter: (e) => {
+        e.currentTarget.style.backgroundColor = "var(--bg-base)";
+      },
+      onMouseLeave: (e) => {
+        e.currentTarget.style.backgroundColor = "transparent";
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children }),
+        shortcut && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-muted)", fontSize: 11 }, children: shortcut })
+      ]
+    }
+  );
 }
 function createTab(counter) {
   const leaf = createLeaf();
@@ -46968,6 +47052,20 @@ function App() {
   const paneWrapperRef = reactExports.useRef(null);
   const { startDrag, dragCursor } = usePaneResize(paneWrapperRef, setTabs);
   const [isPrefsOpen, setIsPrefsOpen] = reactExports.useState(false);
+  const [ctxMenu, setCtxMenu] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    const onKey = (e) => {
+      if (e.key === "Escape") setCtxMenu(null);
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [ctxMenu]);
   const addTab = reactExports.useCallback(() => {
     tabCounterRef.current += 1;
     const tab = createTab(tabCounterRef.current);
@@ -47014,9 +47112,63 @@ function App() {
   const closeActivePane = reactExports.useCallback(() => {
     closePane(activeTab.id, activeTab.activePaneId);
   }, [activeTab, closePane]);
+  const navigatePane = reactExports.useCallback((dir) => {
+    const rects = computePaneRects(activeTab.layout);
+    const paneIds = collectPaneIds(activeTab.layout);
+    if (paneIds.length < 2) return;
+    const cur2 = rects[activeTab.activePaneId];
+    if (!cur2) return;
+    const EPS = 0.5;
+    const curRight = cur2.left + cur2.width;
+    const curBottom = cur2.top + cur2.height;
+    const curCX = cur2.left + cur2.width / 2;
+    const curCY = cur2.top + cur2.height / 2;
+    let best = null;
+    let bestDist = Infinity;
+    for (const id of paneIds) {
+      if (id === activeTab.activePaneId) continue;
+      const r = rects[id];
+      let match = false;
+      let dist2 = 0;
+      if (dir === "right" && Math.abs(r.left - curRight) < EPS) {
+        match = true;
+        dist2 = Math.abs(r.top + r.height / 2 - curCY);
+      }
+      if (dir === "left" && Math.abs(r.left + r.width - cur2.left) < EPS) {
+        match = true;
+        dist2 = Math.abs(r.top + r.height / 2 - curCY);
+      }
+      if (dir === "down" && Math.abs(r.top - curBottom) < EPS) {
+        match = true;
+        dist2 = Math.abs(r.left + r.width / 2 - curCX);
+      }
+      if (dir === "up" && Math.abs(r.top + r.height - cur2.top) < EPS) {
+        match = true;
+        dist2 = Math.abs(r.left + r.width / 2 - curCX);
+      }
+      if (match && dist2 < bestDist) {
+        bestDist = dist2;
+        best = id;
+      }
+    }
+    if (best) {
+      setActivePane(activeTab.id, best);
+    } else {
+      const idx = paneIds.indexOf(activeTab.activePaneId);
+      const fwd = dir === "right" || dir === "down";
+      const next = fwd ? (idx + 1) % paneIds.length : (idx - 1 + paneIds.length) % paneIds.length;
+      setActivePane(activeTab.id, paneIds[next]);
+    }
+  }, [activeTab, setActivePane]);
   const splitActivePane = reactExports.useCallback((direction) => {
     splitPane(activeTab.id, activeTab.activePaneId, direction);
   }, [activeTab, splitPane]);
+  reactExports.useEffect(() => {
+    return window.electron?.onAppShortcut?.((name2) => {
+      if (name2 === "split-down") splitActivePane("vertical");
+      if (name2 === "copy") triggerCopy(activeTab.activePaneId);
+    });
+  }, [splitActivePane, activeTab.activePaneId]);
   const setTabAccent = reactExports.useCallback((tabId, accent) => {
     setTabs((prev) => prev.map((t2) => t2.id === tabId ? { ...t2, accent } : t2));
   }, []);
@@ -47057,7 +47209,11 @@ function App() {
     "Meta+w": closeActivePane,
     "Meta+d": () => splitActivePane("horizontal"),
     "Meta+Shift+D": () => splitActivePane("vertical"),
-    "Meta+,": () => setIsPrefsOpen(true)
+    "Meta+,": () => setIsPrefsOpen(true),
+    "Meta+Alt+ArrowRight": () => navigatePane("right"),
+    "Meta+Alt+ArrowLeft": () => navigatePane("left"),
+    "Meta+Alt+ArrowUp": () => navigatePane("up"),
+    "Meta+Alt+ArrowDown": () => navigatePane("down")
   });
   collectPaneIds(activeTab.layout).length;
   const tabBarProps = {
@@ -47091,7 +47247,7 @@ function App() {
           left: 0,
           right: 0,
           bottom: 0,
-          "--tab-accent": tab.accent ?? "var(--accent)"
+          "--tab-accent": tab.accent ?? "#3b82f6"
         },
         children: [
           dividers.map((d) => /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -47128,6 +47284,10 @@ function App() {
             return /* @__PURE__ */ jsxRuntimeExports.jsx(
               "div",
               {
+                onContextMenu: (e) => {
+                  e.preventDefault();
+                  setCtxMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, paneId, paneCount: paneCount2 });
+                },
                 style: {
                   position: "absolute",
                   left: `${r.left}%`,
@@ -47135,7 +47295,7 @@ function App() {
                   width: `${r.width}%`,
                   height: `${r.height}%`,
                   display: "flex",
-                  filter: isActive ? "none" : "grayscale(60%)"
+                  filter: isActive ? "none" : "grayscale(40%)"
                 },
                 children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                   TerminalPane,
@@ -47190,7 +47350,35 @@ function App() {
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(StatusBar, {}),
     dragCursor && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "fixed", inset: 0, zIndex: 9999, cursor: dragCursor } }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(PreferencesModal, { isOpen: isPrefsOpen, onClose: () => setIsPrefsOpen(false) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(PreferencesModal, { isOpen: isPrefsOpen, onClose: () => setIsPrefsOpen(false) }),
+    ctxMenu && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      PaneContextMenu,
+      {
+        x: ctxMenu.x,
+        y: ctxMenu.y,
+        canClose: ctxMenu.paneCount > 1,
+        onSplitRight: () => {
+          splitPane(ctxMenu.tabId, ctxMenu.paneId, "horizontal");
+          setCtxMenu(null);
+        },
+        onSplitDown: () => {
+          splitPane(ctxMenu.tabId, ctxMenu.paneId, "vertical");
+          setCtxMenu(null);
+        },
+        onClose: () => {
+          closePane(ctxMenu.tabId, ctxMenu.paneId);
+          setCtxMenu(null);
+        },
+        onNewTab: () => {
+          addTab();
+          setCtxMenu(null);
+        },
+        onCopy: () => {
+          triggerCopy(ctxMenu.paneId);
+          setCtxMenu(null);
+        }
+      }
+    )
   ] });
 }
 ReactDOM.createRoot(document.getElementById("root")).render(

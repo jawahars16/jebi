@@ -34,59 +34,18 @@ function renderWithCode(text) {
 
 export default function ExplanationPanel({ text, onDismiss }) {
   return (
-    <div
-      style={{
-        position: "relative",
-        zIndex: 20,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* Header: bulb icon + gradient line + dismiss */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "3px",
-        }}
-      >
+    <div className="relative z-20 flex flex-col">
+      {/* Header: bulb icon centered on the AI gradient divider line */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px" }}>
         <img
           src={bulbIconUrl}
           className="bg-[var(--bg-surface)]"
-          style={{
-            width: 24,
-            height: 24,
-            flexShrink: 0,
-            opacity: 0.85,
-            left: 25,
-            position: "absolute",
-          }}
+          style={{ width: 24, height: 24, flexShrink: 0, opacity: 0.85, left: 25, position: "absolute" }}
         />
         <div
-          style={{
-            flex: 1,
-            height: 1,
-            background: "linear-gradient(90deg, #a855f7, #3b82f6)",
-          }}
           className="mx-1"
+          style={{ flex: 1, height: 1, background: "linear-gradient(90deg, #a855f7, #3b82f6)" }}
         />
-        {/* <button
-          onClick={onDismiss}
-          onMouseDown={(e) => e.preventDefault()}
-          style={{
-            color: "var(--text-muted)",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            fontSize: "0.85em",
-            flexShrink: 0,
-            lineHeight: 1,
-          }}
-        >
-          ✕
-        </button> */}
       </div>
       {/* Explanation text */}
       <div

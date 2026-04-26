@@ -25,6 +25,11 @@ export function deletePaneInfo(paneId) {
   if (store.delete(paneId)) emit()
 }
 
+// useSyncExternalStore lets React subscribe to the module-level Map without
+// going through a Context. This is intentional: xterm decoration React roots
+// (created by PromptAddon) live outside PreferencesProvider and any other
+// context, so they can't call useContext. The module store is the only way to
+// share reactive data with those out-of-tree roots.
 export function usePaneInfo(paneId) {
   return useSyncExternalStore(
     subscribe,

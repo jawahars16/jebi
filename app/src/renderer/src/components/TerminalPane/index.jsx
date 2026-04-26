@@ -19,6 +19,12 @@ export default function TerminalPane({
   onNewTab,
   onToggleTabPosition,
 }) {
+  // callbacksRef holds all event handlers as a stable ref object instead of
+  // passing them as props or state. xterm.js and CodeMirror both live outside
+  // the React render cycle — they hold long-lived references to these handlers.
+  // If we passed fresh closures each render, they would capture stale state.
+  // By writing to callbacksRef.current on every render, handlers always see
+  // the latest values without causing extra renders or requiring re-registration.
   const callbacksRef = useRef({});
   const { prefs } = usePreferences();
   const { sendInput, sendRaw, sendResize, sendAIAppend } = useTerminal(paneId, callbacksRef);
@@ -46,6 +52,11 @@ export default function TerminalPane({
     registerCopy(paneId, () => callbacksRef.current.copySelection?.())
     return () => unregisterCopy(paneId)
   }, [paneId])
+  // pendingCommandRef holds the command that was just submitted but whose exit
+  // code hasn't arrived yet. The OSC 9001 exit-code signal fires asynchronously
+  // after the prompt re-appears, so we can't rely on React state to correlate
+  // which command finished. On exit_code=0 we push this to history; on any
+  // code we clear it so we never add stale commands on the next success.
   const pendingCommandRef = useRef(null);
 
   runningRef.current = running;

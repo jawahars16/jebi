@@ -45,7 +45,9 @@ export function splitLeaf(node, targetPaneId, direction) {
 }
 
 // Removes the leaf matching targetPaneId.
-// When a split loses one child, the remaining child replaces the split.
+// "Bubble up": when a split node loses one child (it returns null), the
+// surviving child is promoted to replace the split node entirely. This
+// keeps the tree balanced without leaving empty split nodes behind.
 // Returns null if the entire tree was removed (i.e. last leaf removed).
 export function removeLeaf(node, targetPaneId) {
   if (node.type === 'leaf') {
@@ -69,6 +71,10 @@ export function collectPaneIds(node) {
 // Returns { [paneId]: { left, top, width, height } } as percentages (0–100).
 // Used to render panes as flat siblings with absolute positioning — this
 // prevents React from remounting components when the layout tree changes.
+//
+// Algorithm: recursive descent. Each call owns a sub-rectangle defined by
+// (x, y, w, h). Split nodes divide that rectangle along the split axis using
+// the stored ratio, then recurse into each half.
 export function computePaneRects(node, x = 0, y = 0, w = 100, h = 100) {
   if (node.type === 'leaf') {
     return { [node.paneId]: { left: x, top: y, width: w, height: h } }
@@ -90,6 +96,10 @@ export function computePaneRects(node, x = 0, y = 0, w = 100, h = 100) {
 // Returns an array of divider descriptors for rendering split lines.
 // Each descriptor includes ratio + parentOffset/parentSize so drag handlers
 // can compute the new local ratio from pixel deltas without knowing the tree depth.
+//
+// Divider id format: "${firstPaneId}|${secondPaneId}" — the first leaf id from
+// each child subtree, joined by "|". This is a stable key that uniquely identifies
+// which split node the divider belongs to, and is the same key used by updateSplitRatio.
 export function computeDividers(node, x = 0, y = 0, w = 100, h = 100) {
   if (node.type === 'leaf') return []
   const ratio = node.ratio ?? 0.5

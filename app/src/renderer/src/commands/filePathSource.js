@@ -99,6 +99,8 @@ export function makeFilePathSource(callbacksRef) {
       label: entry.name,
       type: entry.isDir ? 'folder' : 'file',
       iconUrl: entry.isDir ? folderUrl : getFileIconUrl(entry.name),
+      // Descending boost preserves our folder-first alpha sort against
+      // CodeMirror's default fuzzy-match re-ranking by relevance score.
       boost: total - idx,
       apply: (view, _completion, from, to) => {
         const insert = entry.isDir ? `${shellEscape(entry.name)}/` : shellEscape(entry.name)

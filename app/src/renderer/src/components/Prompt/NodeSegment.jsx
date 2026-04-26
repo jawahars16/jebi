@@ -1,4 +1,5 @@
 import nodeIconUrl from "../../assets/node.png";
+import { pillStyle, stopSegmentEvents } from "./segmentStyle";
 
 // NodeSegment — Node.js version and package manager badge.
 // onClick: in InputBar → runs `npm/yarn/pnpm/bun run`; in xterm decoration → copies version.
@@ -12,42 +13,16 @@ export default function NodeSegment({
   bare,
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : (compact ? 7 : 10);
-  const paddingV = compact ? 0 : 4;
-
   const bg = bare ? "transparent" : "var(--prompt-node-bg)";
   const fg = "var(--prompt-node-fg)";
 
-  const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : undefined,
-    minHeight: compact ? `${rowHeight}px` : undefined,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default",
-  };
-
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
 
   return (
     <button
       onClick={onClick}
-      onMouseDown={stopEvents}
-      onPointerDown={stopEvents}
+      onMouseDown={stopSegmentEvents}
+      onPointerDown={stopSegmentEvents}
       title={`Node ${version} · ${packageManager}`}
       style={style}
     >

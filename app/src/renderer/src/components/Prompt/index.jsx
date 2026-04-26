@@ -17,14 +17,7 @@ import {
   subscribePromptStyle,
 } from "../../preferences/promptStyles";
 import infoIconUrl from "../../assets/info.png";
-
-function formatDuration(ms) {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  const m = Math.floor(ms / 60000);
-  const s = Math.round((ms % 60000) / 1000);
-  return `${m}m ${s}s`;
-}
+import { formatDuration } from "../../utils/formatDuration";
 
 // Per-segment bg color used for Powerline/Slant separators that need to "extend"
 // the previous segment's color into an arrow/wedge sitting on the surface bg.

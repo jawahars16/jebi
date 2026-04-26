@@ -1,5 +1,6 @@
 import FsIcon from "../FsIcon";
 import errorIconUrl from "../../assets/error.png";
+import { pillStyle, stopSegmentEvents } from "./segmentStyle";
 
 // CwdSegment — current working directory pill.
 // Also renders a compact ✕N error badge when the previous command failed.
@@ -14,44 +15,22 @@ export default function CwdSegment({
   bare,
 }) {
   const compact = rowHeight != null;
-  const paddingH = bare ? 0 : compact ? 7 : 10;
-  const paddingV = compact ? 0 : 4;
   const hasError = exitCode > 0;
 
   const bg = bare ? "transparent" : "color-mix(in srgb, var(--tab-accent) var(--prompt-tint-strength), var(--bg-elevated))";
   const fg = bare ? "var(--accent)" : "var(--prompt-cwd-fg)";
 
   const style = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "5px",
-    height: compact ? `${rowHeight}px` : undefined,
-    minHeight: compact ? `${rowHeight}px` : undefined,
-    padding: `${paddingV}px ${paddingH}px`,
-    backgroundColor: bg,
-    color: fg,
-    lineHeight: 1,
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
-    fontSize: "var(--font-size-mono)",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: segmentRadius != null ? `${segmentRadius}px` : 0,
-    cursor: onClick ? "pointer" : "default",
+    ...pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick }),
+    // Left accent bar — a thin inset shadow that matches the tab accent color.
     boxShadow: bare ? undefined : "inset 6px 0 0 var(--tab-accent)",
-  };
-
-  const stopEvents = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
   };
 
   return (
     <button
       onClick={onClick}
-      onMouseDown={stopEvents}
-      onPointerDown={stopEvents}
+      onMouseDown={stopSegmentEvents}
+      onPointerDown={stopSegmentEvents}
       title={cwd}
       style={style}
     >
