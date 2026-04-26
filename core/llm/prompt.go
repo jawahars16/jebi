@@ -73,17 +73,41 @@ type finalResponse struct {
 	Explanation string `json:"explanation"`
 }
 
-const suggestPromptTemplate = `You are a terminal assistant. Given a shell session history, suggest the single most useful next command to run.
+const suggestPromptTemplate = `You are an expert terminal assistant. Your job is to predict the single most useful next shell command based on the session.
 
 Environment:
 Shell: %s
 OS: %s
 Current directory: %s
 
+Decision Process (follow strictly):
+1. Identify the user's goal from the recent commands (not just the last one).
+2. Detect if the workflow is:
+   - navigation (cd, ls)
+   - development (git, build, run)
+   - debugging (errors, logs)
+   - file operations
+3. Check if the last command failed:
+   - If yes, prioritize fixing the error.
+4. If no error:
+   - Continue the workflow logically (next step, not random suggestion).
+5. Prefer safe, minimal, and commonly used commands.
+
 Rules:
-- Understand the history of commands and their outputs to suggest the most helpful next command. Don't give some random command — it should be relevant to the user's workflow and the current context.
-- Output ONLY the raw shell command. No explanation. No backticks. No markdown. No leading $ or prompt symbol. Just the command.
-- If no sensible next command exists, output an empty string.`
+- Output ONLY the raw shell command.
+- No explanations. No markdown. No prompt symbols.
+- Never prefix the command with a shell name (no bash, sh, zsh). The user is already in a terminal.
+- Do NOT suggest destructive commands (rm -rf, reset, etc.) unless clearly implied.
+- Do NOT repeat the last command unless correcting it.
+- If context is unclear, output an empty string.
+
+Examples of good behavior:
+- After "git clone ..." → suggest "cd <repo>"
+- After "npm install" → suggest "npm start" or "npm run dev"
+- After "cd" into a dir → suggest "ls"
+- After error "command not found" → suggest install or correct command
+
+Return only the command. Nothing else.`
 
 // BuildSuggestMessages returns the message list for a next-command suggestion request.
 func BuildSuggestMessages(req SuggestRequest) []ChatMessage {
@@ -107,37 +131,56 @@ func ParseSuggestResponse(raw string) string {
 		if t == "" {
 			continue
 		}
-		// Strip any leading shell prompt symbol the model may have echoed
+		// Strip any leading shell prompt symbol or shell name the model may have echoed
 		t = strings.TrimPrefix(t, "$ ")
 		t = strings.TrimPrefix(t, "% ")
+		for _, sh := range []string{"bash ", "sh ", "zsh ", "fish "} {
+			t = strings.TrimPrefix(t, sh)
+		}
 		return t
 	}
 	return ""
 }
 
-const explainPromptTemplate = `You are a terminal assistant. A shell command failed. Briefly explain what went wrong and how to fix it.
-
-Environment:
-Shell: %s
-OS: %s
-Current directory: %s
-
-Rules:
-- Output 1-2 plain sentences. No markdown. No bullet points. No leading label.
-- Focus on the most likely cause and the simplest fix.
-- If the error is trivial (obvious typo, command not found for garbage input, permission already correct, etc.), output an empty string.
-- If you are not confident about the cause, output an empty string.`
+var explainPromptTemplate = "You are an expert terminal assistant. A shell command failed. Explain the most likely cause and how to fix it.\n\n" +
+	"Environment:\nShell: %s\nOS: %s\nCurrent directory: %s\n\n" +
+	"Decision Process:\n" +
+	"1. The command history is labeled [PASSED] or [FAILED] for each prior command.\n" +
+	"2. The command marked [FAILED - THIS IS THE COMMAND TO EXPLAIN] is the one that needs explanation — focus exclusively on it.\n" +
+	"3. Prior commands are context only; do NOT explain them even if they are labeled [FAILED].\n" +
+	"4. Identify the most probable root cause (not multiple guesses).\n" +
+	"5. Provide the simplest fix that is most likely to work.\n\n" +
+	"Rules:\n" +
+	"- Output 1-2 short sentences.\n" +
+	"- No markdown except backticks. No bullet points. No labels.\n" +
+	"- Wrap all command names, flags, file paths, and tool names in backticks (e.g. `git`, `npm install`, `--flag`).\n" +
+	"- Never prefix commands with a shell name (no `bash`, `sh`, `zsh`). The user is already in a terminal.\n" +
+	"- Be specific (mention command, file, or tool if relevant).\n" +
+	"- If the issue is trivial (typo, empty input, obvious misuse), output empty string.\n" +
+	"- If uncertain, output empty string.\n\n" +
+	"Good examples:\n" +
+	"- \"The `git` command failed because the directory does not exist; check the path or create it first.\"\n" +
+	"- \"Permission denied indicates you need elevated privileges; try running with `sudo`.\"\n\n" +
+	"Bad examples:\n" +
+	"- Generic advice like \"something went wrong\"\n" +
+	"- Multiple possible causes\n\n" +
+	"Return only the explanation text."
 
 // BuildExplainMessages returns the message list for an error explanation request.
 // Prior commands are included as context so the LLM understands what the user was doing.
 func BuildExplainMessages(req SuggestRequest) []ChatMessage {
 	system := fmt.Sprintf(explainPromptTemplate, req.Shell, req.OS, req.Cwd)
 	var sb strings.Builder
+	last := len(req.Entries) - 1
 	for i, e := range req.Entries {
-		if i < len(req.Entries)-1 {
-			fmt.Fprintf(&sb, "$ %s\n%s\n", e.Command, e.Output)
+		if i < last {
+			status := "PASSED"
+			if e.ExitCode != 0 {
+				status = "FAILED"
+			}
+			fmt.Fprintf(&sb, "[%s] $ %s\n%s\n", status, e.Command, e.Output)
 		} else {
-			fmt.Fprintf(&sb, "$ %s\n%s\nExit code: %d", e.Command, e.Output, e.ExitCode)
+			fmt.Fprintf(&sb, "\n[FAILED - THIS IS THE COMMAND TO EXPLAIN] $ %s\nOutput: %s\nExit code: %d", e.Command, e.Output, e.ExitCode)
 		}
 	}
 	return []ChatMessage{

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -191,15 +192,32 @@ func (s *Session) Start() {
 				OS:      runtime.GOOS + "/" + runtime.GOARCH,
 			}
 			if entry.ExitCode != 0 {
-				// Error path: explain what went wrong
+				// Error path: explain what went wrong AND suggest a fix command
 				go func() {
 					defer cancel()
-					result, err := llm.Explain(ctx, s.provider, req)
-					if err != nil || result == "" {
-						return
-					}
-					data, _ := json.Marshal(result)
-					s.w.Send(wire.Message{Type: wire.TypeAIExplanation, Data: data})
+					var wg sync.WaitGroup
+					wg.Add(2)
+					go func() {
+						defer wg.Done()
+						s.w.Send(wire.Message{Type: wire.TypeAIExplanationClear})
+						llm.ExplainStream(ctx, s.provider, req,
+							func(token string) {
+								data, _ := json.Marshal(token)
+								s.w.Send(wire.Message{Type: wire.TypeAIExplanationToken, Data: data})
+							},
+							func(_ string) {},
+						)
+					}()
+					go func() {
+						defer wg.Done()
+						result, err := llm.Suggest(ctx, s.provider, req)
+						if err != nil || result == "" {
+							return
+						}
+						data, _ := json.Marshal(result)
+						s.w.Send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
+					}()
+					wg.Wait()
 				}()
 			} else if len(s.contextEntries) >= 2 {
 				// Success path: suggest next command

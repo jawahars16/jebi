@@ -65,6 +65,12 @@ export function useTerminal(paneId, callbacksRef) {
         case wire.TypeAIExplanation:
           callbacksRef.current.onAIExplanation?.(msg.data)
           break
+        case wire.TypeAIExplanationClear:
+          callbacksRef.current.onAIExplanationClear?.()
+          break
+        case wire.TypeAIExplanationToken:
+          callbacksRef.current.onAIExplanationToken?.(msg.data)
+          break
       }
     }
 

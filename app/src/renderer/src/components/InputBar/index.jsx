@@ -5,6 +5,7 @@ import { useShellEditor } from './useShellEditor'
 const InputBar = forwardRef(function InputBar(
   {
     onSubmit, onNavigateHistory, resetNavigation, getHistory, isNavigatingHistory, commandContext,
+    onDismissExplanation,
     cwd, exitCode,
     gitData, onGitClick,
     nodeData, onNodeClick,
@@ -25,6 +26,7 @@ const InputBar = forwardRef(function InputBar(
   callbacksRef.current.isNavigatingHistory = isNavigatingHistory
   callbacksRef.current.commandContext = commandContext
   callbacksRef.current.cwd = cwd
+  callbacksRef.current.onDismissExplanation = onDismissExplanation
 
   const { editorContainerRef, viewRef, dispatchAISuggestionRef } = useShellEditor(callbacksRef)
 

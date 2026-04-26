@@ -17,8 +17,10 @@ const (
 	TypeKill     = "kill"
 	TypeResize   = "resize"
 
-	TypeAIAppend       = "ai_append"
-	TypeAISuggestion   = "ai_suggestion"
-	TypeAISuggestError = "ai_suggest_error"
-	TypeAIExplanation  = "ai_explanation"
+	TypeAIAppend            = "ai_append"
+	TypeAISuggestion        = "ai_suggestion"
+	TypeAISuggestError      = "ai_suggest_error"
+	TypeAIExplanation       = "ai_explanation"
+	TypeAIExplanationToken  = "ai_explanation_token"
+	TypeAIExplanationClear  = "ai_explanation_clear"
 )

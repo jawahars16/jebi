@@ -153,7 +153,7 @@ class GhostWidget extends WidgetType {
     const span = document.createElement('span')
     span.textContent = this.text
     span.setAttribute('aria-hidden', 'true')
-    span.style.cssText = 'color:var(--text-muted);opacity:0.4;pointer-events:none;user-select:none;'
+    span.style.cssText = 'color:var(--text-secondary);opacity:0.65;pointer-events:none;user-select:none;'
     return span
   }
 
@@ -171,7 +171,7 @@ class AIGhostWidget extends WidgetType {
   toDOM() {
     const wrap = document.createElement('span')
     wrap.setAttribute('aria-hidden', 'true')
-    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:5px;pointer-events:none;user-select:none;opacity:0.4;'
+    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:5px;pointer-events:none;user-select:none;opacity:0.65;'
 
     const icon = document.createElement('img')
     icon.src = bulbIconUrl
@@ -180,7 +180,7 @@ class AIGhostWidget extends WidgetType {
 
     const text = document.createElement('span')
     text.textContent = this.text
-    text.style.cssText = 'color:var(--text-muted);'
+    text.style.cssText = 'color:var(--text-secondary);'
 
     wrap.appendChild(icon)
     wrap.appendChild(text)
@@ -378,23 +378,26 @@ export function useShellEditor(callbacksRef) {
       {
         key: 'Escape',
         run(view) {
+          callbacksRef.current.onDismissExplanation?.()
           const plugin = view.plugin(ghostPlugin)
           if (plugin?.aiSuggestion) { plugin._clear(); return true }
-          if (view.state.doc.length === 0) {
-            if (callbacksRef.current.onDismissExplanation) {
-              callbacksRef.current.onDismissExplanation()
-              return true
-            }
-            return false
-          }
+          if (view.state.doc.length === 0) return false
           view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
           callbacksRef.current.resetNavigation?.()
           return true
         },
       },
       {
+        key: 'Ctrl-d',
+        run() {
+          callbacksRef.current.onDismissExplanation?.()
+          return false // let the event propagate normally
+        },
+      },
+      {
         key: 'Ctrl-c',
         run(view) {
+          callbacksRef.current.onDismissExplanation?.()
           if (view.state.doc.length === 0) return false
           view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
           callbacksRef.current.resetNavigation?.()

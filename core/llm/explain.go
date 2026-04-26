@@ -5,16 +5,24 @@ import (
 	"strings"
 )
 
-// Explain sends an error explanation request and returns a plain-text description.
-// Returns ("", nil) when the model has nothing useful to say about the error.
-func Explain(ctx context.Context, provider Provider, req SuggestRequest) (string, error) {
+// ExplainStream streams explanation tokens via onToken, then calls onDone with the full text.
+// Calls neither if the context is cancelled before completion.
+func ExplainStream(ctx context.Context, provider Provider, req SuggestRequest, onToken func(string), onDone func(string)) error {
 	ch, err := provider.StreamMessages(ctx, BuildExplainMessages(req))
 	if err != nil {
-		return "", err
+		return err
 	}
 	var acc strings.Builder
 	for chunk := range ch {
+		if ctx.Err() != nil {
+			return nil
+		}
 		acc.WriteString(chunk.Token)
+		onToken(chunk.Token)
 	}
-	return ParseExplainResponse(acc.String()), nil
+	if ctx.Err() != nil {
+		return nil
+	}
+	onDone(strings.TrimSpace(acc.String()))
+	return nil
 }

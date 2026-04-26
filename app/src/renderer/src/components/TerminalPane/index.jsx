@@ -76,6 +76,7 @@ export default function TerminalPane({
     callbacksRef.current.onExitCodeDecoration?.(code);
     if (code === 0 && pendingCommandRef.current)
       pushHistory(pendingCommandRef.current);
+    if (code === 0) setExplanation(null);
     pendingCommandRef.current = null;
     setRunning(false);
     setPaneInfo(paneId, { runningCommand: null });
@@ -92,6 +93,8 @@ export default function TerminalPane({
   };
   callbacksRef.current.onAISuggestError = () => {};
   callbacksRef.current.onAIExplanation = (text) => setExplanation(text);
+  callbacksRef.current.onAIExplanationClear = () => setExplanation('');
+  callbacksRef.current.onAIExplanationToken = (token) => setExplanation(prev => (prev ?? '') + token);
   callbacksRef.current.onDismissExplanation = () => setExplanation(null);
 
   callbacksRef.current.onGit = (data) => {
@@ -198,6 +201,7 @@ export default function TerminalPane({
           getHistory={getHistory}
           isNavigatingHistory={isNavigatingHistory}
           commandContext={commandContext}
+          onDismissExplanation={() => setExplanation(null)}
           cwd={cwd}
           exitCode={exitCode}
           gitData={gitData}
