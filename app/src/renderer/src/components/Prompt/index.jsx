@@ -402,7 +402,7 @@ export default function Prompt({
                   animation: "slideInRight 0.15s ease-out",
                 }}
               >
-                <span>{new Date(startTime).toLocaleTimeString()}</span>
+                <span>{new Date(startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
                 <span style={{ opacity: 0.5 }}>·</span>
                 <span>{formatDuration(duration)}</span>
               </div>

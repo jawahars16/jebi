@@ -15,6 +15,19 @@ function createWindow() {
       contextIsolation: true
     }
   });
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.type === "keyDown" && input.meta && input.shift && !input.alt && !input.control) {
+      const k = input.key.toLowerCase();
+      if (k === "d") {
+        event.preventDefault();
+        win.webContents.send("app-shortcut", "split-down");
+      }
+      if (k === "c") {
+        event.preventDefault();
+        win.webContents.send("app-shortcut", "copy");
+      }
+    }
+  });
   if (process.env["ELECTRON_RENDERER_URL"]) {
     win.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {

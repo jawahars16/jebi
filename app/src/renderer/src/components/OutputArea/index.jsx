@@ -106,6 +106,13 @@ export default function OutputArea({
       // If xterm somehow has keyboard focus while InputBar is visible, redirect
       // the key there and suppress xterm from forwarding it to the PTY.
       term.attachCustomKeyEventHandler((e) => {
+        if (e.type === "keydown" && e.metaKey && e.key === "c" && !e.shiftKey && !e.altKey) {
+          const sel = term.getSelection();
+          if (sel && !promptAddonRef.current?._tuiActive) {
+            navigator.clipboard.writeText(sel);
+            return false;
+          }
+        }
         if (e.type === "keydown" && !callbacksRef.current.isRunning?.()) {
           callbacksRef.current.focusInput?.();
           return false;
@@ -140,6 +147,10 @@ export default function OutputArea({
       // via the pane's commandContext.
       callbacksRef.current.clearScrollback = () => term.clear();
       callbacksRef.current.copyLastOutput = () => promptAddon.copyLastOutput();
+      callbacksRef.current.copySelection = () => {
+        const sel = term.getSelection();
+        if (sel) navigator.clipboard.writeText(sel);
+      };
       callbacksRef.current.getLastEntry = () => promptAddon.getLastEntry();
 
       callbacksRef.current.onOutput = (data) => {

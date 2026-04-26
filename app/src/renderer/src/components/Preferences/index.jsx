@@ -1,7 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import AppearanceSection from './AppearanceSection'
+import AISection from './AISection'
+
+const TABS = [
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'ai',         label: 'AI' },
+]
 
 export default function PreferencesModal({ isOpen, onClose }) {
+  const [activeTab, setActiveTab] = useState('appearance')
+
   useEffect(() => {
     if (!isOpen) return
     function handleKey(e) {
@@ -36,6 +44,7 @@ export default function PreferencesModal({ isOpen, onClose }) {
           transform: 'translate(-50%, -50%)',
           zIndex: 10000,
           width: '560px',
+          height: '620px',
           maxWidth: 'calc(100vw - 40px)',
           maxHeight: 'calc(100vh - 80px)',
           background: 'var(--bg-base)',
@@ -84,24 +93,35 @@ export default function PreferencesModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Tab strip (just Appearance for now — extensible) */}
+        {/* Tab strip */}
         <div style={{
           display: 'flex',
           borderBottom: '1px solid var(--border)',
           padding: '0 20px',
           flexShrink: 0,
+          gap: 4,
         }}>
-          <div style={{
-            padding: '10px 0',
-            fontSize: '13px',
-            fontFamily: 'var(--font-ui)',
-            fontWeight: 500,
-            color: 'var(--accent)',
-            borderBottom: '2px solid var(--accent)',
-            marginBottom: '-1px',
-          }}>
-            Appearance
-          </div>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '10px 12px',
+                fontSize: '13px',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 500,
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
+                marginBottom: '-1px',
+                color: activeTab === tab.id ? 'var(--accent)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'color 0.15s',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Content */}
@@ -109,8 +129,11 @@ export default function PreferencesModal({ isOpen, onClose }) {
           flex: 1,
           overflowY: 'auto',
           padding: '24px 20px',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'var(--border) transparent',
         }}>
-          <AppearanceSection />
+          {activeTab === 'appearance' && <AppearanceSection />}
+          {activeTab === 'ai'         && <AISection />}
         </div>
       </div>
     </>

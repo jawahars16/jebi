@@ -2,6 +2,7 @@ package wire
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -28,8 +29,10 @@ func StringMessage(msgType string, value string) Message {
 }
 
 // Wire sends and receives Messages over a transport.
+// Send is safe to call from multiple goroutines; Receive is not.
 type Wire struct {
-	t transport
+	t  transport
+	mu sync.Mutex
 }
 
 // New creates a Wire backed by t.
@@ -43,6 +46,8 @@ func (w *Wire) Send(msg Message) error {
 	if err != nil {
 		return err
 	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	return w.t.WriteMessage(websocket.TextMessage, data)
 }
 

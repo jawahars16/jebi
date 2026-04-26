@@ -63,13 +63,17 @@ export function useTerminal(paneId, callbacksRef) {
           callbacksRef.current.onAISuggestError?.()
           break
         case wire.TypeAIExplanation:
-          callbacksRef.current.onAIExplanation?.(msg.data)
+          callbacksRef.current.onAIBannerStart?.('error')
+          callbacksRef.current.onAIBannerToken?.(msg.data)
           break
-        case wire.TypeAIExplanationClear:
-          callbacksRef.current.onAIExplanationClear?.()
+        case wire.TypeAIBannerStart:
+          callbacksRef.current.onAIBannerStart?.(msg.data?.type ?? 'error')
           break
-        case wire.TypeAIExplanationToken:
-          callbacksRef.current.onAIExplanationToken?.(msg.data)
+        case wire.TypeAIBannerToken:
+          callbacksRef.current.onAIBannerToken?.(msg.data)
+          break
+        case wire.TypeAIBannerCancel:
+          callbacksRef.current.onAIBannerCancel?.()
           break
       }
     }

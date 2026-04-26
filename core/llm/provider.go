@@ -19,10 +19,22 @@ type HistoryEntry struct {
 
 // SuggestRequest is the input for the next-command suggestion feature.
 type SuggestRequest struct {
-	Entries []HistoryEntry
-	Cwd     string
-	Shell   string
-	OS      string
+	Entries    []HistoryEntry
+	Cwd        string
+	Shell      string
+	OS         string
+	DirListing []string // file/dir names in cwd, dirs suffixed with /
+}
+
+// ProjectInfo holds structured detector results for project context summarisation.
+type ProjectInfo struct {
+	Dir    string
+	Git    string // "branch|dirty|ahead|behind"
+	Node   string // "version|packageManager"
+	Go     string // "version"
+	Python string // "version|venv"
+	Docker string // "compose" or "dockerfile"
+	K8s    string // "context|namespace"
 }
 
 // Step is one action in a multi-step plan returned by the LLM.

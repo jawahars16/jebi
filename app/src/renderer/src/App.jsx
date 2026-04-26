@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import TabBar from './components/TabBar'
 import TerminalPane from './components/TerminalPane'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useSessionStore } from './hooks/useSessionStore.jsx'
 import { usePaneResize } from './hooks/usePaneResize'
 import { deletePaneInfo } from './hooks/usePaneInfo'
+import { triggerCopy } from './hooks/paneCopyRegistry'
 import { createLeaf, splitLeaf, removeLeaf, collectPaneIds, computePaneRects, computeDividers } from './utils/layoutTree'
 import StatusBar from './components/StatusBar/index.jsx'
 import PreferencesModal from './components/Preferences'
@@ -35,6 +36,20 @@ export default function App() {
   const paneWrapperRef = useRef(null)
   const { startDrag, dragCursor } = usePaneResize(paneWrapperRef, setTabs)
   const [isPrefsOpen, setIsPrefsOpen] = useState(false)
+  const [ctxMenu, setCtxMenu] = useState(null) // { x, y, tabId, paneId, paneCount }
+
+  // Close context menu on any click/Escape
+  useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    const onKey = (e) => { if (e.key === 'Escape') setCtxMenu(null) }
+    window.addEventListener('mousedown', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [ctxMenu])
 
   // --- Tab handlers ---
 
@@ -95,9 +110,59 @@ export default function App() {
     closePane(activeTab.id, activeTab.activePaneId)
   }, [activeTab, closePane])
 
+  // Spatial pane navigation: finds nearest pane in the given direction using
+  // rect geometry. Falls back to cycling when no spatial neighbor exists.
+  const navigatePane = useCallback((dir) => {
+    const rects = computePaneRects(activeTab.layout)
+    const paneIds = collectPaneIds(activeTab.layout)
+    if (paneIds.length < 2) return
+
+    const cur = rects[activeTab.activePaneId]
+    if (!cur) return
+
+    const EPS = 0.5 // % tolerance for floating-point edge alignment
+    const curRight  = cur.left + cur.width
+    const curBottom = cur.top  + cur.height
+    const curCX = cur.left + cur.width  / 2
+    const curCY = cur.top  + cur.height / 2
+
+    let best = null
+    let bestDist = Infinity
+
+    for (const id of paneIds) {
+      if (id === activeTab.activePaneId) continue
+      const r = rects[id]
+      let match = false
+      let dist  = 0
+      if (dir === 'right' && Math.abs(r.left          - curRight)  < EPS) { match = true; dist = Math.abs(r.top  + r.height / 2 - curCY) }
+      if (dir === 'left'  && Math.abs(r.left + r.width - cur.left) < EPS) { match = true; dist = Math.abs(r.top  + r.height / 2 - curCY) }
+      if (dir === 'down'  && Math.abs(r.top            - curBottom) < EPS) { match = true; dist = Math.abs(r.left + r.width  / 2 - curCX) }
+      if (dir === 'up'    && Math.abs(r.top + r.height - cur.top)  < EPS) { match = true; dist = Math.abs(r.left + r.width  / 2 - curCX) }
+      if (match && dist < bestDist) { bestDist = dist; best = id }
+    }
+
+    if (best) {
+      setActivePane(activeTab.id, best)
+    } else {
+      // Cycle when no direct spatial neighbor
+      const idx = paneIds.indexOf(activeTab.activePaneId)
+      const fwd = dir === 'right' || dir === 'down'
+      const next = fwd ? (idx + 1) % paneIds.length : (idx - 1 + paneIds.length) % paneIds.length
+      setActivePane(activeTab.id, paneIds[next])
+    }
+  }, [activeTab, setActivePane])
+
   const splitActivePane = useCallback((direction) => {
     splitPane(activeTab.id, activeTab.activePaneId, direction)
   }, [activeTab, splitPane])
+
+  // Cmd+Shift+D is intercepted via before-input-event in main (Chromium swallows it otherwise)
+  useEffect(() => {
+    return window.electron?.onAppShortcut?.((name) => {
+      if (name === 'split-down') splitActivePane('vertical')
+      if (name === 'copy') triggerCopy(activeTab.activePaneId)
+    })
+  }, [splitActivePane, activeTab.activePaneId])
 
   const setTabAccent = useCallback((tabId, accent) => {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, accent } : t))
@@ -149,6 +214,10 @@ export default function App() {
     'Meta+d': () => splitActivePane('horizontal'),
     'Meta+Shift+D': () => splitActivePane('vertical'),
     'Meta+,': () => setIsPrefsOpen(true),
+    'Meta+Alt+ArrowRight': () => navigatePane('right'),
+    'Meta+Alt+ArrowLeft':  () => navigatePane('left'),
+    'Meta+Alt+ArrowUp':    () => navigatePane('up'),
+    'Meta+Alt+ArrowDown':  () => navigatePane('down'),
   })
 
   // --- Pane count for current tab (to show/hide close button) ---
@@ -189,7 +258,7 @@ export default function App() {
           display: tab.id === activeTabId ? 'block' : 'none',
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
-          '--tab-accent': tab.accent ?? 'var(--accent)',
+          '--tab-accent': tab.accent ?? '#3b82f6',
         }}
       >
         {/* Dividers — 8px hit area with a centered 1px visual bar */}
@@ -229,6 +298,10 @@ export default function App() {
           return (
             <div
               key={paneId}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setCtxMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, paneId, paneCount })
+              }}
               style={{
                 position: 'absolute',
                 left: `${r.left}%`,
@@ -236,7 +309,7 @@ export default function App() {
                 width: `${r.width}%`,
                 height: `${r.height}%`,
                 display: 'flex',
-                filter: isActive ? 'none' : 'grayscale(60%)',
+                filter: isActive ? 'none' : 'grayscale(40%)',
               }}
             >
               <TerminalPane
@@ -303,6 +376,79 @@ export default function App() {
       )}
 
       <PreferencesModal isOpen={isPrefsOpen} onClose={() => setIsPrefsOpen(false)} />
+
+      {/* Pane context menu */}
+      {ctxMenu && (
+        <PaneContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          canClose={ctxMenu.paneCount > 1}
+          onSplitRight={() => { splitPane(ctxMenu.tabId, ctxMenu.paneId, 'horizontal'); setCtxMenu(null) }}
+          onSplitDown={() => { splitPane(ctxMenu.tabId, ctxMenu.paneId, 'vertical'); setCtxMenu(null) }}
+          onClose={() => { closePane(ctxMenu.tabId, ctxMenu.paneId); setCtxMenu(null) }}
+          onNewTab={() => { addTab(); setCtxMenu(null) }}
+          onCopy={() => { triggerCopy(ctxMenu.paneId); setCtxMenu(null) }}
+        />
+      )}
     </div>
+  )
+}
+
+function PaneContextMenu({ x, y, canClose, onSplitRight, onSplitDown, onClose, onNewTab, onCopy }) {
+  const menuStyle = {
+    position: 'fixed',
+    top: y,
+    left: x,
+    zIndex: 10000,
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    padding: '4px 0',
+    minWidth: 168,
+    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+    fontFamily: 'var(--font-ui, system-ui)',
+    fontSize: 'var(--font-size-ui)',
+  }
+  const divStyle = { height: 1, background: 'var(--border)', margin: '4px 0' }
+
+  return (
+    <div style={menuStyle} onMouseDown={(e) => e.stopPropagation()}>
+      <PaneMenuItem onMouseDown={onCopy} shortcut="⌘⇧C">Copy</PaneMenuItem>
+      <div style={divStyle} />
+      <PaneMenuItem onMouseDown={onSplitRight} shortcut="⌘D">Split Right</PaneMenuItem>
+      <PaneMenuItem onMouseDown={onSplitDown} shortcut="⌘⇧D">Split Down</PaneMenuItem>
+      <div style={divStyle} />
+      <PaneMenuItem onMouseDown={onNewTab} shortcut="⌘T">New Tab</PaneMenuItem>
+      {canClose && (
+        <>
+          <div style={divStyle} />
+          <PaneMenuItem onMouseDown={onClose} shortcut="⌘W" danger>Close Pane</PaneMenuItem>
+        </>
+      )}
+    </div>
+  )
+}
+
+function PaneMenuItem({ children, onMouseDown, shortcut, danger }) {
+  return (
+    <button
+      onMouseDown={onMouseDown}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 24, padding: '6px 8px', width: '100%', textAlign: 'left',
+        background: 'transparent', border: 'none', borderRadius: 4, margin: '0 4px',
+        width: 'calc(100% - 8px)',
+        cursor: 'pointer',
+        color: danger ? '#f87171' : 'var(--text-primary)',
+        fontFamily: 'var(--font-ui, system-ui)',
+        fontSize: 'var(--font-size-ui)',
+        transition: 'background-color 0.1s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-base)' }}
+      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+    >
+      <span>{children}</span>
+      {shortcut && <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{shortcut}</span>}
+    </button>
   )
 }

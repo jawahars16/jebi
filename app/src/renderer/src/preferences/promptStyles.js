@@ -11,27 +11,15 @@
 export const PROMPT_STYLES = [
   {
     id: 'wave',
-    name: 'Wave',
+    name: 'Rounded',
     group: { radius: 'dynamic', connected: true, rightCap: 'round' },
     separator: 'wave',
-  },
-  {
-    id: 'powerline',
-    name: 'Powerline',
-    group: { radius: 0, connected: true, rightCap: 'triangle' },
-    separator: 'triangle',
   },
   {
     id: 'pill',
     name: 'Pill',
     group: { radius: 'pill', connected: false, rightCap: 'round' },
     separator: 'none',
-  },
-  {
-    id: 'slant',
-    name: 'Slant',
-    group: { radius: 0, connected: true, rightCap: 'slant' },
-    separator: 'slash',
   },
   {
     id: 'minimal',

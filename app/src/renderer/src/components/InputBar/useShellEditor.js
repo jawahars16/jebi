@@ -453,12 +453,13 @@ export function useShellEditor(callbacksRef) {
       },
       {
         // Tab precedence (first match wins):
-        //   1. popup open                → accept highlighted item
-        //   2. doc start (no chars)      → noop (first token is a command)
-        //   3. preceding char is space   → open file dropdown (cwd)
-        //   4. current word contains '/' → open file dropdown (parent dir)
-        //   5. mid-word with ghost text  → accept ghost text
-        //   6. otherwise                 → noop
+        //   1. popup open                   → accept highlighted item
+        //   2. doc start (no chars)         → noop (first token is a command)
+        //   3. preceding char is space      → open file dropdown (cwd)
+        //   4. current word contains '/'    → open file dropdown (parent dir)
+        //   5. word is an argument (not cmd)→ open file dropdown (cwd, filtered)
+        //   6. mid-word with ghost text     → accept ghost text
+        //   7. otherwise                    → noop
         key: 'Tab',
         run(view) {
           if (completionStatus(view.state) != null) return acceptCompletion(view)
@@ -477,6 +478,12 @@ export function useShellEditor(callbacksRef) {
           const lineFrom = view.state.doc.lineAt(head).from
           const wordSoFar = view.state.sliceDoc(lineFrom, head).match(/\S*$/)?.[0] ?? ''
           if (wordSoFar.includes('/')) return startCompletion(view)
+
+          // Relative path argument without a slash (e.g. `cd ter`): open the
+          // file picker filtered by the partial name. Guard: only when the
+          // word doesn't start at the beginning of the line, so we don't
+          // accidentally open the picker for the command token itself.
+          if (wordSoFar && head - wordSoFar.length > lineFrom) return startCompletion(view)
 
           const plugin = view.plugin(ghostPlugin)
           if (plugin?.suggestion) return plugin.accept(view)

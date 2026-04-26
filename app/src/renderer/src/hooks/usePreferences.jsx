@@ -80,7 +80,15 @@ export function PreferencesProvider({ children }) {
     setPrefs(prev => ({ ...prev, promptStyleId: id }))
   }
 
-  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle }
+  function setAiExplainErrors(value) {
+    setPrefs(prev => ({ ...prev, aiExplainErrors: value }))
+  }
+
+  function setAiDirectoryContext(value) {
+    setPrefs(prev => ({ ...prev, aiDirectoryContext: value }))
+  }
+
+  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle, setAiExplainErrors, setAiDirectoryContext }
 
   return (
     <PreferencesContext.Provider value={value}>

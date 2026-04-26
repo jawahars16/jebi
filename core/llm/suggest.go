@@ -16,5 +16,13 @@ func Suggest(ctx context.Context, provider Provider, req SuggestRequest) (string
 	for chunk := range ch {
 		acc.WriteString(chunk.Token)
 	}
-	return ParseSuggestResponse(acc.String()), nil
+	result := ParseSuggestResponse(acc.String())
+	// Discard if the model echoed back the last failed command verbatim.
+	if result != "" && len(req.Entries) > 0 {
+		last := req.Entries[len(req.Entries)-1]
+		if last.ExitCode != 0 && strings.EqualFold(result, strings.TrimSpace(last.Command)) {
+			return "", nil
+		}
+	}
+	return result, nil
 }

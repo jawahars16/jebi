@@ -2,13 +2,16 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"terminal/core/llm"
 	"terminal/core/wire"
 )
 
@@ -39,9 +42,9 @@ var detectors = []detector{
 	{wire.TypeK8s, detectK8s},
 }
 
-// detectEnv runs all registered detectors concurrently for dir and sends each
-// non-empty result to the frontend. ctx is cancelled by the caller when the user
-// changes directory, stopping any stale detections immediately.
+// detectEnv runs all registered detectors concurrently for dir, sends each
+// non-empty result to the frontend immediately, then triggers an AI project
+// context summary once all detectors complete.
 func (s *Session) detectEnv(ctx context.Context, dir string) {
 	type result struct {
 		msgType string
@@ -49,15 +52,87 @@ func (s *Session) detectEnv(ctx context.Context, dir string) {
 	}
 
 	ch := make(chan result, len(detectors))
+	var wg sync.WaitGroup
 	for _, d := range detectors {
 		d := d
-		go func() { ch <- result{d.msgType, d.probe(ctx, dir)} }()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ch <- result{d.msgType, d.probe(ctx, dir)}
+		}()
 	}
 
-	for range detectors {
-		if r := <-ch; r.data != "" {
+	// Collect results and send to frontend immediately.
+	info := llm.ProjectInfo{Dir: dir}
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+	for r := range ch {
+		if r.data != "" {
 			s.w.Send(wire.StringMessage(r.msgType, r.data))
 		}
+		switch r.msgType {
+		case wire.TypeGit:
+			info.Git = r.data
+		case wire.TypeNode:
+			info.Node = r.data
+		case wire.TypeGo:
+			info.Go = r.data
+		case wire.TypePython:
+			info.Python = r.data
+		case wire.TypeDocker:
+			info.Docker = r.data
+		case wire.TypeK8s:
+			info.K8s = r.data
+		}
+	}
+
+	if ctx.Err() != nil || s.provider == nil || dir == s.lastContextDir {
+		return
+	}
+	s.lastContextDir = dir
+	// Strip walk-up detections that don't belong to the current directory.
+	// Node and Python use findUp so they may reflect a parent project — only
+	// include them if their marker files exist directly in dir.
+	if !existsAny(dir, []string{"package.json"}) {
+		info.Node = ""
+	}
+	if !existsAny(dir, pythonMarkers) {
+		info.Python = ""
+	}
+	s.sendProjectContext(ctx, info)
+}
+
+// sendProjectContext streams a one-sentence AI project summary as an info banner.
+func (s *Session) sendProjectContext(ctx context.Context, info llm.ProjectInfo) {
+	// Skip bare directories with no detected project signals.
+	if info.Git == "" && info.Node == "" && info.Go == "" && info.Python == "" && info.Docker == "" && info.K8s == "" {
+		return
+	}
+
+	msgs := llm.BuildProjectContextMessages(info)
+	ch, err := s.provider.StreamMessages(ctx, msgs)
+	if err != nil {
+		return
+	}
+
+	started := false
+	for chunk := range ch {
+		if chunk.Token == "" {
+			continue
+		}
+		if !started {
+			startData, _ := json.Marshal(map[string]string{"type": "info"})
+			s.w.Send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
+			started = true
+		}
+		data, _ := json.Marshal(chunk.Token)
+		s.w.Send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
+	}
+	// If context was cancelled mid-stream, clear any partial banner.
+	if started && ctx.Err() != nil {
+		s.w.Send(wire.Message{Type: wire.TypeAIBannerCancel})
 	}
 }
 
@@ -332,6 +407,16 @@ func findUpAnyDir(dir string, dirnames []string) string {
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// existsAny reports whether dir directly contains any of the named files.
+func existsAny(dir string, names []string) bool {
+	for _, name := range names {
+		if exists(filepath.Join(dir, name)) {
+			return true
+		}
+	}
+	return false
 }
 
 // cmd runs name with args, inheriting the current environment, and returns

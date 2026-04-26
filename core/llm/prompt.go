@@ -98,14 +98,16 @@ Rules:
 - No explanations. No markdown. No prompt symbols.
 - Never prefix the command with a shell name (no bash, sh, zsh). The user is already in a terminal.
 - Do NOT suggest destructive commands (rm -rf, reset, etc.) unless clearly implied.
-- Do NOT repeat the last command unless correcting it.
-- If context is unclear, output an empty string.
+- Do NOT repeat the last command if it failed — suggest a fix or something different instead.
+- Never suggest a command that appeared with [exit N] in the history — it failed and should not be repeated as-is.
+- If the last command was "command not found", output an empty string — do not guess at broken commands.
+- If context is unclear or there is no confident next step, output an empty string.
 
 Examples of good behavior:
 - After "git clone ..." → suggest "cd <repo>"
 - After "npm install" → suggest "npm start" or "npm run dev"
 - After "cd" into a dir → suggest "ls"
-- After error "command not found" → suggest install or correct command
+- After "command not found: foo" → output empty string (no suggestion)
 
 Return only the command. Nothing else.`
 
@@ -113,8 +115,17 @@ Return only the command. Nothing else.`
 func BuildSuggestMessages(req SuggestRequest) []ChatMessage {
 	system := fmt.Sprintf(suggestPromptTemplate, req.Shell, req.OS, req.Cwd)
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "Current directory: %s\n", req.Cwd)
+	if len(req.DirListing) > 0 {
+		fmt.Fprintf(&sb, "Files: %s\n", strings.Join(req.DirListing, "  "))
+	}
+	sb.WriteString("\n")
 	for _, e := range req.Entries {
-		fmt.Fprintf(&sb, "$ %s\n%s\n", e.Command, e.Output)
+		status := "ok"
+		if e.ExitCode != 0 {
+			status = fmt.Sprintf("exit %d", e.ExitCode)
+		}
+		fmt.Fprintf(&sb, "$ %s  [%s]\n%s\n", e.Command, status, e.Output)
 	}
 	return []ChatMessage{
 		{Role: "system", Content: system},
@@ -192,6 +203,88 @@ func BuildExplainMessages(req SuggestRequest) []ChatMessage {
 // ParseExplainResponse cleans up the raw LLM explanation response.
 func ParseExplainResponse(raw string) string {
 	return strings.TrimSpace(raw)
+}
+
+// BuildProjectContextMessages returns messages for a one-sentence project summary.
+func BuildProjectContextMessages(info ProjectInfo) []ChatMessage {
+	var parts []string
+	if info.Git != "" {
+		fields := strings.SplitN(info.Git, "|", 4)
+		branch := fields[0]
+		dirty := len(fields) > 1 && fields[1] == "1"
+		s := "git branch: " + branch
+		if dirty {
+			s += " (uncommitted changes)"
+		}
+		parts = append(parts, s)
+	}
+	if info.Node != "" {
+		fields := strings.SplitN(info.Node, "|", 2)
+		s := "Node.js " + fields[0]
+		if len(fields) > 1 && fields[1] != "" && fields[1] != "npm" {
+			s += ", package manager: " + fields[1]
+		}
+		parts = append(parts, s)
+	}
+	if info.Go != "" {
+		parts = append(parts, "Go "+info.Go)
+	}
+	if info.Python != "" {
+		fields := strings.SplitN(info.Python, "|", 2)
+		s := "Python " + fields[0]
+		if len(fields) > 1 && fields[1] != "" {
+			s += " (venv: " + fields[1] + " active)"
+		} else {
+			s += " (no venv active)"
+		}
+		parts = append(parts, s)
+	}
+	if info.Docker != "" {
+		if info.Docker == "compose" {
+			parts = append(parts, "Docker Compose available")
+		} else {
+			parts = append(parts, "Dockerfile present")
+		}
+	}
+	if info.K8s != "" {
+		fields := strings.SplitN(info.K8s, "|", 2)
+		parts = append(parts, "Kubernetes context: "+fields[0])
+	}
+
+	detected := strings.Join(parts, ", ")
+
+	system := "You are a terminal assistant. A user just cd'd into a directory.\n" +
+		"You will receive structured facts about the project. Write ONE short sentence surfacing something genuinely useful the user should know.\n\n" +
+		"IMPORTANT: Only use the facts provided. Do not invent or infer anything not in the facts.\n" +
+		"- virtualenv / venv concerns apply ONLY when Python is detected\n" +
+		"- npm / yarn / node_modules concerns apply ONLY when Node.js is detected\n" +
+		"- Never mix concepts from different ecosystems\n\n" +
+		"Focus on actionable status:\n" +
+		"- Uncommitted or unpushed git changes\n" +
+		"- Python venv not activated (only when Python is in the facts)\n" +
+		"- Dirty git state on a non-main branch\n" +
+		"- Notable combinations (e.g. Go + Kubernetes context pointing to production)\n\n" +
+		"Rules:\n" +
+		"- One sentence only. No labels. No markdown except backticks.\n" +
+		"- Do NOT suggest what command to run next.\n" +
+		"- If there is nothing genuinely useful to surface, output empty string.\n" +
+		"- Generic observations like 'this is a Node.js project' are not useful — output empty string.\n\n" +
+		"Good examples:\n" +
+		"- \"Python 3.11 detected but no virtualenv is active — dependencies may not resolve.\"\n" +
+		"- \"On branch `feature/auth` with 5 uncommitted files.\"\n" +
+		"- \"Go service with Kubernetes context pointing to `prod-cluster`.\"\n\n" +
+		"Bad examples (output empty string for these):\n" +
+		"- \"This is a Next.js project.\"\n" +
+		"- \"Node.js project with no virtualenv active.\"  ← wrong: virtualenv is Python only\n" +
+		"- \"You can run npm run dev to start.\"\n\n" +
+		"Return only the sentence, or empty string."
+
+	user := fmt.Sprintf("Directory: %s\nDetected: %s", info.Dir, detected)
+
+	return []ChatMessage{
+		{Role: "system", Content: system},
+		{Role: "user", Content: user},
+	}
 }
 
 // ParseFinalResponse extracts the structured response from the accumulated

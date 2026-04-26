@@ -31,6 +31,7 @@
      `bare` mode (Minimal preset) intentionally bypasses bg and uses transparent. */
   --prompt-tint-strength: 20%;
 
+  --tab-accent: #3b82f6;               /* default; overridden per-tab when user picks a color */
   --prompt-cwd-tint:    var(--accent);   /* fallback; overridden inline in CwdSegment */
   --prompt-git-tint:    #eb6200;   /* orange — git tradition */
   --prompt-node-tint:   #22c55e;   /* green  — node brand */
@@ -102,6 +103,12 @@ body {
 .xterm .xterm-scrollable-element > .scrollbar > .slider:hover {
   background: var(--text-muted) !important;
 }
+
+/* Thin styled scrollbar for overlay panels (Preferences, dropdowns) */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* CodeMirror — suppress internal scrollbar; auto-height plugin controls sizing */
 .cm-scroller {

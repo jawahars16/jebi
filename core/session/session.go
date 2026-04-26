@@ -51,10 +51,16 @@ type Session struct {
 	cancelDetect context.CancelFunc
 
 	// AI suggestion state — session-scoped, not persisted.
-	provider       llm.Provider
-	currentCwd     string
-	contextEntries []llm.HistoryEntry
-	cancelSuggest  context.CancelFunc
+	provider        llm.Provider
+	currentCwd      string
+	lastContextDir  string // last dir for which project context banner was shown
+	contextEntries  []llm.HistoryEntry
+	cancelSuggest   context.CancelFunc
+
+	// firstCwdSeen suppresses the project-context banner on initial shell
+	// startup. The first OSC 7 message is the shell's initial cwd, not the
+	// result of a user cd command; we only want the banner after real navigation.
+	firstCwdSeen bool
 }
 
 // resolveShell returns cfg.Shell if set, then $SHELL, then /bin/zsh.
@@ -186,10 +192,11 @@ func (s *Session) Start() {
 			copy(entries, s.contextEntries)
 			cwd := s.currentCwd
 			req := llm.SuggestRequest{
-				Entries: entries,
-				Cwd:     cwd,
-				Shell:   resolveShell(s.cfg),
-				OS:      runtime.GOOS + "/" + runtime.GOARCH,
+				Entries:    entries,
+				Cwd:        cwd,
+				Shell:      resolveShell(s.cfg),
+				OS:         runtime.GOOS + "/" + runtime.GOARCH,
+				DirListing: readDir(cwd),
 			}
 			if entry.ExitCode != 0 {
 				// Error path: explain what went wrong AND suggest a fix command
@@ -199,14 +206,21 @@ func (s *Session) Start() {
 					wg.Add(2)
 					go func() {
 						defer wg.Done()
-						s.w.Send(wire.Message{Type: wire.TypeAIExplanationClear})
+						startData, _ := json.Marshal(map[string]string{"type": "error"})
+						s.w.Send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
+						done := false
 						llm.ExplainStream(ctx, s.provider, req,
 							func(token string) {
 								data, _ := json.Marshal(token)
-								s.w.Send(wire.Message{Type: wire.TypeAIExplanationToken, Data: data})
+								s.w.Send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
 							},
-							func(_ string) {},
+							func(_ string) { done = true },
 						)
+						// Send cancel if the stream didn't complete — covers both context
+						// cancellation and provider early-close (partial response).
+						if !done {
+							s.w.Send(wire.Message{Type: wire.TypeAIBannerCancel})
+						}
 					}()
 					go func() {
 						defer wg.Done()
@@ -219,8 +233,8 @@ func (s *Session) Start() {
 					}()
 					wg.Wait()
 				}()
-			} else if len(s.contextEntries) >= 2 {
-				// Success path: suggest next command
+			} else {
+				// Success path: suggest next command (from first command onwards)
 				go func() {
 					defer cancel()
 					result, err := llm.Suggest(ctx, s.provider, req)
@@ -231,8 +245,6 @@ func (s *Session) Start() {
 					data, _ := json.Marshal(result)
 					s.w.Send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
 				}()
-			} else {
-				cancel()
 			}
 
 		case wire.TypeKill:
@@ -241,6 +253,38 @@ func (s *Session) Start() {
 	}
 }
 
+
+// readDir returns up to 60 entries in dir — plain names for files, name+/ for
+// directories. Hidden entries and the .git directory are included but capped.
+func readDir(dir string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	const max = 60
+	names := make([]string, 0, min(len(entries), max))
+	for _, e := range entries {
+		if e.Name() == ".git" {
+			continue
+		}
+		name := e.Name()
+		if e.IsDir() {
+			name += "/"
+		}
+		names = append(names, name)
+		if len(names) >= max {
+			break
+		}
+	}
+	return names
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 const termReadyMarker = "__TERM_READY__"
 
@@ -282,7 +326,13 @@ func (s *Session) pipe() {
 						}
 						ctx, cancel := newDetectContext()
 						s.cancelDetect = cancel
-						go s.detectEnv(ctx, cwd)
+						// Skip detectEnv on the first CWD (shell startup / new tab).
+						// Only trigger project-context banner after a real cd command.
+						if !s.firstCwdSeen {
+							s.firstCwdSeen = true
+						} else {
+							go s.detectEnv(ctx, cwd)
+						}
 					case strings.HasPrefix(p, "9001;"):
 						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
 					}

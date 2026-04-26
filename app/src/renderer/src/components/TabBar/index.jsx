@@ -198,7 +198,7 @@ function TabPill({ tab, isActive, onSelect, onClose, onContextMenu }) {
         borderTopLeftRadius: 6,
         borderTopRightRadius: 6,
         boxShadow: isActive ? 'inset 0 -2px 0 var(--tab-accent)' : undefined,
-        '--tab-accent': tab.accent ?? 'var(--accent)',
+        '--tab-accent': tab.accent ?? '#3b82f6',
       }}
       onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-elevated)' }}
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent' }}
@@ -263,7 +263,7 @@ function LeftTabPill({ tab, isActive, onSelect, onClose, onContextMenu }) {
         backgroundColor: isActive ? 'var(--bg-elevated)' : 'transparent',
         borderRadius: 6,
         boxShadow: isActive ? 'inset 2px 0 0 var(--tab-accent)' : undefined,
-        '--tab-accent': tab.accent ?? 'var(--accent)',
+        '--tab-accent': tab.accent ?? '#3b82f6',
       }}
       onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-elevated)' }}
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent' }}

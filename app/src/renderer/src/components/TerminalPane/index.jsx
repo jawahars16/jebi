@@ -1,7 +1,9 @@
-import { useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useSharedHistory } from "../../hooks/useSharedHistory";
 import { setPaneInfo } from "../../hooks/usePaneInfo";
+import { usePreferences } from "../../hooks/usePreferences";
+import { registerCopy, unregisterCopy } from "../../hooks/paneCopyRegistry";
 import OutputArea from "../OutputArea";
 import InputBar from "../InputBar";
 import ExplanationPanel from "../ExplanationPanel";
@@ -18,6 +20,7 @@ export default function TerminalPane({
   onToggleTabPosition,
 }) {
   const callbacksRef = useRef({});
+  const { prefs } = usePreferences();
   const { sendInput, sendRaw, sendResize, sendAIAppend } = useTerminal(paneId, callbacksRef);
   const {
     push: pushHistory,
@@ -27,7 +30,7 @@ export default function TerminalPane({
     resetNavigation,
   } = useSharedHistory();
   const [running, setRunning] = useState(false);
-  const [explanation, setExplanation] = useState(null);
+  const [banner, setBanner] = useState(null); // { text: string, type: 'error'|'info'|'warning'|'suggestion' }
   const [cwd, setCwd] = useState("");
   const [exitCode, setExitCode] = useState(0);
   const [gitData, setGitData] = useState(null);
@@ -38,6 +41,11 @@ export default function TerminalPane({
   const [k8sData, setK8sData] = useState(null);
   const inputBarRef = useRef(null);
   const runningRef = useRef(false);
+
+  useEffect(() => {
+    registerCopy(paneId, () => callbacksRef.current.copySelection?.())
+    return () => unregisterCopy(paneId)
+  }, [paneId])
   const pendingCommandRef = useRef(null);
 
   runningRef.current = running;
@@ -76,7 +84,7 @@ export default function TerminalPane({
     callbacksRef.current.onExitCodeDecoration?.(code);
     if (code === 0 && pendingCommandRef.current)
       pushHistory(pendingCommandRef.current);
-    if (code === 0) setExplanation(null);
+    if (code === 0) setBanner(null);
     pendingCommandRef.current = null;
     setRunning(false);
     setPaneInfo(paneId, { runningCommand: null });
@@ -92,10 +100,14 @@ export default function TerminalPane({
     inputBarRef.current?.setSuggestion(cmd);
   };
   callbacksRef.current.onAISuggestError = () => {};
-  callbacksRef.current.onAIExplanation = (text) => setExplanation(text);
-  callbacksRef.current.onAIExplanationClear = () => setExplanation('');
-  callbacksRef.current.onAIExplanationToken = (token) => setExplanation(prev => (prev ?? '') + token);
-  callbacksRef.current.onDismissExplanation = () => setExplanation(null);
+  callbacksRef.current.onAIBannerStart = (type) => {
+    if (type === 'error' && !prefs.aiExplainErrors) return;
+    if (type === 'info'  && !prefs.aiDirectoryContext) return;
+    setBanner({ text: '', type });
+  };
+  callbacksRef.current.onAIBannerToken = (token) => setBanner(prev => prev ? { ...prev, text: prev.text + token } : null);
+  callbacksRef.current.onAIBannerCancel = () => setBanner(null);
+  callbacksRef.current.onDismissExplanation = () => setBanner(null);
 
   callbacksRef.current.onGit = (data) => {
     setGitData(data);
@@ -129,7 +141,7 @@ export default function TerminalPane({
 
   const handleSubmit = useCallback(
     (command) => {
-      setExplanation(null);
+      setBanner(null);
       const trimmed = command.trim();
       pendingCommandRef.current = trimmed;
       sendInput(command);
@@ -186,10 +198,11 @@ export default function TerminalPane({
         isVisible={isVisible}
       />
 
-      {explanation && (
+      {banner?.text && (
         <ExplanationPanel
-          text={explanation}
-          onDismiss={() => setExplanation(null)}
+          text={banner.text}
+          type={banner.type}
+          onDismiss={() => setBanner(null)}
         />
       )}
       {!running && (
@@ -201,7 +214,7 @@ export default function TerminalPane({
           getHistory={getHistory}
           isNavigatingHistory={isNavigatingHistory}
           commandContext={commandContext}
-          onDismissExplanation={() => setExplanation(null)}
+          onDismissExplanation={() => setBanner(null)}
           cwd={cwd}
           exitCode={exitCode}
           gitData={gitData}
