@@ -40,6 +40,12 @@ var detectors = []detector{
 	{wire.TypePython, detectPython},
 	{wire.TypeDocker, detectDocker},
 	{wire.TypeK8s, detectK8s},
+	{wire.TypeRust, detectRust},
+	{wire.TypePhp, detectPhp},
+	{wire.TypeJava, detectJava},
+	{wire.TypeKotlin, detectKotlin},
+	{wire.TypeHaskell, detectHaskell},
+	{wire.TypeC, detectC},
 }
 
 // detectEnv runs all registered detectors concurrently for dir, sends each
@@ -336,6 +342,174 @@ func detectK8s(ctx context.Context, dir string) string {
 	return fmt.Sprintf("%s|%s", kctx, ns)
 }
 
+// ── Rust ─────────────────────────────────────────────────────────────────────
+
+func detectRust(ctx context.Context, dir string) string {
+	if findUp(dir, "Cargo.toml") == "" {
+		return ""
+	}
+	rustCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	ver := cmd(rustCtx, "rustc", "--version")
+	if ver == "" {
+		return ""
+	}
+	// "rustc 1.78.0 (9b00956e5 2024-04-29)" → "1.78.0"
+	parts := strings.Fields(ver)
+	if len(parts) >= 2 {
+		return parts[1]
+	}
+	return ver
+}
+
+// ── PHP ──────────────────────────────────────────────────────────────────────
+
+var phpMarkers = []string{
+	"composer.json",
+	"composer.lock",
+	"artisan",
+}
+
+func detectPhp(ctx context.Context, dir string) string {
+	if findUpAny(dir, phpMarkers) == "" {
+		return ""
+	}
+	phpCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	ver := cmd(phpCtx, "php", "--version")
+	if ver == "" {
+		return ""
+	}
+	// "PHP 8.3.0 (cli) ..." → "8.3.0"
+	parts := strings.Fields(ver)
+	if len(parts) >= 2 {
+		return parts[1]
+	}
+	return ver
+}
+
+// ── Java ─────────────────────────────────────────────────────────────────────
+
+var javaMarkers = []string{
+	"pom.xml",
+	"build.gradle",
+	"build.gradle.kts",
+	"gradlew",
+	".mvn",
+}
+
+func detectJava(ctx context.Context, dir string) string {
+	if findUpAny(dir, javaMarkers) == "" {
+		return ""
+	}
+	javaCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	ver := cmd(javaCtx, "java", "--version")
+	if ver == "" {
+		ver = cmd(javaCtx, "java", "-version")
+	}
+	if ver == "" {
+		return ""
+	}
+	// "openjdk 21.0.1 ..." or `java version "21.0.1"` → "21.0.1"
+	parts := strings.Fields(ver)
+	for _, p := range parts {
+		p = strings.Trim(p, `"`)
+		if len(p) > 0 && p[0] >= '0' && p[0] <= '9' {
+			return p
+		}
+	}
+	return ""
+}
+
+// ── Kotlin ───────────────────────────────────────────────────────────────────
+
+var kotlinMarkers = []string{
+	"build.gradle.kts",
+	"settings.gradle.kts",
+}
+
+func detectKotlin(ctx context.Context, dir string) string {
+	if findUpAny(dir, kotlinMarkers) == "" && !hasFileWithExt(dir, ".kt") {
+		return ""
+	}
+	kotlinCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	ver := cmd(kotlinCtx, "kotlinc", "-version")
+	if ver == "" {
+		return ""
+	}
+	// "kotlinc-jvm 1.9.0 (JRE 21)" → "1.9.0"
+	parts := strings.Fields(ver)
+	if len(parts) >= 2 {
+		return parts[1]
+	}
+	return ver
+}
+
+// ── Haskell ──────────────────────────────────────────────────────────────────
+
+var haskellMarkers = []string{
+	"stack.yaml",
+	"stack.yaml.lock",
+	"cabal.project",
+}
+
+func detectHaskell(ctx context.Context, dir string) string {
+	if findUpAny(dir, haskellMarkers) == "" && !hasFileWithExt(dir, ".cabal") {
+		return ""
+	}
+	ghcCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	ver := cmd(ghcCtx, "ghc", "--version")
+	if ver == "" {
+		return ""
+	}
+	// "The Glorious Glasgow Haskell Compilation System, version 9.6.2" → "9.6.2"
+	parts := strings.Fields(ver)
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return ver
+}
+
+// ── C/C++ ────────────────────────────────────────────────────────────────────
+
+var cMarkers = []string{
+	"CMakeLists.txt",
+	"meson.build",
+	"configure.ac",
+}
+
+func detectC(ctx context.Context, dir string) string {
+	if findUpAny(dir, cMarkers) == "" && !hasFileWithExt(dir, ".c") && !hasFileWithExt(dir, ".cpp") {
+		return ""
+	}
+	cCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	// Try gcc first, then clang.
+	ver := cmd(cCtx, "gcc", "--version")
+	if ver != "" {
+		// "gcc (Homebrew GCC 13.2.0) 13.2.0\n..." → "13.2.0"
+		line := strings.SplitN(ver, "\n", 2)[0]
+		parts := strings.Fields(line)
+		if len(parts) > 0 {
+			return "gcc " + parts[len(parts)-1]
+		}
+	}
+	ver = cmd(cCtx, "clang", "--version")
+	if ver != "" {
+		// "Apple clang version 16.0.0 ..." → "16.0.0"
+		parts := strings.Fields(strings.SplitN(ver, "\n", 2)[0])
+		for _, p := range parts {
+			if len(p) > 0 && p[0] >= '0' && p[0] <= '9' {
+				return "clang " + p
+			}
+		}
+	}
+	return ""
+}
+
 // lockFilePM detects the package manager from lock files in dir.
 func lockFilePM(dir string) string {
 	for _, lf := range []struct{ file, name string }{
@@ -413,6 +587,20 @@ func exists(path string) bool {
 func existsAny(dir string, names []string) bool {
 	for _, name := range names {
 		if exists(filepath.Join(dir, name)) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasFileWithExt reports whether dir (non-recursively) contains any file with ext.
+func hasFileWithExt(dir, ext string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ext) {
 			return true
 		}
 	}

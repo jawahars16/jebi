@@ -44,27 +44,27 @@ export default function ExplanationPanel({ text, onDismiss }) {
           padding: "3px",
         }}
       >
-        <img
-          src={bulbIconUrl}
-          className="bg-[var(--bg-surface)]"
-          style={{
-            width: 24,
-            height: 24,
-            flexShrink: 0,
-            opacity: 1,
-            left: 25,
-            top: -12,
-            position: "absolute",
-          }}
-        />
         <div
           className="mx-1"
           style={{
             flex: 1,
             height: 1,
-            background: "linear-gradient(90deg, #a855f7, #3b82f6)",
+            background: "var(--border)",
           }}
         />
+        <span
+          className="bg-[var(--bg-surface)] px-3 "
+          style={{
+            fontFamily: "var(--font-ui, system-ui)",
+            fontSize: "10px",
+            color: "var(--text-muted)",
+            right: 20,
+            position: "absolute",
+            whiteSpace: "nowrap",
+          }}
+        >
+          AI · may be inaccurate
+        </span>
       </div>
       {/* Explanation text */}
       <div
@@ -72,9 +72,10 @@ export default function ExplanationPanel({ text, onDismiss }) {
           padding: "10px",
           fontFamily: "var(--font-mono)",
           fontSize: "calc(var(--font-size-mono) * 0.88)",
-          color: "#ffffff",
+          color: "var(--text-primary)",
           lineHeight: 1.5,
-        }} className="mt-2 -mb-2"
+        }}
+        className="mt-1 mb-2 bg-[var(--bg-surface)]"
       >
         {renderWithCode(text)}
       </div>

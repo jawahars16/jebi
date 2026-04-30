@@ -40,6 +40,15 @@
   --prompt-docker-tint: #3b82f6;   /* blue   — docker tradition */
   --prompt-k8s-tint:    #6366f1;   /* indigo — k8s feel */
 
+  /* Catppuccin Mocha-inspired tints for new segments */
+  --prompt-rust-tint:        #fab387;   /* peach   — rust brand */
+  --prompt-c-tint:           #cba6f7;   /* mauve   — systems lang */
+  --prompt-php-tint:         #cba6f7;   /* mauve   — web lang */
+  --prompt-java-tint:        #fab387;   /* peach   — jvm lang */
+  --prompt-kotlin-tint:      #cba6f7;   /* mauve   — jvm lang */
+  --prompt-haskell-tint:     #89dceb;   /* sky     — functional */
+  --prompt-conda-tint:       #74c7ec;   /* sapphire — conda brand */
+
   --prompt-cwd-bg:    color-mix(in srgb, var(--prompt-cwd-tint)    var(--prompt-tint-strength), var(--bg-elevated));
   --prompt-cwd-fg:    var(--text-primary);
   --prompt-git-bg:    color-mix(in srgb, var(--prompt-git-tint)    var(--prompt-tint-strength), var(--bg-elevated));
@@ -54,6 +63,21 @@
   --prompt-docker-fg: var(--text-primary);
   --prompt-k8s-bg:    color-mix(in srgb, var(--prompt-k8s-tint)    var(--prompt-tint-strength), var(--bg-elevated));
   --prompt-k8s-fg:    var(--text-primary);
+
+  --prompt-rust-bg:        color-mix(in srgb, var(--prompt-rust-tint)        var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-rust-fg:        var(--text-primary);
+  --prompt-c-bg:           color-mix(in srgb, var(--prompt-c-tint)           var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-c-fg:           var(--text-primary);
+  --prompt-php-bg:         color-mix(in srgb, var(--prompt-php-tint)         var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-php-fg:         var(--text-primary);
+  --prompt-java-bg:        color-mix(in srgb, var(--prompt-java-tint)        var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-java-fg:        var(--text-primary);
+  --prompt-kotlin-bg:      color-mix(in srgb, var(--prompt-kotlin-tint)      var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-kotlin-fg:      var(--text-primary);
+  --prompt-haskell-bg:     color-mix(in srgb, var(--prompt-haskell-tint)     var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-haskell-fg:     var(--text-primary);
+  --prompt-conda-bg:       color-mix(in srgb, var(--prompt-conda-tint)       var(--prompt-tint-strength), var(--bg-elevated));
+  --prompt-conda-fg:       var(--text-primary);
 }
 
 html,
@@ -132,6 +156,11 @@ body {
 .ai-suggestion-icon {
   animation: ai-pulse 1.8s ease-in-out infinite;
   transform-origin: center;
+}
+
+@keyframes promptRunning {
+  0%   { background-position: -50% 0; }
+  100% { background-position: 150% 0; }
 }
 
 @keyframes tab-icon-spin {

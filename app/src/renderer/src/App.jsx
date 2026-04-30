@@ -326,13 +326,14 @@ export default function App() {
                 width: `${r.width}%`,
                 height: `${r.height}%`,
                 display: 'flex',
-                filter: isActive ? 'none' : 'grayscale(40%)',
+                filter: isActive ? 'none' : 'grayscale(60%)',
               }}
             >
               <TerminalPane
                 paneId={paneId}
                 isActive={isActive}
                 isVisible={tab.id === activeTabId}
+                tabAccent={tab.accent ?? '#3b82f6'}
                 onFocus={() => setActivePane(tab.id, paneId)}
                 onSplitRight={() => splitPane(tab.id, paneId, 'horizontal')}
                 onSplitDown={() => splitPane(tab.id, paneId, 'vertical')}

@@ -1,8 +1,8 @@
 import { createRoot } from "react-dom/client";
-import Prompt from "../components/Prompt";
+import Prompt from "../components/Prompt2";
 
 // Rows for the prompt elements line (➜, cwd, etc.)
-const PROMPT_HEADER_ROWS = 1;
+const PROMPT_HEADER_ROWS = 2;
 
 // PromptAddon — xterm.js addon that renders a React <Prompt> component
 // above each command's output using xterm's Decoration + Marker APIs.
@@ -84,6 +84,8 @@ export class PromptAddon {
       onReplay: best.onReplay,
       startTime: best.startTime,
       duration: best.duration,
+      promptHeight: best.promptHeight,
+      cellHeight: Math.round(best.cellHeight),
     };
   }
 
@@ -158,7 +160,8 @@ export class PromptAddon {
         dockerData={entry.dockerData}
         k8sData={entry.k8sData}
         onK8sClick={onK8sClick}
-        rowHeight={entry.cellHeight}
+        rowHeight={entry.promptHeight}
+        cellHeight={Math.round(entry.cellHeight)}
         onCopy={entry.onCopy}
         onReplay={entry.onReplay}
         running={entry.running}
@@ -258,8 +261,6 @@ export class PromptAddon {
         : 25);
     const promptRows = PROMPT_HEADER_ROWS + commandLines;
 
-    // Reserve promptRows + 1 blank lines. The extra row's height is split between
-    // top and bottom padding via CSS on the decoration element.
     const marker = this._term.registerMarker(0);
     if (!marker) return;
     this._term.write("\r\n".repeat(promptRows + 1));
@@ -285,6 +286,7 @@ export class PromptAddon {
       running: true,
       root: null,
       cellHeight,
+      promptHeight: Math.round(cellHeight * PROMPT_HEADER_ROWS),
       onCopy: null,
       onReplay: null,
       startTime: Date.now(),
@@ -310,8 +312,9 @@ export class PromptAddon {
       ? parseInt(getComputedStyle(termContainer).paddingLeft) || 0
       : 0;
 
-    // Split the extra reserved row between top and bottom padding.
-    const paddingTop = Math.round(cellHeight * 0.5);
+    // paddingTop creates the gap between previous output and the separator line
+    // rendered at the top of the React component.
+    const paddingTop = Math.round(cellHeight * 0.7);
 
     decoration.onRender((el) => {
       el.style.marginLeft = `-${paddingLeft}px`;

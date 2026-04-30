@@ -13,6 +13,13 @@ const InputBar = forwardRef(function InputBar(
     pythonData, onPythonClick,
     dockerData, onDockerClick,
     k8sData, onK8sClick,
+    rustData, onRustClick,
+    phpData, onPhpClick,
+    javaData, onJavaClick,
+    kotlinData, onKotlinClick,
+    haskellData, onHaskellClick,
+    cData, onCClick,
+    condaData, onCondaClick,
   },
   ref,
 ) {
@@ -58,6 +65,20 @@ const InputBar = forwardRef(function InputBar(
           onDockerClick={onDockerClick}
           k8sData={k8sData}
           onK8sClick={onK8sClick}
+          rustData={rustData}
+          onRustClick={onRustClick}
+          phpData={phpData}
+          onPhpClick={onPhpClick}
+          javaData={javaData}
+          onJavaClick={onJavaClick}
+          kotlinData={kotlinData}
+          onKotlinClick={onKotlinClick}
+          haskellData={haskellData}
+          onHaskellClick={onHaskellClick}
+          cData={cData}
+          onCClick={onCClick}
+          condaData={condaData}
+          onCondaClick={onCondaClick}
         />
       </div>
       <div ref={editorContainerRef} />

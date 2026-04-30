@@ -19,44 +19,24 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-// resolveProvider picks the best available LLM provider at startup.
-// Returns (provider, reason) — provider is nil when unavailable, reason explains why.
-func resolveProvider(cfg config.Config) (llm.Provider, string) {
+// resolveProvider creates the configured LLM provider without blocking startup.
+// Availability is checked lazily on first use.
+func resolveProvider(cfg config.Config) llm.Provider {
 	if !cfg.Enabled {
-		log.Println("llm: disabled in config")
-		return nil, "AI is disabled in config (~/.config/term/settings.json)"
+		return nil
 	}
-
 	switch cfg.Provider {
 	case "ollama":
-		p := providers.NewOllamaProvider(cfg)
-		reason, ok := p.CheckAvailability()
-		if ok {
-			log.Printf("llm: using ollama (model=%s)", cfg.Model)
-			return p, ""
-		}
-		log.Printf("llm: %s", reason)
-		return nil, reason
-
+		return providers.NewOllamaProvider(cfg)
 	case "llama-server":
 		p, err := providers.NewLlamaServerProvider(cfg)
 		if err != nil {
-			msg := "llama-server unavailable: " + err.Error()
-			log.Printf("llm: %s", msg)
-			return nil, msg
+			log.Printf("llm: %v", err)
+			return nil
 		}
-		reason, ok := p.CheckAvailability()
-		if ok {
-			log.Printf("llm: using llama-server (model=%s)", cfg.Model)
-			return p, ""
-		}
-		log.Printf("llm: %s", reason)
-		return nil, reason
+		return p
 	}
-
-	msg := "unknown provider '" + cfg.Provider + "' — set provider to 'ollama' or 'llama-server'"
-	log.Println("llm:", msg)
-	return nil, msg
+	return nil
 }
 
 func main() {
@@ -65,7 +45,7 @@ func main() {
 	// The provider is not yet wired to any session feature; it is loaded here so
 	// future features can access it without startup delay.
 	cfg := config.Load()
-	provider, _ := resolveProvider(cfg)
+	provider := resolveProvider(cfg)
 
 	// If using llama-server, stop the subprocess cleanly on exit.
 	if lsp, ok := provider.(*providers.LlamaServerProvider); ok {

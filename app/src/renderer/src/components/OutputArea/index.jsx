@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { PromptAddon } from "../../addons/PromptAddon";
-import Prompt from "../Prompt";
+import Prompt from "../Prompt2";
 import { usePreferences } from "../../hooks/usePreferences";
 
 const BUFFER_CAP = 512 * 1024; // 512 KB
@@ -25,6 +26,7 @@ export default function OutputArea({
   onReplay,
   isActive,
   isVisible,
+  tabAccent = '#3b82f6',
   renderer = DEFAULT_RENDERER,
 }) {
   const { prefs, activeColors } = usePreferences();
@@ -36,6 +38,8 @@ export default function OutputArea({
   const cellHeightRef = useRef(28);
   const sendResizeRef = useRef(sendResize);
   const onReplayRef = useRef(onReplay);
+  const tabAccentRef = useRef(tabAccent);
+  tabAccentRef.current = tabAccent;
   const pendingRef = useRef([]);
   const pendingSizeRef = useRef(0);
   const isVisibleRef = useRef(isVisible);
@@ -74,11 +78,14 @@ export default function OutputArea({
       const term = new Terminal({
         fontFamily,
         fontSize,
-        lineHeight: 1.2,
+        lineHeight: 1.0,
         theme: {
           background: cssVar("--bg-surface"),
           foreground: cssVar("--text-primary"),
           cursor: cssVar("--accent"),
+          selectionBackground: tabAccentRef.current + "40",
+          selectionForeground: cssVar("--text-primary"),
+          selectionInactiveBackground: tabAccentRef.current + "25",
         },
         fontLigatures: renderer === "canvas",
         cursorBlink: false,
@@ -87,6 +94,10 @@ export default function OutputArea({
         smoothScrollDuration: 100,
         scrollback: 10000,
       });
+
+      const unicode11Addon = new Unicode11Addon();
+      term.loadAddon(unicode11Addon);
+      term.unicode.activeVersion = '11';
 
       const fitAddon = new FitAddon();
       const promptAddon = new PromptAddon();
@@ -258,12 +269,26 @@ export default function OutputArea({
       background: activeColors.bgSurface,
       foreground: activeColors.textPrimary,
       cursor: activeColors.accent,
+      selectionBackground: tabAccentRef.current + "40",
+      selectionForeground: activeColors.textPrimary,
+      selectionInactiveBackground: tabAccentRef.current + "25",
     };
     // Force all visible rows to repaint with the new background.
     // xterm clears the texture atlas on theme change but needs an explicit
     // refresh() to redraw existing canvas content.
     term.refresh(0, term.rows - 1);
   }, [activeColors]);
+
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    term.options.theme = {
+      ...term.options.theme,
+      selectionBackground: tabAccent + "40",
+      selectionInactiveBackground: tabAccent + "25",
+    };
+    term.refresh(0, term.rows - 1);
+  }, [tabAccent]);
 
   // Font changes: wait for the font to load before applying so xterm measures
   // cell dimensions correctly. fitAddon.fit() must run after the font metrics settle.
@@ -302,13 +327,16 @@ export default function OutputArea({
             left: 0,
             right: 0,
             zIndex: 10,
+            background: "var(--bg-surface)",
           }}
         >
           <Prompt
             command={stickyCommand.command}
             cwd={stickyCommand.cwd}
             exitCode={stickyCommand.exitCode}
-            rowHeight={cellHeightRef.current}
+            rowHeight={stickyCommand.promptHeight ?? cellHeightRef.current}
+            cellHeight={stickyCommand.cellHeight ?? cellHeightRef.current}
+            showSeparator={false}
             onCopy={stickyCommand.onCopy}
             onReplay={stickyCommand.onReplay}
             startTime={stickyCommand.startTime}

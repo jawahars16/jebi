@@ -15,7 +15,7 @@ type Config struct {
 // Shell hook only emits exit_code and cwd — git/node are detected by Go on cwd change.
 var DefaultConfig = Config{
 	Shell:          "",
-	PromptSegments: []string{"cwd"},
+	PromptSegments: []string{"cwd", "conda"},
 }
 
 // segmentEmits maps segment names to shell printf snippets injected into precmd.
@@ -23,6 +23,7 @@ var DefaultConfig = Config{
 var segmentEmits = map[string]string{
 	"cwd":       `  printf '\033]7;%s\033\\' "$PWD"`,
 	"exit_code": `  printf '\033]9001;%s\033\\' "$?"`,
+	"conda":     `  printf '\033]9003;%s\033\\' "${CONDA_DEFAULT_ENV:-}"`,
 }
 
 // buildShellHook generates a precmd/PROMPT_COMMAND hook for the given shell.

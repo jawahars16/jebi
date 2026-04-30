@@ -56,6 +56,27 @@ export function useTerminal(paneId, callbacksRef) {
           callbacksRef.current.onK8s?.({ context, namespace })
           break
         }
+        case wire.TypeRust:
+          callbacksRef.current.onRust?.({ version: msg.data })
+          break
+        case wire.TypePhp:
+          callbacksRef.current.onPhp?.({ version: msg.data })
+          break
+        case wire.TypeJava:
+          callbacksRef.current.onJava?.({ version: msg.data })
+          break
+        case wire.TypeKotlin:
+          callbacksRef.current.onKotlin?.({ version: msg.data })
+          break
+        case wire.TypeHaskell:
+          callbacksRef.current.onHaskell?.({ version: msg.data })
+          break
+        case wire.TypeC:
+          callbacksRef.current.onC?.({ version: msg.data })
+          break
+        case wire.TypeConda:
+          callbacksRef.current.onConda?.({ env: msg.data })
+          break
         case wire.TypeAISuggestion:
           callbacksRef.current.onAISuggestion?.(msg.data)
           break
@@ -86,8 +107,13 @@ export function useTerminal(paneId, callbacksRef) {
     if (terminalSizeRef.current) {
       ws.current.send(JSON.stringify({ type: wire.TypeResize, data: terminalSizeRef.current }))
     }
-    try { callbacksRef.current.onCommandStart?.(text) } catch (e) { console.error(e) }
-    ws.current.send(JSON.stringify({ type: wire.TypeInput, data: text + '\n' }))
+    const lines = text.split('\n')
+    let normalized = lines[0]
+    for (let i = 1; i < lines.length; i++) {
+      normalized += normalized.endsWith('\\') ? '\n' + lines[i] : ' ' + lines[i]
+    }
+    try { callbacksRef.current.onCommandStart?.(normalized) } catch (e) { console.error(e) }
+    ws.current.send(JSON.stringify({ type: wire.TypeInput, data: normalized + '\n' }))
   }, [paneId])
 
   const sendRaw = useCallback((data) => {

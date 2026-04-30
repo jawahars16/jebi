@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import { FaRegCopy, FaCheck, FaRedo, FaInfoCircle } from "react-icons/fa";
+import { FaRegCopy, FaCheck, FaRedo } from "react-icons/fa";
 import CwdSegment from "./CwdSegment";
 import GitSegment from "./GitSegment";
 import NodeSegment from "./NodeSegment";
@@ -7,6 +7,13 @@ import GoSegment from "./GoSegment";
 import PythonSegment from "./PythonSegment";
 import DockerSegment from "./DockerSegment";
 import K8sSegment from "./K8sSegment";
+import RustSegment from "./RustSegment";
+import CSegment from "./CSegment";
+import PhpSegment from "./PhpSegment";
+import JavaSegment from "./JavaSegment";
+import KotlinSegment from "./KotlinSegment";
+import HaskellSegment from "./HaskellSegment";
+import CondaSegment from "./CondaSegment";
 import WaveSeparator from "./WaveSeparator";
 import TriangleSeparator from "./separators/TriangleSeparator";
 import SlashSeparator from "./separators/SlashSeparator";
@@ -16,6 +23,11 @@ import {
   getPromptStyleId,
   subscribePromptStyle,
 } from "../../preferences/promptStyles";
+import {
+  getSegmentEnabled,
+  subscribeSegmentPrefs,
+  getSegmentPrefSnapshot,
+} from "../../preferences/segments";
 import infoIconUrl from "../../assets/info.png";
 import { formatDuration } from "../../utils/formatDuration";
 
@@ -48,15 +60,30 @@ export default function Prompt({
   onDockerClick,
   k8sData,
   onK8sClick,
+  rustData,
+  onRustClick,
+  phpData,
+  onPhpClick,
+  javaData,
+  onJavaClick,
+  kotlinData,
+  onKotlinClick,
+  haskellData,
+  onHaskellClick,
+  cData,
+  onCClick,
+  condaData,
+  onCondaClick,
   running,
 }) {
-  // Read via module store, not context — Prompt is also rendered inside xterm
+  // Read via module stores, not context — Prompt is also rendered inside xterm
   // decoration React roots that live outside PreferencesProvider.
-  const promptStyleId = useSyncExternalStore(
-    subscribePromptStyle,
-    getPromptStyleId,
-  );
+  const promptStyleId = useSyncExternalStore(subscribePromptStyle, getPromptStyleId);
   const preset = getPromptStyle(promptStyleId);
+
+  // Subscribe to segment preferences so toggling in Preferences re-renders live.
+  useSyncExternalStore(subscribeSegmentPrefs, getSegmentPrefSnapshot);
+  const seg = getSegmentEnabled;
   const { group, separator } = preset;
 
   const [copied, setCopied] = useState(false);
@@ -86,26 +113,25 @@ export default function Prompt({
     onReplay?.();
   }
 
-  const hasCwd = Boolean(cwd);
-  const hasGit = Boolean(gitData);
-  const hasNode = Boolean(nodeData);
-  const hasGo = Boolean(goData);
-  const hasPython = Boolean(pythonData);
-  const hasDocker = Boolean(dockerData);
-  const hasK8s = Boolean(k8sData);
-  const hasAny =
-    hasCwd || hasGit || hasNode || hasGo || hasPython || hasDocker || hasK8s;
-
-  // Build ordered segment descriptors so separators can reference the
-  // previous segment's bg color (for Powerline/Slant).
+  // Starship-inspired order: os → username → cwd → git → [languages] → docker → k8s → conda → time → cmdDuration
+  // Each segment is gated on: user preference enabled AND data present (for contextual ones).
   const segmentList = [];
-  if (hasCwd) segmentList.push({ kind: "cwd" });
-  if (hasGit) segmentList.push({ kind: "git" });
-  if (hasNode) segmentList.push({ kind: "node" });
-  if (hasGo) segmentList.push({ kind: "go" });
-  if (hasPython) segmentList.push({ kind: "python" });
-  if (hasDocker) segmentList.push({ kind: "docker" });
-  if (hasK8s) segmentList.push({ kind: "k8s" });
+  if (seg("cwd")         && cwd)          segmentList.push({ kind: "cwd" });
+  if (seg("git")         && gitData)      segmentList.push({ kind: "git" });
+  if (seg("rust")        && rustData)     segmentList.push({ kind: "rust" });
+  if (seg("c")           && cData)        segmentList.push({ kind: "c" });
+  if (seg("node")        && nodeData)     segmentList.push({ kind: "node" });
+  if (seg("go")          && goData)       segmentList.push({ kind: "go" });
+  if (seg("php")         && phpData)      segmentList.push({ kind: "php" });
+  if (seg("java")        && javaData)     segmentList.push({ kind: "java" });
+  if (seg("kotlin")      && kotlinData)   segmentList.push({ kind: "kotlin" });
+  if (seg("haskell")     && haskellData)  segmentList.push({ kind: "haskell" });
+  if (seg("python")      && pythonData)   segmentList.push({ kind: "python" });
+  if (seg("docker")      && dockerData)   segmentList.push({ kind: "docker" });
+  if (seg("k8s")         && k8sData)      segmentList.push({ kind: "k8s" });
+  if (seg("conda")       && condaData)    segmentList.push({ kind: "conda" });
+
+  const hasAny = segmentList.length > 0;
 
   // Resolve segment radius per preset.
   // 'dynamic' → rowHeight / 3 (used by Wave for gentle rounding)
@@ -124,8 +150,8 @@ export default function Prompt({
   const sepHeight = rowHeight ?? 24;
 
   function renderSegment({ kind }, i) {
+    const segKey = `${kind}-${i}`;
     const segProps = {
-      key: `${kind}-${i}`,
       rowHeight,
       iconSize,
       bare: separator === "dot",
@@ -136,6 +162,7 @@ export default function Prompt({
     if (kind === "cwd")
       return (
         <CwdSegment
+          key={segKey}
           {...segProps}
           cwd={cwd}
           exitCode={exitCode}
@@ -145,6 +172,7 @@ export default function Prompt({
     if (kind === "git")
       return (
         <GitSegment
+          key={segKey}
           {...segProps}
           branch={gitData.branch}
           dirty={gitData.dirty}
@@ -156,6 +184,7 @@ export default function Prompt({
     if (kind === "node")
       return (
         <NodeSegment
+          key={segKey}
           {...segProps}
           version={nodeData.version}
           packageManager={nodeData.packageManager}
@@ -164,11 +193,12 @@ export default function Prompt({
       );
     if (kind === "go")
       return (
-        <GoSegment {...segProps} version={goData.version} onClick={onGoClick} />
+        <GoSegment key={segKey} {...segProps} version={goData.version} onClick={onGoClick} />
       );
     if (kind === "python")
       return (
         <PythonSegment
+          key={segKey}
           {...segProps}
           version={pythonData.version}
           venv={pythonData.venv}
@@ -178,6 +208,7 @@ export default function Prompt({
     if (kind === "docker")
       return (
         <DockerSegment
+          key={segKey}
           {...segProps}
           kind={dockerData.kind}
           onClick={onDockerClick}
@@ -186,12 +217,27 @@ export default function Prompt({
     if (kind === "k8s")
       return (
         <K8sSegment
+          key={segKey}
           {...segProps}
           context={k8sData.context}
           namespace={k8sData.namespace}
           onClick={onK8sClick}
         />
       );
+    if (kind === "rust")
+      return <RustSegment key={segKey} {...segProps} version={rustData.version} onClick={onRustClick} />;
+    if (kind === "c")
+      return <CSegment key={segKey} {...segProps} version={cData.version} onClick={onCClick} />;
+    if (kind === "php")
+      return <PhpSegment key={segKey} {...segProps} version={phpData.version} onClick={onPhpClick} />;
+    if (kind === "java")
+      return <JavaSegment key={segKey} {...segProps} version={javaData.version} onClick={onJavaClick} />;
+    if (kind === "kotlin")
+      return <KotlinSegment key={segKey} {...segProps} version={kotlinData.version} onClick={onKotlinClick} />;
+    if (kind === "haskell")
+      return <HaskellSegment key={segKey} {...segProps} version={haskellData.version} onClick={onHaskellClick} />;
+    if (kind === "conda")
+      return <CondaSegment key={segKey} {...segProps} env={condaData.env} onClick={onCondaClick} />;
     return null;
   }
 
@@ -436,7 +482,7 @@ export default function Prompt({
         <div
           key={i}
           className="flex items-center m-2 relative"
-          style={{ ...rowStyle, paddingLeft: 22, paddingRight: 12 }}
+          style={{ ...rowStyle, overflow: "visible", paddingLeft: 22, paddingRight: 12 }}
         >
           {i === 0 && (
             <div

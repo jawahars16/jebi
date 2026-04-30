@@ -17,6 +17,14 @@ const (
 	TypeKill     = "kill"
 	TypeResize   = "resize"
 
+	TypeRust     = "rust"
+	TypePhp      = "php"
+	TypeJava     = "java"
+	TypeKotlin   = "kotlin"
+	TypeHaskell  = "haskell"
+	TypeC        = "c"
+	TypeConda    = "conda"
+
 	TypeAIAppend       = "ai_append"
 	TypeAISuggestion   = "ai_suggestion"
 	TypeAISuggestError = "ai_suggest_error"

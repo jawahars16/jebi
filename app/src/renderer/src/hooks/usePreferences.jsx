@@ -3,6 +3,7 @@ import { THEMES } from '../preferences/themes'
 import { DEFAULT_PREFS } from '../preferences/defaults'
 import { applyThemeToCSSVars } from '../preferences/cssVars'
 import { setPromptStyleId } from '../preferences/promptStyles'
+import { setAllSegmentPrefs, SEGMENT_MAP } from '../preferences/segments'
 
 const STORAGE_KEY = 'term-prefs'
 
@@ -24,9 +25,10 @@ export function PreferencesProvider({ children }) {
       ? loaded.customColors
       : THEMES[loaded.themeId]?.colors ?? THEMES['default'].colors
     applyThemeToCSSVars(colors, loaded.fontSize, loaded.fontFamily)
-    // Seed module-level prompt style store so xterm-decoration React roots
-    // (outside this provider) pick up the user's choice on first paint.
+    // Seed module-level stores so xterm-decoration React roots
+    // (outside this provider) pick up the user's choices on first paint.
     setPromptStyleId(loaded.promptStyleId)
+    if (loaded.promptSegments) setAllSegmentPrefs(loaded.promptSegments)
     return loaded
   })
 
@@ -38,6 +40,7 @@ export function PreferencesProvider({ children }) {
       : THEMES[prefs.themeId]?.colors ?? THEMES['default'].colors
     applyThemeToCSSVars(colors, prefs.fontSize, prefs.fontFamily)
     setPromptStyleId(prefs.promptStyleId)
+    if (prefs.promptSegments) setAllSegmentPrefs(prefs.promptSegments)
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)) } catch {}
   }, [prefs])
 
@@ -88,7 +91,16 @@ export function PreferencesProvider({ children }) {
     setPrefs(prev => ({ ...prev, aiDirectoryContext: value }))
   }
 
-  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle, setAiExplainErrors, setAiDirectoryContext }
+  function setSegmentEnabled(id, enabled) {
+    const def = SEGMENT_MAP[id]
+    if (def?.required) return
+    setPrefs(prev => ({
+      ...prev,
+      promptSegments: { ...prev.promptSegments, [id]: enabled },
+    }))
+  }
+
+  const value = { prefs, activeColors, setTheme, setCustomColor, setFontFamily, setFontSize, setPromptStyle, setAiExplainErrors, setAiDirectoryContext, setSegmentEnabled }
 
   return (
     <PreferencesContext.Provider value={value}>

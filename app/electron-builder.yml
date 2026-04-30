@@ -1,0 +1,16 @@
+appId: com.jawahar.term
+productName: term
+directories:
+  output: dist
+files:
+  - out/**/*
+extraResources:
+  - from: ../core/term-core
+    to: term-core
+  - from: ../core/bin
+    to: bin
+mac:
+  target:
+    - target: dir
+      arch: arm64
+  category: public.app-category.developer-tools

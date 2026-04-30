@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import AppearanceSection from './AppearanceSection'
 import AISection from './AISection'
+import PromptSection from './PromptSection'
 
 const TABS = [
   { id: 'appearance', label: 'Appearance' },
+  { id: 'prompt',     label: 'Prompt' },
   { id: 'ai',         label: 'AI' },
 ]
 
@@ -44,7 +46,7 @@ export default function PreferencesModal({ isOpen, onClose }) {
           transform: 'translate(-50%, -50%)',
           zIndex: 10000,
           width: '560px',
-          height: '620px',
+          height: '680px',
           maxWidth: 'calc(100vw - 40px)',
           maxHeight: 'calc(100vh - 80px)',
           background: 'var(--bg-base)',
@@ -133,6 +135,7 @@ export default function PreferencesModal({ isOpen, onClose }) {
           scrollbarColor: 'var(--border) transparent',
         }}>
           {activeTab === 'appearance' && <AppearanceSection />}
+          {activeTab === 'prompt'     && <PromptSection />}
           {activeTab === 'ai'         && <AISection />}
         </div>
       </div>

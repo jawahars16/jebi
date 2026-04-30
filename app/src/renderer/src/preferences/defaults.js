@@ -1,5 +1,6 @@
 import { THEMES } from './themes'
 import { FONT_OPTIONS } from './fonts'
+import { SEGMENT_DEFINITIONS } from './segments'
 
 export const DEFAULT_PREFS = {
   themeId:            'default',
@@ -9,4 +10,5 @@ export const DEFAULT_PREFS = {
   promptStyleId:      'wave',
   aiExplainErrors:    true,
   aiDirectoryContext: true,
+  promptSegments:     Object.fromEntries(SEGMENT_DEFINITIONS.map(s => [s.id, s.defaultEnabled])),
 }

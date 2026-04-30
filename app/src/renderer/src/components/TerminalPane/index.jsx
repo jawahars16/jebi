@@ -6,13 +6,14 @@ import { usePreferences } from "../../hooks/usePreferences";
 import { registerCopy, unregisterCopy } from "../../hooks/paneCopyRegistry";
 import { registerFocus, unregisterFocus } from "../../hooks/paneFocusRegistry";
 import OutputArea from "../OutputArea";
-import InputBar from "../InputBar";
+import InputBar from "../InputBar2";
 import ExplanationPanel from "../ExplanationPanel";
 
 export default function TerminalPane({
   paneId,
   isActive,
   isVisible,
+  tabAccent,
   onFocus,
   onSplitRight,
   onSplitDown,
@@ -46,6 +47,13 @@ export default function TerminalPane({
   const [pythonData, setPythonData] = useState(null);
   const [dockerData, setDockerData] = useState(null);
   const [k8sData, setK8sData] = useState(null);
+  const [rustData, setRustData] = useState(null);
+  const [phpData, setPhpData] = useState(null);
+  const [javaData, setJavaData] = useState(null);
+  const [kotlinData, setKotlinData] = useState(null);
+  const [haskellData, setHaskellData] = useState(null);
+  const [cData, setCData] = useState(null);
+  const [condaData, setCondaData] = useState(null);
   const inputBarRef = useRef(null);
   const runningRef = useRef(false);
 
@@ -78,13 +86,19 @@ export default function TerminalPane({
     const changed = callbacksRef.current.currentCwd !== value;
     setCwd(value);
     if (changed) {
-      // Reset all env segments on directory change; detectors re-populate for the new dir.
+      // Reset all context-aware segments on directory change; detectors re-populate for the new dir.
       setGitData(null);
       setNodeData(null);
       setGoData(null);
       setPythonData(null);
       setDockerData(null);
       setK8sData(null);
+      setRustData(null);
+      setPhpData(null);
+      setJavaData(null);
+      setKotlinData(null);
+      setHaskellData(null);
+      setCData(null);
     }
     callbacksRef.current.currentCwd = value;
     callbacksRef.current.onCwdDecoration?.(value);
@@ -156,6 +170,14 @@ export default function TerminalPane({
     callbacksRef.current.onK8sDecoration?.(data);
   };
 
+  callbacksRef.current.onRust    = (data) => { setRustData(data);    callbacksRef.current.onRustDecoration?.(data); };
+  callbacksRef.current.onPhp     = (data) => { setPhpData(data);     callbacksRef.current.onPhpDecoration?.(data); };
+  callbacksRef.current.onJava    = (data) => { setJavaData(data);    callbacksRef.current.onJavaDecoration?.(data); };
+  callbacksRef.current.onKotlin  = (data) => { setKotlinData(data);  callbacksRef.current.onKotlinDecoration?.(data); };
+  callbacksRef.current.onHaskell = (data) => { setHaskellData(data); callbacksRef.current.onHaskellDecoration?.(data); };
+  callbacksRef.current.onC       = (data) => { setCData(data);       callbacksRef.current.onCDecoration?.(data); };
+  callbacksRef.current.onConda   = (data) => { setCondaData(data);   callbacksRef.current.onCondaDecoration?.(data); };
+
   const handleSubmit = useCallback(
     (command) => {
       setBanner(null);
@@ -213,6 +235,7 @@ export default function TerminalPane({
         onReplay={handleSubmit}
         isActive={isActive}
         isVisible={isVisible}
+        tabAccent={tabAccent}
       />
 
       {banner?.text && (
@@ -250,6 +273,20 @@ export default function TerminalPane({
           }
           k8sData={k8sData}
           onK8sClick={() => handleSubmit("kubectl get pods")}
+          rustData={rustData}
+          onRustClick={() => handleSubmit("cargo --version")}
+          phpData={phpData}
+          onPhpClick={() => handleSubmit("php --version")}
+          javaData={javaData}
+          onJavaClick={() => handleSubmit("java --version")}
+          kotlinData={kotlinData}
+          onKotlinClick={() => handleSubmit("kotlinc -version")}
+          haskellData={haskellData}
+          onHaskellClick={() => handleSubmit("ghc --version")}
+          cData={cData}
+          onCClick={() => handleSubmit("gcc --version")}
+          condaData={condaData}
+          onCondaClick={() => handleSubmit("conda info")}
         />
       )}
     </div>

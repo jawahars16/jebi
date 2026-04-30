@@ -33,7 +33,7 @@ type connection interface {
 	Close() error
 }
 
-const maxContextEntries = 20
+const maxContextEntries = 10
 
 // Session represents one terminal tab — one WebSocket connection, one PTY.
 type Session struct {
@@ -179,7 +179,10 @@ func (s *Session) Start() {
 			if err := json.Unmarshal(msg.Data, &entry); err != nil {
 				break
 			}
-			s.contextEntries = append(s.contextEntries, entry)
+			if len(entry.Output) > 600 {
+					entry.Output = entry.Output[:600] + "…"
+				}
+				s.contextEntries = append(s.contextEntries, entry)
 			if len(s.contextEntries) > maxContextEntries {
 				s.contextEntries = s.contextEntries[len(s.contextEntries)-maxContextEntries:]
 			}
@@ -335,6 +338,11 @@ func (s *Session) pipe() {
 						}
 					case strings.HasPrefix(p, "9001;"):
 						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
+					case strings.HasPrefix(p, "9003;"):
+						env := strings.TrimPrefix(p, "9003;")
+						if env != "" {
+							s.w.Send(wire.StringMessage(wire.TypeConda, env))
+						}
 					}
 				}
 

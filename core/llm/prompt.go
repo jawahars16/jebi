@@ -120,12 +120,16 @@ func BuildSuggestMessages(req SuggestRequest) []ChatMessage {
 		fmt.Fprintf(&sb, "Files: %s\n", strings.Join(req.DirListing, "  "))
 	}
 	sb.WriteString("\n")
-	for _, e := range req.Entries {
+	start := len(req.Entries) - explainMaxContextEntries
+	if start < 0 {
+		start = 0
+	}
+	for _, e := range req.Entries[start:] {
 		status := "ok"
 		if e.ExitCode != 0 {
 			status = fmt.Sprintf("exit %d", e.ExitCode)
 		}
-		fmt.Fprintf(&sb, "$ %s  [%s]\n%s\n", e.Command, status, e.Output)
+		fmt.Fprintf(&sb, "$ %s  [%s]\n%s\n", e.Command, status, truncate(e.Output, explainMaxOutputBytes))
 	}
 	return []ChatMessage{
 		{Role: "system", Content: system},
@@ -177,21 +181,42 @@ var explainPromptTemplate = "You are an expert terminal assistant. A shell comma
 	"- Multiple possible causes\n\n" +
 	"Return only the explanation text."
 
+const explainMaxContextEntries = 5
+const explainMaxOutputBytes = 400
+const explainMaxFailingOutputBytes = 800
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "…"
+}
+
 // BuildExplainMessages returns the message list for an error explanation request.
 // Prior commands are included as context so the LLM understands what the user was doing.
 func BuildExplainMessages(req SuggestRequest) []ChatMessage {
 	system := fmt.Sprintf(explainPromptTemplate, req.Shell, req.OS, req.Cwd)
 	var sb strings.Builder
 	last := len(req.Entries) - 1
+
+	// Include only the most recent prior commands to stay within context limits.
+	contextStart := last - explainMaxContextEntries
+	if contextStart < 0 {
+		contextStart = 0
+	}
+
 	for i, e := range req.Entries {
+		if i < contextStart {
+			continue
+		}
 		if i < last {
 			status := "PASSED"
 			if e.ExitCode != 0 {
 				status = "FAILED"
 			}
-			fmt.Fprintf(&sb, "[%s] $ %s\n%s\n", status, e.Command, e.Output)
+			fmt.Fprintf(&sb, "[%s] $ %s\n%s\n", status, e.Command, truncate(e.Output, explainMaxOutputBytes))
 		} else {
-			fmt.Fprintf(&sb, "\n[FAILED - THIS IS THE COMMAND TO EXPLAIN] $ %s\nOutput: %s\nExit code: %d", e.Command, e.Output, e.ExitCode)
+			fmt.Fprintf(&sb, "\n[FAILED - THIS IS THE COMMAND TO EXPLAIN] $ %s\nOutput: %s\nExit code: %d", e.Command, truncate(e.Output, explainMaxFailingOutputBytes), e.ExitCode)
 		}
 	}
 	return []ChatMessage{
