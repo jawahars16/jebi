@@ -6,7 +6,27 @@ export function stopSegmentEvents(e) {
 
 // Neon glass pill: translucent tinted background + left border accent.
 // compact/rowHeight used only in xterm decoration mode.
-export function neonGlassStyle({ tint, compact, rowHeight, onClick }) {
+// minimal: strips background and border, showing only icon + colored text.
+export function neonGlassStyle({ tint, compact, rowHeight, onClick, minimal }) {
+  if (minimal) {
+    return {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      lineHeight: 1,
+      padding: '3px 6px',
+      background: 'transparent',
+      color: tint,
+      border: 'none',
+      flexShrink: 0,
+      whiteSpace: 'nowrap',
+      fontFamily: 'var(--font-mono)',
+      fontSize: 'var(--font-size-mono)',
+      fontWeight: 500,
+      cursor: onClick ? 'pointer' : 'default',
+      userSelect: 'none',
+    }
+  }
   return {
     display: 'inline-flex',
     alignItems: 'center',
@@ -27,7 +47,10 @@ export function neonGlassStyle({ tint, compact, rowHeight, onClick }) {
   }
 }
 
-export function neonGlassHoverStyle(tint) {
+export function neonGlassHoverStyle(tint, minimal) {
+  if (minimal) {
+    return { opacity: 0.75 }
+  }
   return {
     background: `color-mix(in srgb, ${tint} 20%, transparent)`,
     boxShadow: `-2px 0 6px color-mix(in srgb, ${tint} 25%, transparent)`,

@@ -20,6 +20,10 @@ import {
   subscribeSegmentPrefs,
   getSegmentPrefSnapshot,
 } from "../../preferences/segments";
+import {
+  getPromptStyleId,
+  subscribePromptStyle,
+} from "../../preferences/promptStyles";
 import { formatDuration } from "../../utils/formatDuration";
 
 const SEP = (
@@ -80,6 +84,8 @@ export default function Prompt({
   onCondaClick,
 }) {
   useSyncExternalStore(subscribeSegmentPrefs, getSegmentPrefSnapshot);
+  const promptStyleId = useSyncExternalStore(subscribePromptStyle, getPromptStyleId);
+  const minimal = promptStyleId === 'minimal';
   const seg = getSegmentEnabled;
 
   const [copied, setCopied] = useState(false);
@@ -120,7 +126,7 @@ export default function Prompt({
   if (seg("k8s") && k8sData) segmentList.push({ kind: "k8s" });
   if (seg("conda") && condaData) segmentList.push({ kind: "conda" });
 
-  const segProps = { rowHeight, iconSize };
+  const segProps = { rowHeight, iconSize, minimal };
 
   function renderSegment({ kind }, i) {
     const key = `${kind}-${i}`;
@@ -319,30 +325,41 @@ export default function Prompt({
 
         {/* Error pill — shown after segments when exitCode > 0 */}
         {hasError && (
-          <>
-            <span
-              style={{
-                background: "color-mix(in srgb, #f85149 12%, transparent)",
-                color: "#f85149",
-                borderLeft: "4px solid #f85149",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
-                lineHeight: 1,
-                padding: "5px 10px",
-                flexShrink: 0,
-                whiteSpace: "nowrap",
-                fontFamily: "var(--font-mono)",
-                fontSize: "var(--font-size-mono)",
-                fontWeight: 500,
-                cursor: "default",
-                transition: "background 0.15s ease, box-shadow 0.15s ease",
-                userSelect: "none",
-              }}
-            >
-              ✕ exit {exitCode}
-            </span>
-          </>
+          <span
+            style={minimal ? {
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              lineHeight: 1,
+              padding: "3px 6px",
+              color: "#f85149",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--font-size-mono)",
+              fontWeight: 500,
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              userSelect: "none",
+            } : {
+              background: "color-mix(in srgb, #f85149 12%, transparent)",
+              color: "#f85149",
+              borderLeft: "4px solid #f85149",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              lineHeight: 1,
+              padding: "5px 10px",
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--font-size-mono)",
+              fontWeight: 500,
+              cursor: "default",
+              transition: "background 0.15s ease, box-shadow 0.15s ease",
+              userSelect: "none",
+            }}
+          >
+            ✕ exit {exitCode}
+          </span>
         )}
 
         {/* Spacer */}

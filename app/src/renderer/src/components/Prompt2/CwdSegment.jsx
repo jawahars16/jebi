@@ -12,12 +12,13 @@ export default function CwdSegment({
   rowHeight,
   iconSize,
   onClick,
+  minimal,
 }) {
   const [hovered, setHovered] = useState(false);
   const compact = rowHeight != null;
   const tint = "var(--tab-accent)";
-  const base = neonGlassStyle({ tint, compact, rowHeight, onClick });
-  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint) } : base;
+  const base = neonGlassStyle({ tint, compact, rowHeight, onClick, minimal });
+  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint, minimal) } : base;
 
   const parts = buildParts(cwd);
 

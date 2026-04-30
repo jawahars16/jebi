@@ -45,7 +45,6 @@ export default function ExplanationPanel({ text, onDismiss }) {
         }}
       >
         <div
-          className="mx-1"
           style={{
             flex: 1,
             height: 1,

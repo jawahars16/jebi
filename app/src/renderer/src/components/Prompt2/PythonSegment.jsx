@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { FaPython } from 'react-icons/fa'
 import { neonGlassStyle, neonGlassHoverStyle, stopSegmentEvents } from './segmentStyle'
 
-export default function PythonSegment({ version, venv, onClick, rowHeight, iconSize }) {
+export default function PythonSegment({ version, venv, onClick, rowHeight, iconSize, minimal }) {
   const [hovered, setHovered] = useState(false)
   const compact = rowHeight != null
   const tint = 'var(--prompt-python-tint)'
-  const base = neonGlassStyle({ tint, compact, rowHeight, onClick })
-  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint) } : base
+  const base = neonGlassStyle({ tint, compact, rowHeight, onClick, minimal })
+  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint, minimal) } : base
   const label = venv ? `${version} (${venv})` : version
 
   return (

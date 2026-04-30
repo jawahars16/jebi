@@ -7,7 +7,7 @@ export const DEFAULT_PREFS = {
   customColors:       { ...THEMES['default'].colors },
   fontFamily:         FONT_OPTIONS[0].value,
   fontSize:           15,
-  promptStyleId:      'wave',
+  promptStyleId:      'pill',
   aiExplainErrors:    true,
   aiDirectoryContext: true,
   promptSegments:     Object.fromEntries(SEGMENT_DEFINITIONS.map(s => [s.id, s.defaultEnabled])),

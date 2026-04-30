@@ -10,12 +10,6 @@
 
 export const PROMPT_STYLES = [
   {
-    id: 'wave',
-    name: 'Rounded',
-    group: { radius: 'dynamic', connected: true, rightCap: 'round' },
-    separator: 'wave',
-  },
-  {
     id: 'pill',
     name: 'Pill',
     group: { radius: 'pill', connected: false, rightCap: 'round' },

@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { FaDocker } from 'react-icons/fa'
 import { neonGlassStyle, neonGlassHoverStyle, stopSegmentEvents } from './segmentStyle'
 
-export default function DockerSegment({ kind, onClick, rowHeight, iconSize }) {
+export default function DockerSegment({ kind, onClick, rowHeight, iconSize, minimal }) {
   const [hovered, setHovered] = useState(false)
   const compact = rowHeight != null
   const tint = 'var(--prompt-docker-tint)'
-  const base = neonGlassStyle({ tint, compact, rowHeight, onClick })
-  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint) } : base
+  const base = neonGlassStyle({ tint, compact, rowHeight, onClick, minimal })
+  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint, minimal) } : base
   const label = kind === 'compose' ? 'compose' : 'docker'
 
   return (
