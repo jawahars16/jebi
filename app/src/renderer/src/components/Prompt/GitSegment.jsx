@@ -1,95 +1,33 @@
-import { FaStarOfLife } from "react-icons/fa";
-import {
-  FaArrowDownLong,
-  FaArrowsUpDown,
-  FaArrowUpLong,
-} from "react-icons/fa6";
-import gitIconUrl from "../../assets/git.png";
-import { pillStyle, stopSegmentEvents } from "./segmentStyle";
+import { useState } from 'react'
+import { VscSourceControl } from 'react-icons/vsc'
+import { neonGlassStyle, neonGlassHoverStyle, stopSegmentEvents } from './segmentStyle'
 
-// GitSegment — branch name, dirty indicator, ahead/behind counts.
-// onClick: in InputBar → runs `git status`; in xterm decoration → copies branch to clipboard.
-export default function GitSegment({
-  branch,
-  dirty,
-  ahead,
-  behind,
-  onClick,
-  rowHeight,
-  iconSize,
-  segmentRadius,
-  bare,
-}) {
-  const compact = rowHeight != null;
-  const bg = bare ? "transparent" : "var(--prompt-git-bg)";
-  const fg = "var(--prompt-git-fg)";
-  const dirtyColor = "#edf459";
-  const upColor = "#e74c3c";
-  const downColor = "#27ae60";
+export default function GitSegment({ branch, dirty, ahead, behind, onClick, rowHeight, iconSize, minimal }) {
+  const [hovered, setHovered] = useState(false)
+  const compact = rowHeight != null
+  const tint = 'var(--prompt-git-tint)'
+  const base = neonGlassStyle({ tint, compact, rowHeight, onClick, minimal })
+  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint, minimal) } : base
 
-  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
-
-  const title = `Branch: ${branch}${dirty ? " (dirty)" : ""}${ahead ? ` ↑${ahead}` : ""}${behind ? ` ↓${behind}` : ""}`;
+  const title = `Branch: ${branch}${dirty ? ' (dirty)' : ''}${ahead ? ` ↑${ahead}` : ''}${behind ? ` ↓${behind}` : ''}`
 
   return (
     <button
       onClick={onClick}
       onMouseDown={stopSegmentEvents}
       onPointerDown={stopSegmentEvents}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       title={title}
       style={style}
     >
-      <img
-        src={gitIconUrl}
-        alt=""
-        aria-hidden="true"
-        width={iconSize + 3}
-        height={iconSize + 3}
-        style={{ flexShrink: 0, objectFit: "contain" }}
-      />
-      <span
-        style={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          maxWidth: "20ch",
-        }}
-      >
+      <VscSourceControl size={iconSize ?? 12} style={{ flexShrink: 0 }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '20ch' }}>
         {branch}
       </span>
-      {dirty && (
-        <span style={{ color: fg, lineHeight: 1, flexShrink: 0 }}>
-          <FaStarOfLife size={9} color={dirtyColor} />
-        </span>
-      )}
-      {ahead > 0 && (
-        <span
-          className="flex"
-          style={{
-            color: upColor,
-            lineHeight: 1,
-            flexShrink: 0,
-            scale: "0.8",
-          }}
-        >
-          <FaArrowUpLong size={iconSize} />
-          {ahead}
-        </span>
-      )}
-      {behind > 0 && (
-        <span
-          className="flex -ml-1"
-          style={{
-            color: downColor,
-            lineHeight: 1,
-            flexShrink: 0,
-            scale: "0.8",
-          }}
-        >
-          <FaArrowDownLong size={iconSize} />
-          {behind}
-        </span>
-      )}
+      {dirty && <span style={{ color: '#f1c40f', flexShrink: 0, fontSize: '0.75em' }}>✦</span>}
+      {ahead > 0 && <span style={{ color: '#e74c3c', flexShrink: 0, fontSize: '0.85em' }}>↑{ahead}</span>}
+      {behind > 0 && <span style={{ color: '#2ecc71', flexShrink: 0, fontSize: '0.85em' }}>↓{behind}</span>}
     </button>
-  );
+  )
 }

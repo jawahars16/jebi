@@ -1,16 +1,20 @@
-import rustIconUrl from "../../assets/rust.png";
-import { pillStyle, stopSegmentEvents } from "./segmentStyle";
+import { useState } from 'react'
+import { SiRust } from 'react-icons/si'
+import { neonGlassStyle, neonGlassHoverStyle, stopSegmentEvents } from './segmentStyle'
 
-export default function RustSegment({ version, onClick, rowHeight, iconSize, segmentRadius, bare }) {
-  const compact = rowHeight != null;
-  const bg = bare ? "transparent" : "var(--prompt-rust-bg)";
-  const fg = bare ? "var(--prompt-rust-tint)" : "var(--prompt-rust-fg)";
-  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
+export default function RustSegment({ version, onClick, rowHeight, iconSize, minimal }) {
+  const [hovered, setHovered] = useState(false)
+  const compact = rowHeight != null
+  const tint = 'var(--prompt-rust-tint)'
+  const base = neonGlassStyle({ tint, compact, rowHeight, onClick, minimal })
+  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint, minimal) } : base
 
   return (
-    <button onClick={onClick} onMouseDown={stopSegmentEvents} onPointerDown={stopSegmentEvents} title={`Rust ${version}`} style={style}>
-      <img src={rustIconUrl} alt="" aria-hidden="true" width={iconSize + 2} height={iconSize + 2} style={{ flexShrink: 0, objectFit: "contain" }} />
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "10ch" }}>{version}</span>
+    <button onClick={onClick} onMouseDown={stopSegmentEvents} onPointerDown={stopSegmentEvents}
+            onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+            title={`Rust ${version}`} style={style}>
+      <SiRust size={(iconSize ?? 12) + 1} style={{ flexShrink: 0 }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '10ch' }}>{version}</span>
     </button>
-  );
+  )
 }

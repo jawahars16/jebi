@@ -40,7 +40,7 @@ function buildTheme(cssVar) {
     '&.cm-focused': { outline: 'none' },
     '.cm-scroller': { overflow: 'hidden', lineHeight: '1.2' },
     '.cm-content': {
-      padding: '5px 10px',
+      padding: '5px 5px',
       caretColor: cssVar('--accent'),
       minHeight: `calc(${cssVar('--font-size-mono')} * 1.2)`,
       whiteSpace: 'pre-wrap',
@@ -345,15 +345,13 @@ export function useShellEditor(callbacksRef) {
         key: 'Enter',
         run(view) {
           let text = view.state.doc.toString()
-          // Empty editor with AI suggestion: accept it into the editor first
           if (!text.trim()) {
+            // Empty editor with AI suggestion: accept into editor only, don't submit yet.
             const plugin = view.plugin(ghostPlugin)
             if (plugin?.aiSuggestion) {
               plugin.accept(view)
-              text = view.state.doc.toString()
-            } else {
-              return true
             }
+            return true
           }
 
           // Slash-commands short-circuit: if the line resolves to a registered

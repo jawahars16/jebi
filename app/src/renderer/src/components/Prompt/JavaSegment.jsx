@@ -1,16 +1,20 @@
-import javaIconUrl from "../../assets/java.png";
-import { pillStyle, stopSegmentEvents } from "./segmentStyle";
+import { useState } from 'react'
+import { FaJava } from 'react-icons/fa'
+import { neonGlassStyle, neonGlassHoverStyle, stopSegmentEvents } from './segmentStyle'
 
-export default function JavaSegment({ version, onClick, rowHeight, iconSize, segmentRadius, bare }) {
-  const compact = rowHeight != null;
-  const bg = bare ? "transparent" : "var(--prompt-java-bg)";
-  const fg = bare ? "var(--prompt-java-tint)" : "var(--prompt-java-fg)";
-  const style = pillStyle({ bare, compact, rowHeight, bg, fg, segmentRadius, onClick });
+export default function JavaSegment({ version, onClick, rowHeight, iconSize, minimal }) {
+  const [hovered, setHovered] = useState(false)
+  const compact = rowHeight != null
+  const tint = 'var(--prompt-java-tint)'
+  const base = neonGlassStyle({ tint, compact, rowHeight, onClick, minimal })
+  const style = hovered ? { ...base, ...neonGlassHoverStyle(tint, minimal) } : base
 
   return (
-    <button onClick={onClick} onMouseDown={stopSegmentEvents} onPointerDown={stopSegmentEvents} title={`Java ${version}`} style={style}>
-      <img src={javaIconUrl} alt="" aria-hidden="true" width={iconSize + 2} height={iconSize + 2} style={{ flexShrink: 0, objectFit: "contain" }} />
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "10ch" }}>{version}</span>
+    <button onClick={onClick} onMouseDown={stopSegmentEvents} onPointerDown={stopSegmentEvents}
+            onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+            title={`Java ${version}`} style={style}>
+      <FaJava size={(iconSize ?? 12) + 2} style={{ flexShrink: 0 }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '10ch' }}>{version}</span>
     </button>
-  );
+  )
 }

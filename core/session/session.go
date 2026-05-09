@@ -329,13 +329,15 @@ func (s *Session) pipe() {
 						}
 						ctx, cancel := newDetectContext()
 						s.cancelDetect = cancel
-						// Skip detectEnv on the first CWD (shell startup / new tab).
-						// Only trigger project-context banner after a real cd command.
+						// On the first CWD (shell startup), run detection so segments
+						// appear immediately, but skip the AI project-context banner by
+						// pre-setting lastContextDir (detectEnv skips the banner when
+						// dir == lastContextDir).
 						if !s.firstCwdSeen {
 							s.firstCwdSeen = true
-						} else {
-							go s.detectEnv(ctx, cwd)
+							s.lastContextDir = cwd
 						}
+						go s.detectEnv(ctx, cwd)
 					case strings.HasPrefix(p, "9001;"):
 						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
 					case strings.HasPrefix(p, "9003;"):

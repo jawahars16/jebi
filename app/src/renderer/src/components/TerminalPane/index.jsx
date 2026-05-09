@@ -6,7 +6,7 @@ import { usePreferences } from "../../hooks/usePreferences";
 import { registerCopy, unregisterCopy } from "../../hooks/paneCopyRegistry";
 import { registerFocus, unregisterFocus } from "../../hooks/paneFocusRegistry";
 import OutputArea from "../OutputArea";
-import InputBar from "../InputBar2";
+import InputBar from "../InputBar";
 import ExplanationPanel from "../ExplanationPanel";
 
 export default function TerminalPane({

@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import { FaRegCopy, FaCheck, FaRedo } from "react-icons/fa";
+import { VscCopy, VscCheck, VscDebugRestart, VscWatch } from "react-icons/vsc";
 import CwdSegment from "./CwdSegment";
 import GitSegment from "./GitSegment";
 import NodeSegment from "./NodeSegment";
@@ -14,36 +14,44 @@ import JavaSegment from "./JavaSegment";
 import KotlinSegment from "./KotlinSegment";
 import HaskellSegment from "./HaskellSegment";
 import CondaSegment from "./CondaSegment";
-import WaveSeparator from "./WaveSeparator";
-import TriangleSeparator from "./separators/TriangleSeparator";
-import SlashSeparator from "./separators/SlashSeparator";
-import DotSeparator from "./separators/DotSeparator";
-import {
-  getPromptStyle,
-  getPromptStyleId,
-  subscribePromptStyle,
-} from "../../preferences/promptStyles";
+import { MdAccessTimeFilled } from "react-icons/md";
 import {
   getSegmentEnabled,
   subscribeSegmentPrefs,
   getSegmentPrefSnapshot,
 } from "../../preferences/segments";
-import infoIconUrl from "../../assets/info.png";
+import {
+  getPromptStyleId,
+  subscribePromptStyle,
+} from "../../preferences/promptStyles";
 import { formatDuration } from "../../utils/formatDuration";
 
-// Per-segment bg color used for Powerline/Slant separators that need to "extend"
-// the previous segment's color into an arrow/wedge sitting on the surface bg.
-// Reads the same --prompt-{kind}-bg var the segment itself paints with so the
-// separator never drifts out of sync with the segment's color.
-function segmentBg(kind) {
-  return `var(--prompt-${kind}-bg)`;
-}
+const SEP = (
+  <span
+    aria-hidden
+    style={{
+      color: "var(--text-secondary)",
+      opacity: 0.5,
+      flexShrink: 0,
+      fontFamily: "var(--font-mono)",
+      userSelect: "none",
+      fontSize: "0.9em",
+      paddingLeft: "2px",
+      paddingRight: "2px",
+    }}
+  >
+    │
+  </span>
+);
 
 export default function Prompt({
   command,
   cwd,
   exitCode,
   rowHeight,
+  cellHeight,
+  showSeparator = true,
+  running = false,
   onCopy,
   onReplay,
   startTime,
@@ -74,31 +82,23 @@ export default function Prompt({
   onCClick,
   condaData,
   onCondaClick,
-  running,
 }) {
-  // Read via module stores, not context — Prompt is also rendered inside xterm
-  // decoration React roots that live outside PreferencesProvider.
-  const promptStyleId = useSyncExternalStore(subscribePromptStyle, getPromptStyleId);
-  const preset = getPromptStyle(promptStyleId);
-
-  // Subscribe to segment preferences so toggling in Preferences re-renders live.
   useSyncExternalStore(subscribeSegmentPrefs, getSegmentPrefSnapshot);
+  const promptStyleId = useSyncExternalStore(
+    subscribePromptStyle,
+    getPromptStyleId,
+  );
+  const minimal = promptStyleId === "minimal";
   const seg = getSegmentEnabled;
-  const { group, separator } = preset;
 
   const [copied, setCopied] = useState(false);
-  const [infoVisible, setInfoVisible] = useState(false);
+  const [timeHovered, setTimeHovered] = useState(false);
   const commandLines = command ? command.split("\n") : [];
 
-  const iconSize = rowHeight ? Math.min(14, Math.max(10, rowHeight - 6)) : 14;
+  const iconSize = 13;
 
   const rowStyle = rowHeight
-    ? {
-        height: `${rowHeight}px`,
-        minHeight: `${rowHeight}px`,
-        maxHeight: `${rowHeight}px`,
-        overflow: "hidden",
-      }
+    ? { minHeight: `${rowHeight}px`, alignItems: "start" }
     : { lineHeight: 1.4 };
 
   function handleCopy(e) {
@@ -113,56 +113,30 @@ export default function Prompt({
     onReplay?.();
   }
 
-  // Starship-inspired order: os → username → cwd → git → [languages] → docker → k8s → conda → time → cmdDuration
-  // Each segment is gated on: user preference enabled AND data present (for contextual ones).
   const segmentList = [];
-  if (seg("cwd")         && cwd)          segmentList.push({ kind: "cwd" });
-  if (seg("git")         && gitData)      segmentList.push({ kind: "git" });
-  if (seg("rust")        && rustData)     segmentList.push({ kind: "rust" });
-  if (seg("c")           && cData)        segmentList.push({ kind: "c" });
-  if (seg("node")        && nodeData)     segmentList.push({ kind: "node" });
-  if (seg("go")          && goData)       segmentList.push({ kind: "go" });
-  if (seg("php")         && phpData)      segmentList.push({ kind: "php" });
-  if (seg("java")        && javaData)     segmentList.push({ kind: "java" });
-  if (seg("kotlin")      && kotlinData)   segmentList.push({ kind: "kotlin" });
-  if (seg("haskell")     && haskellData)  segmentList.push({ kind: "haskell" });
-  if (seg("python")      && pythonData)   segmentList.push({ kind: "python" });
-  if (seg("docker")      && dockerData)   segmentList.push({ kind: "docker" });
-  if (seg("k8s")         && k8sData)      segmentList.push({ kind: "k8s" });
-  if (seg("conda")       && condaData)    segmentList.push({ kind: "conda" });
+  if (seg("cwd") && cwd) segmentList.push({ kind: "cwd" });
+  if (seg("git") && gitData) segmentList.push({ kind: "git" });
+  if (seg("rust") && rustData) segmentList.push({ kind: "rust" });
+  if (seg("c") && cData) segmentList.push({ kind: "c" });
+  if (seg("node") && nodeData) segmentList.push({ kind: "node" });
+  if (seg("go") && goData) segmentList.push({ kind: "go" });
+  if (seg("php") && phpData) segmentList.push({ kind: "php" });
+  if (seg("java") && javaData) segmentList.push({ kind: "java" });
+  if (seg("kotlin") && kotlinData) segmentList.push({ kind: "kotlin" });
+  if (seg("haskell") && haskellData) segmentList.push({ kind: "haskell" });
+  if (seg("python") && pythonData) segmentList.push({ kind: "python" });
+  if (seg("docker") && dockerData) segmentList.push({ kind: "docker" });
+  if (seg("k8s") && k8sData) segmentList.push({ kind: "k8s" });
+  if (seg("conda") && condaData) segmentList.push({ kind: "conda" });
 
-  const hasAny = segmentList.length > 0;
-
-  // Resolve segment radius per preset.
-  // 'dynamic' → rowHeight / 3 (used by Wave for gentle rounding)
-  // 'pill'    → 9999 (full pill ends)
-  // number    → literal px value
-  const resolvedRadius =
-    group.radius === "dynamic"
-      ? rowHeight
-        ? Math.max(4, Math.floor(rowHeight / 3))
-        : 8
-      : group.radius === "pill"
-        ? 9999
-        : group.radius;
-
-  // Separator height tracks the segment height so triangles/slashes align.
-  const sepHeight = rowHeight ?? 24;
+  const segProps = { rowHeight, iconSize, minimal };
 
   function renderSegment({ kind }, i) {
-    const segKey = `${kind}-${i}`;
-    const segProps = {
-      rowHeight,
-      iconSize,
-      bare: separator === "dot",
-      // In pill mode each segment is a full independent pill.
-      // In other modes segment radius is handled by the group wrapper (or 0).
-      segmentRadius: group.connected ? undefined : resolvedRadius,
-    };
+    const key = `${kind}-${i}`;
     if (kind === "cwd")
       return (
         <CwdSegment
-          key={segKey}
+          key={key}
           {...segProps}
           cwd={cwd}
           exitCode={exitCode}
@@ -172,7 +146,7 @@ export default function Prompt({
     if (kind === "git")
       return (
         <GitSegment
-          key={segKey}
+          key={key}
           {...segProps}
           branch={gitData.branch}
           dirty={gitData.dirty}
@@ -184,7 +158,7 @@ export default function Prompt({
     if (kind === "node")
       return (
         <NodeSegment
-          key={segKey}
+          key={key}
           {...segProps}
           version={nodeData.version}
           packageManager={nodeData.packageManager}
@@ -193,12 +167,17 @@ export default function Prompt({
       );
     if (kind === "go")
       return (
-        <GoSegment key={segKey} {...segProps} version={goData.version} onClick={onGoClick} />
+        <GoSegment
+          key={key}
+          {...segProps}
+          version={goData.version}
+          onClick={onGoClick}
+        />
       );
     if (kind === "python")
       return (
         <PythonSegment
-          key={segKey}
+          key={key}
           {...segProps}
           version={pythonData.version}
           venv={pythonData.venv}
@@ -208,7 +187,7 @@ export default function Prompt({
     if (kind === "docker")
       return (
         <DockerSegment
-          key={segKey}
+          key={key}
           {...segProps}
           kind={dockerData.kind}
           onClick={onDockerClick}
@@ -217,7 +196,7 @@ export default function Prompt({
     if (kind === "k8s")
       return (
         <K8sSegment
-          key={segKey}
+          key={key}
           {...segProps}
           context={k8sData.context}
           namespace={k8sData.namespace}
@@ -225,128 +204,237 @@ export default function Prompt({
         />
       );
     if (kind === "rust")
-      return <RustSegment key={segKey} {...segProps} version={rustData.version} onClick={onRustClick} />;
+      return (
+        <RustSegment
+          key={key}
+          {...segProps}
+          version={rustData.version}
+          onClick={onRustClick}
+        />
+      );
     if (kind === "c")
-      return <CSegment key={segKey} {...segProps} version={cData.version} onClick={onCClick} />;
+      return (
+        <CSegment
+          key={key}
+          {...segProps}
+          version={cData.version}
+          onClick={onCClick}
+        />
+      );
     if (kind === "php")
-      return <PhpSegment key={segKey} {...segProps} version={phpData.version} onClick={onPhpClick} />;
+      return (
+        <PhpSegment
+          key={key}
+          {...segProps}
+          version={phpData.version}
+          onClick={onPhpClick}
+        />
+      );
     if (kind === "java")
-      return <JavaSegment key={segKey} {...segProps} version={javaData.version} onClick={onJavaClick} />;
+      return (
+        <JavaSegment
+          key={key}
+          {...segProps}
+          version={javaData.version}
+          onClick={onJavaClick}
+        />
+      );
     if (kind === "kotlin")
-      return <KotlinSegment key={segKey} {...segProps} version={kotlinData.version} onClick={onKotlinClick} />;
+      return (
+        <KotlinSegment
+          key={key}
+          {...segProps}
+          version={kotlinData.version}
+          onClick={onKotlinClick}
+        />
+      );
     if (kind === "haskell")
-      return <HaskellSegment key={segKey} {...segProps} version={haskellData.version} onClick={onHaskellClick} />;
+      return (
+        <HaskellSegment
+          key={key}
+          {...segProps}
+          version={haskellData.version}
+          onClick={onHaskellClick}
+        />
+      );
     if (kind === "conda")
-      return <CondaSegment key={segKey} {...segProps} env={condaData.env} onClick={onCondaClick} />;
+      return (
+        <CondaSegment
+          key={key}
+          {...segProps}
+          env={condaData.env}
+          onClick={onCondaClick}
+        />
+      );
     return null;
   }
 
-  function renderBetweenSeparator(prevKind, key) {
-    if (separator === "triangle")
-      return (
-        <TriangleSeparator
-          key={key}
-          color={segmentBg(prevKind)}
-          height={sepHeight}
-        />
-      );
-    if (separator === "slash")
-      return (
-        <SlashSeparator
-          key={key}
-          color={segmentBg(prevKind)}
-          height={sepHeight}
-        />
-      );
-    if (separator === "dot") return <DotSeparator key={key} />;
-    return null;
-  }
-
-  // Group wrapper: connected modes get a single flex row that clips the right
-  // edge (Wave: rounded). Non-connected modes (Pill, Minimal) use gaps between
-  // independent segments. alignItems:stretch ensures triangle/slash separators
-  // always match segment height exactly.
-  const groupStyle = {
-    display: "inline-flex",
-    alignItems: "stretch",
-    flexShrink: 0,
-  };
-
-  if (group.connected) {
-    if (group.rightCap === "round" && resolvedRadius > 0) {
-      groupStyle.borderRadius = `0 ${resolvedRadius}px ${resolvedRadius}px 0`;
-      groupStyle.overflow = "hidden";
-    }
-    // Powerline (triangle cap) / Slant (slash cap): the trailing separator
-    // after the last segment produces the angled edge; no wrapper clip needed.
-  } else if (separator === "dot") {
-    // Minimal: DotSeparator carries its own horizontal padding — no extra gap.
-    groupStyle.gap = 0;
-    groupStyle.alignItems = "center";
-  } else {
-    // Pill: independent pills with a gentle gap.
-    groupStyle.gap = "6px";
-  }
-
-  function renderGroup() {
-    if (!hasAny) return null;
-
-    const children = [];
-    segmentList.forEach((seg, i) => {
-      if (i > 0) {
-        const between = renderBetweenSeparator(
-          segmentList[i - 1].kind,
-          `sep-${i}`,
-        );
-        if (between) children.push(between);
-      }
-      children.push(renderSegment(seg, i));
-    });
-
-    // Trailing cap: for Powerline/Slant, the last segment's color extends
-    // into a final triangle/slash sitting on the surface bg.
-    if (group.connected && segmentList.length > 0) {
-      const lastKind = segmentList[segmentList.length - 1].kind;
-      if (group.rightCap === "triangle")
-        children.push(
-          <TriangleSeparator
-            key="cap"
-            color={segmentBg(lastKind)}
-            height={sepHeight}
-          />,
-        );
-      if (group.rightCap === "slant")
-        children.push(
-          <SlashSeparator
-            key="cap"
-            color={segmentBg(lastKind)}
-            height={sepHeight}
-          />,
-        );
-    }
-
-    return <div style={groupStyle}>{children}</div>;
-  }
+  const hasError = exitCode > 0;
 
   return (
     <div
-      className="flex flex-col select-none w-full bg-[var(--bg-surface)]"
       style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        marginTop: 6,
         fontFamily: "var(--font-mono)",
         fontSize: "var(--font-size-mono)",
+        userSelect: "none",
       }}
     >
-      {/* Row 1 */}
+      {
+        <div
+          style={{
+            height: running ? "2px" : "2px",
+            background: "var(--tab-accent)",
+            flexShrink: 0,
+            opacity: running ? 0.45 : 0.2,
+            position: "relative",
+            overflow: "hidden",
+            transition: "height 0.25s ease, opacity 0.25s ease",
+            boxShadow: running
+              ? "0 0 6px 1px color-mix(in srgb, var(--tab-accent) 50%, transparent)"
+              : "none",
+          }}
+        >
+          {running && (
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  width: "30%",
+                  background:
+                    "linear-gradient(90deg, transparent 0%, var(--tab-accent) 35%, white 50%, var(--tab-accent) 65%, transparent 100%)",
+                  opacity: 0.9,
+                  animation: "promptRunning 1.4s linear infinite",
+                }}
+              />
+            </div>
+          )}
+        </div>
+      }
       <div
-        className="flex items-center w-full"
-        style={{ gap: "8px", ...rowStyle }}
+        style={{
+          display: "flex",
+          ...rowStyle,
+        }}
       >
-        {renderGroup()}
+        {/* Segments with │ separators */}
+        {segmentList.map((s, i) => (
+          <span
+            key={s.kind}
+            style={{ display: "inline-flex", alignItems: "center" }}
+          >
+            {renderSegment(s, i)}
+          </span>
+        ))}
 
-        {/* Always render a connecting line between prompt segments and the copy
-            button. Flat when idle; animates into a wave while a command runs. */}
-        <WaveSeparator running={running} />
+        {/* Error pill — shown after segments when exitCode > 0 */}
+        {hasError && (
+          <span
+            style={
+              minimal
+                ? {
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    lineHeight: 1,
+                    padding: "3px 6px",
+                    color: "#f85149",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "var(--font-size-mono)",
+                    fontWeight: 500,
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                    userSelect: "none",
+                  }
+                : {
+                    background: "color-mix(in srgb, #f85149 12%, transparent)",
+                    color: "#f85149",
+                    borderLeft: "4px solid #f85149",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    lineHeight: 1,
+                    padding: "5px 10px",
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "var(--font-size-mono)",
+                    fontWeight: 500,
+                    cursor: "default",
+                    transition: "background 0.15s ease, box-shadow 0.15s ease",
+                    userSelect: "none",
+                  }
+            }
+          >
+            ✕ exit {exitCode}
+          </span>
+        )}
 
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Timing — always visible but minimal; hover reveals full timestamp */}
+        {duration != null && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexShrink: 0,
+              marginRight: 8,
+              cursor: "pointer",
+            }}
+            onMouseEnter={() => setTimeHovered(true)}
+            onMouseLeave={() => setTimeHovered(false)}
+          >
+            {timeHovered && startTime != null ? (
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  padding: "2px 7px",
+                  borderRadius: 3,
+                  fontSize: `${iconSize - 1}px`,
+                  color: "var(--text-secondary)",
+                  whiteSpace: "nowrap",
+                  animation: "slideInRight 0.12s ease-out",
+                }}
+              >
+                <MdAccessTimeFilled
+                  size={iconSize - 1}
+                  style={{ opacity: 0.6 }}
+                />
+                <span>
+                  {new Date(startTime).toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </span>
+                <span style={{ opacity: 0.4 }}>·</span>
+                <span>{formatDuration(duration)}</span>
+              </span>
+            ) : (
+              <span
+                style={{
+                  fontSize: `${iconSize - 1}px`,
+                  color: "var(--text-muted)",
+                  opacity: 0.5,
+                }}
+              >
+                {formatDuration(duration)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Replay */}
         {onReplay && (
           <button
             onClick={handleReplay}
@@ -358,26 +446,37 @@ export default function Prompt({
               e.stopPropagation();
               e.preventDefault();
             }}
+            title="Run again"
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: `${iconSize + 10}px`,
-              height: `${iconSize + 10}px`,
-              title: "Run this command again",
+              marginRight: 5,
+              width: iconSize + 10,
+              height: iconSize + 10,
               background: "none",
               border: "none",
               cursor: "pointer",
-              color: "var(--text-secondary)",
+              color: "var(--text-muted)",
+              opacity: 0.4,
               flexShrink: 0,
-              transition: "color 0.15s",
+              transition: "opacity 0.15s, color 0.15s",
+              borderRadius: 3,
             }}
-            title="Run this command again"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = 1;
+              e.currentTarget.style.color = "var(--text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = 0.4;
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
           >
-            <FaRedo size={iconSize} />
+            <VscDebugRestart size={iconSize} />
           </button>
         )}
 
+        {/* Copy */}
         {onCopy && (
           <button
             onClick={handleCopy}
@@ -389,119 +488,89 @@ export default function Prompt({
               e.stopPropagation();
               e.preventDefault();
             }}
+            title="Copy command and output"
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: `${iconSize + 10}px`,
-              height: `${iconSize + 10}px`,
+              marginRight: 5,
+              width: iconSize + 10,
+              height: iconSize + 10,
               background: "none",
-              cursor: "pointer",
               border: "none",
-              title: "Copy command and output",
-              color: copied ? "var(--accent)" : "var(--text-secondary)",
+              cursor: "pointer",
+              color: copied ? "var(--accent)" : "var(--text-muted)",
+              opacity: copied ? 1 : 0.4,
               flexShrink: 0,
-              transition: "color 0.15s",
+              transition: "opacity 0.15s, color 0.15s",
+              borderRadius: 3,
             }}
-            title="Copy command and output"
+            onMouseEnter={(e) => {
+              if (!copied) {
+                e.currentTarget.style.opacity = 1;
+                e.currentTarget.style.color = "var(--text-primary)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!copied) {
+                e.currentTarget.style.opacity = 0.4;
+                e.currentTarget.style.color = "var(--text-muted)";
+              }
+            }}
           >
             {copied ? (
-              <FaCheck size={iconSize + 2} />
+              <VscCheck size={iconSize} />
             ) : (
-              <FaRegCopy size={iconSize + 2} />
+              <VscCopy size={iconSize} />
             )}
           </button>
         )}
-
-        {startTime != null && duration != null && (
-          <div
-            style={{
-              flexShrink: 0,
-              marginRight: "16px",
-              display: "flex",
-              alignItems: "center",
-              cursor: "pointer",
-            }}
-            onMouseEnter={() => setInfoVisible(true)}
-            onMouseLeave={() => setInfoVisible(false)}
-          >
-            {infoVisible ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "2px 8px",
-                  backgroundColor: "var(--tab-accent)",
-                  borderRadius: 4,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: `${iconSize}px`,
-                  color: "var(--on-accent)",
-                  whiteSpace: "nowrap",
-                  animation: "slideInRight 0.15s ease-out",
-                }}
-              >
-                <span>{new Date(startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                <span style={{ opacity: 0.5 }}>·</span>
-                <span>{formatDuration(duration)}</span>
-              </div>
-            ) : (
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: `${iconSize + 10}px`,
-                  height: `${iconSize + 10}px`,
-                  color: "var(--text-muted)",
-                  cursor: "default",
-                }}
-              >
-                {/* <FaInfoCircle size={iconSize + 4} /> */}
-                <img
-                  src={infoIconUrl}
-                  alt={`Exit code ${exitCode}`}
-                  title={`Exit code: ${exitCode}`}
-                  width={iconSize}
-                  height={iconSize}
-                  style={{
-                    width: iconSize + 4,
-                    height: iconSize + 4,
-                    objectFit: "contain",
-                    flexShrink: 0,
-                  }}
-                />
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Rows 2+: command lines (xterm decoration only) */}
+      {/* Command lines — xterm decoration only */}
       {commandLines.map((line, i) => (
         <div
           key={i}
-          className="flex items-center m-2 relative"
-          style={{ ...rowStyle, overflow: "visible", paddingLeft: 22, paddingRight: 12 }}
+          style={{
+            display: "flex",
+            alignItems: "start",
+            position: "relative",
+            ...(cellHeight
+              ? { minHeight: `${cellHeight}px`, alignItems: "center" }
+              : { lineHeight: 1.4 }),
+            overflow: "visible",
+            paddingLeft: 25,
+            paddingRight: 12,
+            marginTop: -10
+          }}
         >
           {i === 0 && (
             <div
               aria-hidden
               style={{
                 position: "absolute",
-                left: 5,
-                top: -1,
-                bottom: "50%",
+                left: 15,
+                top: 1,
                 width: 13,
-                height: 18,
-                borderLeft: "2px dotted var(--tab-accent)",
-                borderBottom: "2px dotted var(--tab-accent)",
+                height: 15,
+                borderLeft:
+                  "2px dotted color-mix(in srgb, var(--tab-accent) 30%, transparent)",
+                borderBottom:
+                  "2px dotted color-mix(in srgb, var(--tab-accent) 30%, transparent)",
                 borderBottomLeftRadius: 3,
                 pointerEvents: "none",
               }}
             />
           )}
-          <span className="ml-1 text-[var(--tab-accent)]">{line}</span>
+          <span
+            style={{
+              marginLeft: 10,
+              color:
+                "color-mix(in srgb, var(--tab-accent) 70%, var(--text-primary))",
+            }}
+          >
+            {line}
+          </span>
         </div>
       ))}
     </div>

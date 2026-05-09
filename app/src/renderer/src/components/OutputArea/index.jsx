@@ -5,7 +5,7 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { PromptAddon } from "../../addons/PromptAddon";
-import Prompt from "../Prompt2";
+import Prompt from "../Prompt";
 import { usePreferences } from "../../hooks/usePreferences";
 
 const BUFFER_CAP = 512 * 1024; // 512 KB

@@ -357,22 +357,14 @@ export default function App() {
         className="shrink-0 flex items-center bg-[var(--bg-base)] border-b border-[var(--border)] [-webkit-app-region:drag]"
         style={{ height: '36px' }}
       >
-        {tabBarPosition === 'top' && (
+        {tabBarPosition === 'top' ? (
           <>
             <div className="w-20 shrink-0" />
             <TabBar {...tabBarProps} />
           </>
+        ) : (
+          <div className="flex-1" />
         )}
-        <div className="ml-auto flex items-center pr-3 [-webkit-app-region:no-drag]">
-          <button
-            title="Preferences (⌘,)"
-            onClick={() => setIsPrefsOpen(true)}
-            className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--bg-elevated)]"
-            style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            ⚙
-          </button>
-        </div>
       </div>
 
       {/* Main area — flex row; left TabBar appears here when in left mode */}

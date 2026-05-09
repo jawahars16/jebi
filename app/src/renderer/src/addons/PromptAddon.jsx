@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import Prompt from "../components/Prompt2";
+import Prompt from "../components/Prompt";
 
 // Rows for the prompt elements line (➜, cwd, etc.)
 const PROMPT_HEADER_ROWS = 2;
