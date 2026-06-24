@@ -692,7 +692,10 @@ app.whenReady().then(async () => {
   }
   createWindow()
   const wins = BrowserWindow.getAllWindows()
-  if (wins.length > 0) setTimeout(() => checkForUpdates(wins[0]), 2000)
+  if (wins.length > 0) {
+    setTimeout(() => checkForUpdates(wins[0]), 2000)
+    setInterval(() => { const w = BrowserWindow.getAllWindows()[0]; if (w) checkForUpdates(w) }, 6 * 60 * 60 * 1000)
+  }
 })
 
 let quitConfirmed = false
