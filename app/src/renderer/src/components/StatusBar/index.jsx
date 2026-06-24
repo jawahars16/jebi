@@ -2,14 +2,14 @@ import { useAIStatus } from '../../hooks/useAIStatus'
 import { useStatusMessage } from '../../hooks/useStatusMessage'
 import { useUpdateStatus } from '../../hooks/useUpdateStatus'
 
-const pulseStyle = `
-  @keyframes jebi-update-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.3; transform: scale(1.6); }
+const updateArrowStyle = `
+  @keyframes jebi-arrow-bounce {
+    0%, 100% { transform: translateY(1px); }
+    50%       { transform: translateY(-2px); }
   }
 `
 
-export default function StatusBar({ onOpenAISettings }) {
+export default function StatusBar({ onOpenAISettings, onOpenUpdate }) {
   const aiStatus = useAIStatus()
   const message = useStatusMessage()
   const updateStatus = useUpdateStatus()
@@ -31,38 +31,43 @@ export default function StatusBar({ onOpenAISettings }) {
       gap: 6,
       minHeight: 24,
     }}>
-      <style>{pulseStyle}</style>
+      <style>{updateArrowStyle}</style>
 
       {/* Version chip — left */}
-      <span
-        title={updateStatus.available ? `v${updateStatus.latestVersion} available` : undefined}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          fontFamily: 'var(--font-mono)',
-          fontSize: '11px',
-          color: 'var(--text-muted)',
-          opacity: 0.6,
-          flexShrink: 0,
-          userSelect: 'none',
-        }}
-      >
-        {updateStatus.available && (
+      {updateStatus.available ? (
+        <button
+          onClick={onOpenUpdate}
+          title={`v${updateStatus.latestVersion} available — click to update`}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', padding: 0,
+            cursor: 'pointer', flexShrink: 0, userSelect: 'none',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-primary)', opacity: 0.9 }}>
+            v{version}
+          </span>
           <span style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: 'var(--accent)',
-            display: 'inline-block',
-            flexShrink: 0,
-            animation: 'jebi-update-pulse 1.8s ease-in-out infinite',
-          }} />
-        )}
-        v{version}
-      </span>
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 14, height: 14, borderRadius: '50%',
+            background: '#f59e0b',
+            fontSize: 9, fontWeight: 700, color: '#000',
+            lineHeight: 1, flexShrink: 0, overflow: 'hidden',
+          }}>
+            <span style={{ display: 'inline-block', animation: 'jebi-arrow-bounce 1.2s ease-in-out infinite' }}>↑</span>
+          </span>
+        </button>
+      ) : (
+        <span style={{
+          fontFamily: 'var(--font-mono)', fontSize: '11px',
+          color: 'var(--text-muted)', opacity: 0.6,
+          flexShrink: 0, userSelect: 'none',
+        }}>
+          v{version}
+        </span>
+      )}
 
-      {/* Transient message — left */}
+      {/* Transient message — center */}
       <span style={{
         fontFamily: 'var(--font-mono)',
         fontSize: '11px',

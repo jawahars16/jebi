@@ -11,7 +11,7 @@ const styles = `
 export default function AboutSection() {
   const year = new Date().getFullYear()
   const updateStatus = useUpdateStatus()
-  const [checked, setChecked] = useState(false)
+  const [checked, setChecked] = useState(updateStatus.available)
   const [installing, setInstalling] = useState(false)
   const [logs, setLogs] = useState([])
   const [installDone, setInstallDone] = useState(null) // null | { success }
