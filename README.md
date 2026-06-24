@@ -117,8 +117,3 @@ Models are downloaded on demand and stored in `~/Library/Application Support/jeb
 
 - [Custom Slash Commands](docs/custom-slash-commands.md) — schema reference, command types, and examples for Git, Docker, Node, and more
 
----
-
-## License
-
-[FSL-1.1-ALv2](LICENSE) — free to use, fork, modify, and contribute. Commercial use that competes with jebi is not permitted. Converts to Apache 2.0 two years from each release date.
