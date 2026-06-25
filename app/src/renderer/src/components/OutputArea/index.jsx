@@ -126,7 +126,6 @@ export default function OutputArea({
   const pendingSizeRef = useRef(0);
   const isVisibleRef = useRef(isVisible);
   const fitFrameRef = useRef(null);
-  const redrawTimerRef = useRef(null);
   const rendererAddonRef = useRef(null);
 
   const [stickyCommand, setStickyCommand] = useState(null);
@@ -225,7 +224,7 @@ export default function OutputArea({
       });
       term.onResize(({ cols, rows }) => sendResizeRef.current?.(cols, rows));
 
-      const scheduleFit = (redrawRunningCommand = false) => {
+      const scheduleFit = () => {
         if (fitFrameRef.current != null) {
           cancelAnimationFrame(fitFrameRef.current);
         }
@@ -235,18 +234,6 @@ export default function OutputArea({
             fitAddon.fit();
             term.refresh(0, term.rows - 1);
 
-            // Full-screen TUI apps (vim, htop, claude) don't always repaint on
-            // SIGWINCH alone after a pane split. Ctrl+L triggers a forced redraw,
-            // but ONLY when a TUI is actually active — sending it to the shell
-            // prompt (cd, ls, etc.) injects a literal ^L into the command buffer.
-            clearTimeout(redrawTimerRef.current);
-            if (redrawRunningCommand && callbacksRef.current.isRunning?.()) {
-              redrawTimerRef.current = setTimeout(() => {
-                if (callbacksRef.current.isRunning?.() && promptAddonRef.current?._tuiActive) {
-                  sendRaw("\x0c");
-                }
-              }, 35);
-            }
           });
         });
       };
@@ -334,13 +321,12 @@ export default function OutputArea({
         // opens — by then the layout is definitely settled.
         callbacksRef.current.triggerFit = () => scheduleFit();
 
-        const observer = new ResizeObserver(() => scheduleFit(true));
+        const observer = new ResizeObserver(() => scheduleFit());
         observer.observe(xtermContainerRef.current);
 
         cleanup = () => {
           observer.disconnect();
           if (fitFrameRef.current != null) cancelAnimationFrame(fitFrameRef.current);
-          clearTimeout(redrawTimerRef.current);
           callbacksRef.current = {};
           term.dispose();
         };
