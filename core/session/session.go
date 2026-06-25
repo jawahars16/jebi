@@ -112,6 +112,11 @@ func New(conn connection, provider llm.Provider, initialCwd string) (*Session, e
 			cmd.Dir = initialCwd
 		}
 	}
+	if cmd.Dir == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			cmd.Dir = home
+		}
+	}
 	cmd.Env = append(os.Environ(),
 		"TERM=xterm-256color",
 		"COLORTERM=truecolor",

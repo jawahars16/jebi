@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Tooltip from '../Tooltip'
 
 function formatSpeed(bps) { return (bps / 1e6).toFixed(1) + ' MB/s' }
@@ -11,6 +12,8 @@ function formatETA(bytesLeft, speedBps) {
 export default function ModelCard({ model, isActive, onActivate, onDownload, onCancel, onDelete, downloadProgress, isLast }) {
   const isDownloading = !!downloadProgress
   const isRecommended = model.quality === 'Recommended'
+  const [dlHover, setDlHover] = useState(false)
+  const [useHover, setUseHover] = useState(false)
 
   const rowStyle = {
     display: 'flex',
@@ -120,15 +123,18 @@ export default function ModelCard({ model, isActive, onActivate, onDownload, onC
           <Tooltip text="Set as active model">
             <button
               onClick={onActivate}
+              onMouseEnter={() => setUseHover(true)}
+              onMouseLeave={() => setUseHover(false)}
               style={{
                 padding: '3px 10px',
                 borderRadius: 4,
-                border: '1px solid var(--border)',
-                background: 'var(--bg-elevated)',
-                color: 'var(--text-primary)',
+                border: `1px solid ${useHover ? 'var(--text-muted)' : 'var(--border)'}`,
+                background: useHover ? 'var(--accent-glow)' : 'var(--bg-elevated)',
+                color: useHover ? 'var(--text-primary)' : 'var(--text-primary)',
                 cursor: 'pointer',
                 fontSize: 'var(--font-size-ui)',
                 fontFamily: 'var(--font-ui)',
+                transition: 'border-color 150ms ease, background 150ms ease',
               }}
             >
               Use
@@ -165,12 +171,14 @@ export default function ModelCard({ model, isActive, onActivate, onDownload, onC
       {info}
       <button
         onClick={onDownload}
+        onMouseEnter={() => setDlHover(true)}
+        onMouseLeave={() => setDlHover(false)}
         style={{
           padding: '3px 10px',
           borderRadius: 4,
-          border: '1px solid var(--border)',
-          background: 'none',
-          color: 'var(--text-muted)',
+          border: `1px solid ${dlHover ? 'var(--text-muted)' : 'var(--border)'}`,
+          background: dlHover ? 'var(--bg-elevated)' : 'none',
+          color: dlHover ? 'var(--text-secondary)' : 'var(--text-muted)',
           cursor: 'pointer',
           fontSize: 'var(--font-size-ui)',
           fontFamily: 'var(--font-ui)',
@@ -178,6 +186,7 @@ export default function ModelCard({ model, isActive, onActivate, onDownload, onC
           display: 'flex',
           alignItems: 'center',
           gap: 4,
+          transition: 'color 150ms ease, border-color 150ms ease, background 150ms ease',
         }}
       >
         <span style={{ fontSize: 11 }}>↓</span>

@@ -107,7 +107,6 @@ func (s *Session) detectEnv(ctx context.Context, dir string) {
 	if !existsAny(dir, pythonMarkers) {
 		info.Python = ""
 	}
-	s.sendProjectContext(ctx, info)
 }
 
 // sendProjectContext streams a one-sentence AI project summary as an info banner.

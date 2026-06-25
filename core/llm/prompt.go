@@ -76,6 +76,7 @@ type finalResponse struct {
 const suggestPromptTemplate = `You are a terminal assistant. Suggest the next shell commands the user should type.
 
 Environment: shell=%s  os=%s  cwd=%s
+Platform: macOS Sonoma on Apple Silicon. Use Homebrew (brew) for installing missing tools.
 
 CRITICAL: Every line you output must be a shell command that can be typed into a terminal and executed.
 NEVER output terminal output, error messages, file contents, git output, or any text that is not a shell command.
@@ -83,15 +84,16 @@ Ask yourself: "Can I type this line into a shell prompt and press Enter?" If no,
 
 How to decide:
 - The last 1-3 commands are your primary signal. Continue that workflow.
-- If the last command failed with "command not found", the tool is not installed — include the install command (e.g. brew install <tool> on macOS) as the first suggestion.
+- If the last command failed with "command not found", the tool is not installed — use brew install <tool> as the first suggestion.
 - If the last command failed with "unknown command" or wrong subcommand, suggest the correct usage.
 - For other failures, suggest commands that fix the specific error.
-- Use the file listing as secondary context only.
+- Never suggest a command identical to the one that just failed.
+- Weight suggestions toward the project visible in the file listing: npm/npx in Node projects, go in Go projects, etc.
 
 Format:
 - 1 to 3 lines. Each line is one complete shell command.
 - No numbering, no bullet points, no explanations, no blank lines.
-- If you have fewer than 3 confident suggestions, output fewer. Empty response is fine.
+- Always output at least 1 suggestion.
 
 Bad output — these are terminal output, NOT commands (never output these):
   Already up-to-date.
@@ -180,27 +182,25 @@ func ParseSuggestResponse(raw string) []string {
 }
 
 var explainPromptTemplate = "You are an expert terminal assistant. A shell command failed. Explain the most likely cause and how to fix it.\n\n" +
-	"Environment:\nShell: %s\nOS: %s\nCurrent directory: %s\n\n" +
-	"Decision Process:\n" +
-	"1. The command history is labeled [PASSED] or [FAILED] for each prior command.\n" +
-	"2. The command marked [FAILED - THIS IS THE COMMAND TO EXPLAIN] is the one that needs explanation — focus exclusively on it.\n" +
-	"3. Prior commands are context only; do NOT explain them even if they are labeled [FAILED].\n" +
-	"4. Identify the most probable root cause (not multiple guesses).\n" +
-	"5. Provide the simplest fix that is most likely to work.\n\n" +
+	"Environment:\nShell: %s\nOS: %s\nCurrent directory: %s\n" +
+	"Platform: macOS Sonoma on Apple Silicon. Use Homebrew (brew) for missing tools.\n\n" +
+	"Focus exclusively on the command labeled [FAILED - THIS IS THE COMMAND TO EXPLAIN]. Prior commands are context only.\n\n" +
 	"Rules:\n" +
-	"- Output 1-2 short sentences.\n" +
+	"- Output exactly 2 short sentences.\n" +
+	"- First sentence: what went wrong — reference the specific error text from the output.\n" +
+	"- Second sentence: the concrete fix action (e.g. 'Run `brew install git`', 'Check that the path exists', 'Add the missing flag').\n" +
 	"- No markdown except backticks. No bullet points. No labels.\n" +
-	"- Wrap all command names, flags, file paths, and tool names in backticks (e.g. `git`, `npm install`, `--flag`).\n" +
+	"- Wrap all command names, flags, file paths, and tool names in backticks.\n" +
 	"- Never prefix commands with a shell name (no `bash`, `sh`, `zsh`). The user is already in a terminal.\n" +
-	"- Be specific (mention command, file, or tool if relevant).\n" +
-	"- If the issue is trivial (typo, empty input, obvious misuse), output empty string.\n" +
-	"- If uncertain, output empty string.\n\n" +
+	"- If no useful explanation is possible, output empty string.\n\n" +
 	"Good examples:\n" +
 	"- \"The `git` command failed because the directory does not exist; check the path or create it first.\"\n" +
-	"- \"Permission denied indicates you need elevated privileges; try running with `sudo`.\"\n\n" +
+	"- \"`npm install` failed with 'ENOENT: no such file or directory' — run `npm init` first to create a package.json.\"\n" +
+	"- \"Permission denied on `/usr/local/bin` — run the command with `sudo`.\"\n\n" +
 	"Bad examples:\n" +
 	"- Generic advice like \"something went wrong\"\n" +
-	"- Multiple possible causes\n\n" +
+	"- Multiple possible causes\n" +
+	"- Repeating the command without explaining the error\n\n" +
 	"Return only the explanation text."
 
 const explainMaxContextEntries = 5
