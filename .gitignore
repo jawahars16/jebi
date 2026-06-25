@@ -10,3 +10,4 @@ core/main
 core/core
 .DS_Store
 .claude
+.worktrees
