@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import AnalysisLoadingBar from '../AnalysisPanel/LoadingBar';
 
-export default function NLCommandPanel({ query, command, loading, error, onAccept, onCancel, onRetry }) {
+export default function NLCommandPanel({ query, command, loading, error, onAccept, onCancel }) {
   const acceptRef = useRef(null);
 
   // Auto-focus Accept button when command arrives so Enter works immediately
@@ -201,29 +201,6 @@ export default function NLCommandPanel({ query, command, loading, error, onAccep
             >
               <Kbd accent>↵</Kbd>
               accept
-            </button>
-          )}
-          {error && (
-            <button
-              onClick={onRetry}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 13,
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                opacity: 0.7,
-                transition: 'opacity 0.12s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
-            >
-              ↺ retry
             </button>
           )}
           <button

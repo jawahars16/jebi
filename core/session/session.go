@@ -506,7 +506,7 @@ func (s *Session) Start() {
 				if err != nil || cmd == "" {
 					msg := "Could not translate to a command"
 					if err != nil && err.Error() == "not_a_command" {
-						msg = "No relevant command found for this query !"
+						msg = "No relevant command for this query"
 					}
 					s.w.Send(wire.StringMessage(wire.TypeNLError, msg))
 					return

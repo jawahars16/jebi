@@ -6,8 +6,9 @@ import (
 	"strings"
 )
 
-// NLQuery translates a natural-language query into a single shell command.
-// It reuses BuildMessages (which uses systemPromptTemplate) and ParseFinalResponse.
+// NLQuery translates a natural-language query into a shell command.
+// Uses a dedicated plain-text prompt — the model outputs commands directly,
+// one per line, without JSON wrapping.
 func NLQuery(ctx context.Context, provider Provider, query, cwd, shell, os string) (string, error) {
 	req := QueryRequest{
 		Query: query,
@@ -15,7 +16,7 @@ func NLQuery(ctx context.Context, provider Provider, query, cwd, shell, os strin
 		Shell: shell,
 		OS:    os,
 	}
-	messages := BuildMessages(req)
+	messages := BuildNLMessages(req)
 	ch, err := provider.StreamMessages(ctx, messages)
 	if err != nil {
 		return "", err
@@ -27,19 +28,32 @@ func NLQuery(ctx context.Context, provider Provider, query, cwd, shell, os strin
 	if ctx.Err() != nil {
 		return "", ctx.Err()
 	}
-	result, err := ParseFinalResponse(sb.String())
-	if err != nil {
-		return "", err
+
+	raw := strings.TrimSpace(sb.String())
+	if raw == "" {
+		return "", errors.New("no command returned")
 	}
-	// Model signalled the input isn't a shell command request
-	if result.Explanation == "not_a_command" || len(result.Steps) == 0 {
-		return "", errors.New("not_a_command")
-	}
-	// Take first non-empty step command
-	for _, step := range result.Steps {
-		if strings.TrimSpace(step.Command) != "" {
-			return step.Command, nil
+
+	// Strip markdown code fences if the model wrapped the output.
+	raw = strings.TrimPrefix(raw, "```bash\n")
+	raw = strings.TrimPrefix(raw, "```sh\n")
+	raw = strings.TrimPrefix(raw, "```zsh\n")
+	raw = strings.TrimPrefix(raw, "```\n")
+	raw = strings.TrimSuffix(raw, "```")
+	raw = strings.Trim(raw, "`")
+	raw = strings.TrimSpace(raw)
+
+	// Return the first non-empty, non-comment line.
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
+		if line == "NOT_A_COMMAND" {
+			return "", errors.New("not_a_command")
+		}
+		return line, nil
 	}
+
 	return "", errors.New("no command returned")
 }

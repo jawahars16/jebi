@@ -52,7 +52,9 @@ const InputBar = forwardRef(function InputBar(
   ref,
 ) {
   const [showAIHint, setShowAIHint] = useState(false);
+  const [hintText, setHintText] = useState('');
   const hintTimerRef = useRef(null);
+  const hintIndexRef = useRef(0);
 
   // callbacksRef keeps latest prop values accessible inside the CodeMirror
   // keybinding closures without rebuilding the EditorView when props change.
@@ -65,6 +67,16 @@ const InputBar = forwardRef(function InputBar(
     if (canHint) {
       if (!hintTimerRef.current && !showAIHint) {
         hintTimerRef.current = setTimeout(() => {
+          const hints = [
+            "Not sure of the exact command?",
+            "Thinking in plain English?",
+            "Can't remember the flags?",
+            "Just describe what you want.",
+            "Forgot the syntax? Just describe it.",
+            "Let AI figure out the syntax.",
+          ];
+          setHintText(hints[hintIndexRef.current % hints.length]);
+          hintIndexRef.current += 1;
           setShowAIHint(true);
           hintTimerRef.current = null;
         }, 1200);
@@ -89,11 +101,15 @@ const InputBar = forwardRef(function InputBar(
   callbacksRef.current.nlMode = nlMode;
   callbacksRef.current.nlSuccessCount = nlSuccessCount;
 
-  const { editorContainerRef, viewRef } = useShellEditor(callbacksRef)
+  const { editorContainerRef, viewRef, setNlPlaceholder } = useShellEditor(callbacksRef)
 
   useEffect(() => {
     viewRef.current?.dispatch({ effects: ghostSuggestionsEffect.of(aiSuggestions) })
   }, [aiSuggestions]);
+
+  useEffect(() => {
+    setNlPlaceholder(nlMode);
+  }, [nlMode]);
 
   useImperativeHandle(ref, () => ({
     focus: () => viewRef.current?.focus(),
@@ -102,6 +118,7 @@ const InputBar = forwardRef(function InputBar(
       if (!view) return;
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: text },
+        selection: { anchor: 0, head: text.length },
       });
       view.focus();
     },
@@ -228,7 +245,7 @@ const InputBar = forwardRef(function InputBar(
               animation: 'aiHintIn 0.2s ease-out',
               whiteSpace: 'nowrap',
             }}>
-              Need help? Try AI mode
+              {hintText} Try AI mode
               <KeyBadge keys={['cmd', 'shift', '.']} style={{
                 background: 'color-mix(in srgb, var(--tab-accent) 20%, transparent)',
                 border: '1px solid color-mix(in srgb, var(--tab-accent) 55%, transparent)',

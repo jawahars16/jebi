@@ -248,8 +248,8 @@ export default function TerminalPane({
     setNlPanel(prev => prev ? { ...prev, command, loading: false, error: null } : null);
   };
 
-  callbacksRef.current.onNLError = () => {
-    setNlPanel(prev => prev ? { ...prev, loading: false, error: 'No relevant command found for this query !' } : null);
+  callbacksRef.current.onNLError = (msg) => {
+    setNlPanel(prev => prev ? { ...prev, loading: false, error: msg || 'Could not translate to a command' } : null);
   };
 
   callbacksRef.current.onGit = (data) => {
@@ -690,16 +690,10 @@ export default function TerminalPane({
           onCancel={() => {
             const query = nlPanel.query;
             setNlPanel(null);
-            // Keep NL mode active — user stays in AI input mode
             setTimeout(() => {
               inputBarRef.current?.setValue(query);
               inputBarRef.current?.focus();
             }, 0);
-          }}
-          onRetry={() => {
-            const query = nlPanel.query;
-            setNlPanel({ query, command: null, loading: true, error: null });
-            sendNLQuery(query, callbacksRef.current.currentCwd ?? '');
           }}
         />
       )}

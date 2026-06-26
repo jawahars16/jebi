@@ -1,0 +1,93 @@
+<!DOCTYPE html><!-- SLIDE 1: Hero Overview -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1270px; height:952px; overflow:hidden; font-family:'JetBrains Mono',monospace; background:#080818; }
+svg.defs { position:absolute; width:0; height:0; }
+.grain { position:absolute; inset:0; z-index:1; pointer-events:none; filter:url(#gf); opacity:0.35; mix-blend-mode:soft-light; }
+.glow { position:absolute; inset:0; z-index:0;
+  background:
+    radial-gradient(ellipse 55% 60% at 0% 90%, rgba(99,102,241,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 45% at 100% 10%, rgba(99,102,241,0.09) 0%, transparent 55%); }
+.layout { position:relative; z-index:10; display:flex; height:100%; overflow:hidden; }
+.left { width:500px; flex-shrink:0; display:flex; flex-direction:column; justify-content:center;
+  padding:56px 44px 56px 68px; border-right:1px solid rgba(255,255,255,0.06); }
+.logo-row { display:flex; align-items:center; gap:12px; margin-bottom:40px; }
+.logo-icon { width:40px; height:40px; border-radius:9px; background:#111128; display:flex; align-items:center; justify-content:center; padding:4px; flex-shrink:0; }
+.logo-icon img { width:100%; height:100%; }
+.logo-name { font-size:18px; font-weight:700; color:rgba(255,255,255,0.9); font-family:'Inter',sans-serif; }
+.slide-tag { font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#6366f1; margin-bottom:16px; }
+.headline { font-size:58px; font-weight:800; line-height:1.0; letter-spacing:-2px; color:#fff; margin-bottom:18px; font-family:'Inter',sans-serif; }
+.headline .dim { color:rgba(255,255,255,0.35); }
+.body-text { font-size:14px; color:rgba(255,255,255,0.42); line-height:1.7; margin-bottom:32px; letter-spacing:-0.1px; }
+.body-text strong { color:rgba(255,255,255,0.72); font-weight:500; }
+.features { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:36px; }
+.feat { padding:14px; border-radius:8px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); }
+.feat-icon { width:28px; height:28px; margin-bottom:8px; color:rgba(255,255,255,0.5); }
+.feat-name { font-size:12px; font-weight:700; color:rgba(255,255,255,0.75); margin-bottom:3px; font-family:'Inter',sans-serif; }
+.feat-desc { font-size:11px; color:rgba(255,255,255,0.32); line-height:1.4; }
+.install-row { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:7px;
+  width:fit-content; border:1px solid rgba(255,255,255,0.09); background:rgba(255,255,255,0.03); }
+.install-row .dollar { color:#6366f1; font-size:12px; }
+.install-row .cmd { color:rgba(255,255,255,0.4); font-size:12px; }
+.install-row .badge { margin-left:8px; padding:2px 7px; border-radius:4px;
+  background:rgba(99,102,241,0.15); color:#818cf8; font-size:10px; font-weight:700;
+  border:1px solid rgba(99,102,241,0.25); }
+.right { flex:1; display:flex; align-items:center; justify-content:flex-start; padding:44px 0 44px 40px; position:relative; overflow:hidden; }
+.win-glow { position:absolute; width:520px; height:400px;
+  background:radial-gradient(ellipse, rgba(99,102,241,0.2) 0%, transparent 70%);
+  border-radius:50%; pointer-events:none; }
+.screenshot { width:890px; border-radius:12px; position:relative; z-index:1;
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.2), 0 40px 90px rgba(0,0,0,0.75), 0 0 60px rgba(99,102,241,0.14); }
+</style></head>
+<body>
+<svg class="defs"><defs><filter id="gf" x="0%" y="0%" width="100%" height="100%">
+  <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch" result="n"/>
+  <feColorMatrix type="saturate" values="0" in="n" result="g"/>
+  <feBlend in="SourceGraphic" in2="g" mode="overlay"/>
+</filter></defs></svg>
+<div class="grain"></div><div class="glow"></div>
+<div class="layout">
+  <div class="left">
+    <div class="logo-row">
+      <div class="logo-icon"><img src="../app/src/renderer/src/assets/jebi-logo.svg" alt="jebi"></div>
+      <span class="logo-name">jebi</span>
+    </div>
+    <div class="slide-tag">AI-Native Terminal for Mac</div>
+    <div class="headline">Your terminal,<br><span class="dim">supercharged.</span></div>
+    <p class="body-text">A beautiful Mac terminal with <strong>built-in AI</strong>. Tabs, split panes, suggestions, error explanations, and /ask — all in one place. Free &amp; open source.</p>
+    <div class="features">
+      <div class="feat">
+        <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <div class="feat-name">AI Suggestions</div>
+        <div class="feat-desc">Next command, already there</div>
+      </div>
+      <div class="feat">
+        <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <div class="feat-name">Error Explanations</div>
+        <div class="feat-desc">Instant plain-English fixes</div>
+      </div>
+      <div class="feat">
+        <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <div class="feat-name">Slash Commands</div>
+        <div class="feat-desc">/ask, /ls, /ports &amp; more</div>
+      </div>
+      <div class="feat">
+        <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        <div class="feat-name">Local AI Models</div>
+        <div class="feat-desc">Private, on-device, offline</div>
+      </div>
+    </div>
+    <div class="install-row">
+      <span class="dollar">$</span>
+      <span class="cmd">brew install --cask jebi</span>
+      <span class="badge">FREE</span>
+    </div>
+  </div>
+  <div class="right">
+    <div class="win-glow"></div>
+    <img class="screenshot" src="screenshots/jebi-5.png" alt="jebi workspace">
+  </div>
+</div>
+</body></html>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { EditorView, keymap, ViewPlugin, WidgetType, Decoration } from '@codemirror/view'
-import { EditorState, StateEffect, RangeSet, Prec } from '@codemirror/state'
+import { EditorView, keymap, ViewPlugin, WidgetType, Decoration, placeholder } from '@codemirror/view'
+import { EditorState, StateEffect, StateField, RangeSet, Compartment, Prec } from '@codemirror/state'
 import { defaultKeymap, insertNewlineAndIndent } from '@codemirror/commands'
 import { StreamLanguage, HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { shell } from '@codemirror/legacy-modes/mode/shell'
@@ -53,6 +53,12 @@ function buildTheme(dark) {
     },
     '.cm-activeLine': { background: 'transparent' },
     '.cm-gutters': { display: 'none' },
+    '.cm-placeholder': {
+      color: 'var(--text-muted)',
+      opacity: '0.4',
+      fontStyle: 'italic',
+      pointerEvents: 'none',
+    },
 
     // Autocomplete dropdown — matches the active theme via CSS vars.
     '.cm-tooltip.cm-tooltip-autocomplete': {
@@ -281,6 +287,9 @@ function makeGhostPlugin(callbacksRef) {
  * @param {{ onSubmit, onNavigateHistory, getHistory }} callbacksRef
  * @returns {{ editorContainerRef, viewRef }}
  */
+const nlPlaceholderCompartment = new Compartment()
+const NL_PLACEHOLDER_TEXT = 'Describe what you want to do — get a ready-to-run command'
+
 export function useShellEditor(callbacksRef) {
   const editorContainerRef = useRef(null)
   const viewRef = useRef(null)
@@ -477,6 +486,7 @@ export function useShellEditor(callbacksRef) {
           buildHighlightStyle(),
           buildTheme(isDark),
           EditorView.lineWrapping,
+          nlPlaceholderCompartment.of([]),
           autoHeightPlugin,
           // Slash-command + file-path completions.
           //   - slashSource: gates on doc starting with '/'; activates on typing.
@@ -519,5 +529,13 @@ export function useShellEditor(callbacksRef) {
     }
   }, [])
 
-  return { editorContainerRef, viewRef }
+  const setNlPlaceholder = (active) => {
+    viewRef.current?.dispatch({
+      effects: nlPlaceholderCompartment.reconfigure(
+        active ? placeholder(NL_PLACEHOLDER_TEXT) : []
+      )
+    })
+  }
+
+  return { editorContainerRef, viewRef, setNlPlaceholder }
 }

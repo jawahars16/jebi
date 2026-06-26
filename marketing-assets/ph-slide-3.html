@@ -1,0 +1,77 @@
+<!DOCTYPE html><!-- SLIDE 3: Error Explanations — jebi-1, red accent -->
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1270px; height:952px; overflow:hidden; font-family:'JetBrains Mono',monospace; background:#080818; }
+svg.defs { position:absolute; width:0; height:0; }
+.grain { position:absolute; inset:0; z-index:1; pointer-events:none; filter:url(#gf); opacity:0.35; mix-blend-mode:soft-light; }
+.glow { position:absolute; inset:0; z-index:0;
+  background:
+    radial-gradient(ellipse 55% 55% at 100% 100%, rgba(239,68,68,0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 35% 40% at 0% 0%, rgba(239,68,68,0.07) 0%, transparent 55%); }
+.layout { position:relative; z-index:10; display:flex; height:100%; overflow:hidden; }
+
+.left { width:500px; flex-shrink:0; display:flex; flex-direction:column; justify-content:center;
+  padding:56px 44px 56px 68px; border-right:1px solid rgba(255,255,255,0.06); }
+.logo-row { display:flex; align-items:center; gap:12px; margin-bottom:40px; }
+.logo-icon { width:40px; height:40px; border-radius:9px; background:#111128; display:flex; align-items:center; justify-content:center; padding:4px; flex-shrink:0; }
+.logo-icon img { width:100%; height:100%; }
+.logo-name { font-size:18px; font-weight:700; color:rgba(255,255,255,0.9); font-family:'Inter',sans-serif; }
+.slide-tag { font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#ef4444; margin-bottom:16px; }
+.headline { font-size:58px; font-weight:800; line-height:1.0; letter-spacing:-2.5px; color:#fff; margin-bottom:18px; font-family:\'Inter\',sans-serif; }
+.headline .dim { color:rgba(255,255,255,0.35); }
+.body-text { font-size:14px; color:rgba(255,255,255,0.42); line-height:1.7; margin-bottom:32px; letter-spacing:-0.2px; }
+.body-text strong { color:rgba(255,255,255,0.72); font-weight:500; }
+
+.bullets { display:flex; flex-direction:column; gap:14px; margin-bottom:36px; }
+.bullet { display:flex; align-items:flex-start; gap:12px; }
+.bdot { width:6px; height:6px; border-radius:50%; background:#ef4444; flex-shrink:0; margin-top:5px;
+  box-shadow:0 0 8px rgba(239,68,68,0.6); }
+.btext { font-size:13px; color:rgba(255,255,255,0.45); line-height:1.5; }
+.btext strong { color:rgba(255,255,255,0.78); font-weight:500; }
+
+.install-row { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:7px;
+  width:fit-content; border:1px solid rgba(255,255,255,0.09); background:rgba(255,255,255,0.03); }
+.install-row .dollar { color:#6366f1; font-size:12px; }
+.install-row .cmd { color:rgba(255,255,255,0.4); font-size:12px; }
+
+.right { flex:1; display:flex; align-items:center; justify-content:flex-start; padding:44px 0 44px 40px; position:relative; overflow:hidden; }
+.win-glow { position:absolute; width:520px; height:400px;
+  background:radial-gradient(ellipse, rgba(239,68,68,0.15) 0%, transparent 70%);
+  border-radius:50%; pointer-events:none; }
+.screenshot { width:890px; border-radius:12px; position:relative; z-index:1;
+  box-shadow: 0 0 0 1px rgba(239,68,68,0.18), 0 40px 90px rgba(0,0,0,0.75), 0 0 60px rgba(239,68,68,0.1); }
+</style></head>
+<body>
+<svg class="defs"><defs><filter id="gf" x="0%" y="0%" width="100%" height="100%">
+  <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch" result="n"/>
+  <feColorMatrix type="saturate" values="0" in="n" result="g"/>
+  <feBlend in="SourceGraphic" in2="g" mode="overlay"/>
+</filter></defs></svg>
+<div class="grain"></div><div class="glow"></div>
+<div class="layout">
+  <div class="left">
+    <div class="logo-row">
+      <div class="logo-icon"><img src="../app/src/renderer/src/assets/jebi-logo.svg" alt="jebi"></div>
+      <span class="logo-name">jebi</span>
+    </div>
+    <div class="slide-tag">Error Explanations</div>
+    <div class="headline">Failed?<br><span class="dim">jebi</span> explains.</div>
+    <p class="body-text">Command returned an error? jebi instantly <strong>explains what went wrong</strong> and suggests a fix — right below the output.</p>
+    <div class="bullets">
+      <div class="bullet"><div class="bdot"></div><div class="btext"><strong>Plain-English explanations</strong> — no exit code hunting</div></div>
+      <div class="bullet"><div class="bdot"></div><div class="btext"><strong>Fix suggestions</strong> shown alongside every error</div></div>
+      <div class="bullet"><div class="bdot"></div><div class="btext">Toggle on/off — always stays out of your way</div></div>
+    </div>
+    <div class="install-row">
+      <span class="dollar">$</span>
+      <span class="cmd">brew install --cask jebi</span>
+    </div>
+  </div>
+  <div class="right">
+    <div class="win-glow"></div>
+    <img class="screenshot" src="screenshots/jebi-1.png" alt="Error explanation">
+  </div>
+</div>
+</body></html>
