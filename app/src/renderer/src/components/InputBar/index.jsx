@@ -1,5 +1,6 @@
-import { useRef, forwardRef, useImperativeHandle, useEffect } from "react";
+import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import Prompt from "../Prompt";
+import KeyBadge from "../KeyBadge";
 import { useShellEditor, ghostSuggestionsEffect } from "./useShellEditor";
 
 
@@ -43,16 +44,37 @@ const InputBar = forwardRef(function InputBar(
     onCClick,
     condaData,
     onCondaClick,
+    nlMode = false,
+    nlSuccessCount = 0,
+    onNLModeChange,
+    onNLSubmit,
   },
   ref,
 ) {
+  const [showAIHint, setShowAIHint] = useState(false);
+  const hintTimerRef = useRef(null);
+
   // callbacksRef keeps latest prop values accessible inside the CodeMirror
   // keybinding closures without rebuilding the EditorView when props change.
   const callbacksRef = useRef({});
   callbacksRef.current.onValueChange = (value) => {
     onSlashChange?.(value.startsWith('/') ? value.slice(1) : null);
+    // Show hint when user types a multi-word phrase — feels like they're searching.
+    // Stop once they've successfully used NL mode 3 times (they know the feature).
+    const canHint = !callbacksRef.current.nlMode && !value.startsWith('/') && value.trim().includes(' ') && callbacksRef.current.nlSuccessCount < 3;
+    if (canHint) {
+      if (!hintTimerRef.current && !showAIHint) {
+        hintTimerRef.current = setTimeout(() => {
+          setShowAIHint(true);
+          hintTimerRef.current = null;
+        }, 1200);
+      }
+    } else {
+      if (hintTimerRef.current) { clearTimeout(hintTimerRef.current); hintTimerRef.current = null; }
+      if (!value.trim().includes(' ') || callbacksRef.current.nlMode) setShowAIHint(false);
+    }
   };
-  callbacksRef.current.onSubmit = onSubmit;
+  callbacksRef.current.onSubmit = (...args) => { setShowAIHint(false); onSubmit?.(...args); };
   callbacksRef.current.onNavigateHistory = onNavigateHistory;
   callbacksRef.current.resetNavigation = resetNavigation;
   callbacksRef.current.getHistory = getHistory;
@@ -62,6 +84,10 @@ const InputBar = forwardRef(function InputBar(
   callbacksRef.current.onSuggestionPick = onSuggestionPick;
   callbacksRef.current.cwd = cwd;
   callbacksRef.current.onDismissExplanation = onDismissExplanation;
+  callbacksRef.current.onNLSubmit = onNLSubmit;
+  callbacksRef.current.onNLModeChange = onNLModeChange;
+  callbacksRef.current.nlMode = nlMode;
+  callbacksRef.current.nlSuccessCount = nlSuccessCount;
 
   const { editorContainerRef, viewRef } = useShellEditor(callbacksRef)
 
@@ -89,6 +115,8 @@ const InputBar = forwardRef(function InputBar(
         flexDirection: "column",
         flexShrink: 0,
         background: 'color-mix(in srgb, #000 20%, var(--bg-surface))',
+        borderLeft: nlMode ? '3px solid color-mix(in srgb, var(--accent, var(--tab-accent)) 60%, transparent)' : '3px solid transparent',
+        transition: 'border-left-color 0.15s ease',
       }}
     >
       {/* Prompt row — pills + right-aligned suggestion chips */}
@@ -126,29 +154,89 @@ const InputBar = forwardRef(function InputBar(
         />
       </div>
 
-      {/* Editor row — ❯ glyph + CodeMirror */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          padding: "3px 14px 8px",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "var(--font-size-mono)",
-            color: "var(--tab-accent)",
+      {/* Editor row — AI badge in NL mode, ❯ otherwise */}
+      <div style={{ display: "flex", alignItems: "flex-start", padding: "3px 14px 8px" }}>
+        {nlMode ? (
+          <>
+            <style>{`
+              @keyframes aiBadgeIn {
+                from { opacity: 0; transform: translateX(-6px) scale(0.9); }
+                to   { opacity: 1; transform: translateX(0) scale(1); }
+              }
+            `}</style>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              background: 'color-mix(in srgb, var(--tab-accent) 18%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--tab-accent) 45%, transparent)',
+              borderRadius: 4,
+              padding: '4px 10px',
+              marginRight: 2,
+              marginTop: 2,
+              flexShrink: 0,
+              userSelect: 'none',
+              animation: 'aiBadgeIn 0.18s ease-out',
+            }}>
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 14,
+                fontWeight: 700,
+                color: 'var(--tab-accent)',
+                letterSpacing: '0.06em',
+                lineHeight: 1,
+              }}>AI</span>
+            </span>
+          </>
+        ) : (
+          <span style={{
+            color: 'var(--tab-accent)',
             opacity: 0.85,
-            paddingTop: "2px",
+            paddingTop: '2px',
             flexShrink: 0,
-            userSelect: "none",
+            userSelect: 'none',
             lineHeight: 1.5,
-          }}
-        >
-          ❯
-        </span>
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--font-size-mono)',
+          }}>❯</span>
+        )}
         <div ref={editorContainerRef} style={{ flex: 1, minWidth: 0 }} />
+        {!nlMode && showAIHint && (
+          <>
+            <style>{`
+              @keyframes aiHintIn {
+                from { opacity: 0; transform: translateY(4px); }
+                to   { opacity: 1; transform: none; }
+              }
+              @keyframes aiHintOut {
+                from { opacity: 1; }
+                to   { opacity: 0; }
+              }
+            `}</style>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 14,
+              marginTop: -10,
+              color: 'var(--text-secondary)',
+              opacity: 0.75,
+              userSelect: 'none',
+              flexShrink: 0,
+              alignSelf: 'center',
+              animation: 'aiHintIn 0.2s ease-out',
+              whiteSpace: 'nowrap',
+            }}>
+              Need help? Try AI mode
+              <KeyBadge keys={['cmd', 'shift', '.']} style={{
+                background: 'color-mix(in srgb, var(--tab-accent) 20%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--tab-accent) 55%, transparent)',
+                color: 'var(--tab-accent)',
+              }} />
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

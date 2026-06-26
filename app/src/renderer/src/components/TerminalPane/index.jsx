@@ -8,6 +8,7 @@ import { registerCopy, unregisterCopy } from "../../hooks/paneCopyRegistry";
 import { registerFocus, unregisterFocus } from "../../hooks/paneFocusRegistry";
 import OutputArea from "../OutputArea";
 import InputBar from "../InputBar";
+import NLCommandPanel from "../NLCommandPanel";
 import SaveShortcutPopover from "../SaveShortcutPopover";
 import ExplanationPanel from "../ExplanationPanel";
 import AnalysisPanel from "../AnalysisPanel";
@@ -36,7 +37,7 @@ export default function TerminalPane({
   // the latest values without causing extra renders or requiring re-registration.
   const callbacksRef = useRef({});
   const { prefs } = usePreferences();
-  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk } = useTerminal(paneId, callbacksRef, initialCwd);
+  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery } = useTerminal(paneId, callbacksRef, initialCwd);
   const {
     push: pushHistory,
     navigate: navigateHistory,
@@ -64,6 +65,11 @@ export default function TerminalPane({
   const [askMessages, setAskMessages] = useState([]); // [{ role, content, streaming?, error? }]
   const [banner, setBanner] = useState(null); // { text: string, type: 'error'|'info'|'warning'|'suggestion' }
   const [saveCommand, setSaveCommand] = useState(null); // command string when popover open
+  const [nlMode, setNlMode] = useState(false);
+  const [nlPanel, setNlPanel] = useState(null); // null = closed; { query, command, loading, error }
+  const [nlSuccessCount, setNlSuccessCount] = useState(() => {
+    return parseInt(localStorage.getItem('jebi:nlSuccessCount') ?? '0', 10);
+  });
   const [cwd, setCwd] = useState("");
   const [exitCode, setExitCode] = useState(0);
   const [gitData, setGitData] = useState(null);
@@ -228,6 +234,23 @@ export default function TerminalPane({
   callbacksRef.current.onAIBannerCancel = () => { setBanner(null); setBannerThinkingMsg(null); };
   callbacksRef.current.onDismissExplanation = () => setBanner(null);
   callbacksRef.current.onDismissSuggestions = () => setAiSuggestions([]);
+
+  callbacksRef.current.onNLModeChange = (active) => {
+    setNlMode(active);
+  };
+
+  callbacksRef.current.onNLSubmit = (query) => {
+    setNlPanel({ query, command: null, loading: true, error: null });
+    sendNLQuery(query, callbacksRef.current.currentCwd ?? '');
+  };
+
+  callbacksRef.current.onNLResult = (command) => {
+    setNlPanel(prev => prev ? { ...prev, command, loading: false, error: null } : null);
+  };
+
+  callbacksRef.current.onNLError = () => {
+    setNlPanel(prev => prev ? { ...prev, loading: false, error: 'No relevant command found for this query !' } : null);
+  };
 
   callbacksRef.current.onGit = (data) => {
     setGitData(data);
@@ -421,6 +444,19 @@ export default function TerminalPane({
     'Meta+Alt+1': () => pickSuggestion(0),
     'Meta+Alt+2': () => pickSuggestion(1),
     'Meta+Alt+3': () => pickSuggestion(2),
+    'Meta+Shift+Period': () => {
+      if (!isActive) return;
+      const current = inputBarRef.current;
+      if (!current) return;
+      if (nlMode) {
+        setNlMode(false);
+        current.setValue('');
+      } else {
+        setNlMode(true);
+        current.setValue('');
+      }
+      current.focus();
+    },
   })
 
   const handleFilePreview = useCallback((entry) => {
@@ -632,11 +668,50 @@ export default function TerminalPane({
           </div>
         </div>
       )}
+      {nlPanel && (
+        <NLCommandPanel
+          query={nlPanel.query}
+          command={nlPanel.command}
+          loading={nlPanel.loading}
+          error={nlPanel.error}
+          onAccept={(cmd) => {
+            setNlPanel(null);
+            setNlMode(false);
+            setNlSuccessCount(prev => {
+              const next = prev + 1;
+              localStorage.setItem('jebi:nlSuccessCount', String(next));
+              return next;
+            });
+            setTimeout(() => {
+              inputBarRef.current?.setValue(cmd);
+              inputBarRef.current?.focus();
+            }, 0);
+          }}
+          onCancel={() => {
+            const query = nlPanel.query;
+            setNlPanel(null);
+            // Keep NL mode active — user stays in AI input mode
+            setTimeout(() => {
+              inputBarRef.current?.setValue(query);
+              inputBarRef.current?.focus();
+            }, 0);
+          }}
+          onRetry={() => {
+            const query = nlPanel.query;
+            setNlPanel({ query, command: null, loading: true, error: null });
+            sendNLQuery(query, callbacksRef.current.currentCwd ?? '');
+          }}
+        />
+      )}
       {!running && !fileListOpen && !historyOpen && !runOpen && !portsOpen && !customList && !previewFile && !askOpen && (
         <InputBar
           ref={inputBarRef}
           onSubmit={handleSubmit}
           onSlashChange={handleSlashChange}
+          onNLModeChange={(active) => setNlMode(active)}
+          onNLSubmit={(query) => callbacksRef.current.onNLSubmit?.(query)}
+          nlMode={nlMode}
+          nlSuccessCount={nlSuccessCount}
           aiSuggestions={aiSuggestions}
           onSuggestionPick={(cmd) => { setAiSuggestions([]); handleSubmit(cmd); }}
           onNavigateHistory={navigateHistory}

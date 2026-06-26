@@ -134,6 +134,12 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
           case wire.TypeAIAnalysis:
             callbacksRef.current.onAIAnalysis?.(msg.data)
             break
+          case wire.TypeNLResult:
+            callbacksRef.current.onNLResult?.(msg.data?.command ?? '')
+            break
+          case wire.TypeNLError:
+            callbacksRef.current.onNLError?.(msg.data)
+            break
         }
       }
     }
@@ -189,5 +195,10 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
     ws.current.send(JSON.stringify({ type: wire.TypeAsk, data: { history, query } }))
   }, [paneId])
 
-  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk }
+  const sendNLQuery = useCallback((query, cwd) => {
+    if (ws.current?.readyState !== WebSocket.OPEN) return
+    ws.current.send(JSON.stringify({ type: wire.TypeNLQuery, data: { query, cwd } }))
+  }, [paneId])
+
+  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery }
 }

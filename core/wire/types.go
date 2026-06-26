@@ -61,4 +61,8 @@ const (
 
 	// TypeSummarize is sent frontend → backend to request a session summary.
 	TypeSummarize = "summarize"
+
+	TypeNLQuery  = "nl_query"   // frontend → backend: JSON {"query": string, "cwd": string}
+	TypeNLResult = "nl_result"  // backend → frontend: JSON {"command": string}
+	TypeNLError  = "nl_error"   // backend → frontend: plain string error message
 )

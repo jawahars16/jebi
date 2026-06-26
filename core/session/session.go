@@ -483,6 +483,38 @@ func (s *Session) Start() {
 				}
 			}()
 
+		case wire.TypeNLQuery:
+			var payload struct {
+				Query string `json:"query"`
+				Cwd   string `json:"cwd"`
+			}
+			if err := json.Unmarshal(msg.Data, &payload); err != nil || payload.Query == "" {
+				break
+			}
+			if s.provider == nil || !s.provider.IsAvailable() {
+				s.w.Send(wire.StringMessage(wire.TypeNLError, "AI not available"))
+				break
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			go func() {
+				defer cancel()
+				cwd := payload.Cwd
+				if cwd == "" {
+					cwd = s.currentCwd
+				}
+				cmd, err := llm.NLQuery(ctx, s.provider, payload.Query, cwd, resolveShell(s.cfg), runtime.GOOS+"/"+runtime.GOARCH)
+				if err != nil || cmd == "" {
+					msg := "Could not translate to a command"
+					if err != nil && err.Error() == "not_a_command" {
+						msg = "No relevant command found for this query !"
+					}
+					s.w.Send(wire.StringMessage(wire.TypeNLError, msg))
+					return
+				}
+				data, _ := json.Marshal(map[string]string{"command": cmd})
+				s.w.Send(wire.Message{Type: wire.TypeNLResult, Data: data})
+			}()
+
 		case wire.TypeKill:
 			return
 		}

@@ -42,7 +42,8 @@ function matchesShortcut(e, shortcut) {
 
   // e.key can be remapped by macOS Option combos (e.g. ⌥1 → '¡'), so also
   // check e.code which is always layout-independent.
-  const keyMatches = e.key === key || e.code === 'Digit' + key || e.code === 'Key' + key.toUpperCase()
+  // e.code === key allows named codes like 'Period', 'Comma', 'Slash' in shortcuts.
+  const keyMatches = e.key === key || e.code === key || e.code === 'Digit' + key || e.code === 'Key' + key.toUpperCase()
   if (!keyMatches) return false
   if (modifiers.includes('Meta') !== e.metaKey) return false
   if (modifiers.includes('Ctrl') !== e.ctrlKey) return false

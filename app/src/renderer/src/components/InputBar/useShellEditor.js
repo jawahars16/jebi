@@ -314,6 +314,16 @@ export function useShellEditor(callbacksRef) {
             return true
           }
 
+          // NL mode: if active, route to AI instead of the shell
+          if (callbacksRef.current.nlMode) {
+            const query = text.trim()
+            if (query) {
+              callbacksRef.current.onNLSubmit?.(query)
+              view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
+            }
+            return true
+          }
+
           // Slash-commands short-circuit: if the line resolves to a registered
           // in-app command, run it and clear the input WITHOUT calling onSubmit.
           // Skipping onSubmit is also what keeps the line out of shared history.
@@ -338,6 +348,7 @@ export function useShellEditor(callbacksRef) {
         run(view) {
           callbacksRef.current.onDismissExplanation?.()
           callbacksRef.current.onDismissSuggestions?.()
+          callbacksRef.current.onNLModeChange?.(false)
           if (view.state.doc.length === 0) return false
           view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } })
           callbacksRef.current.resetNavigation?.()

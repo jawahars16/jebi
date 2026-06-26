@@ -44,3 +44,7 @@ export const TypeAskError = 'ask_error'
 export const TypeAIAnalyze  = 'ai_analyze'
 export const TypeAIAnalysis = 'ai_analysis'
 export const TypeSummarize  = 'summarize'
+
+export const TypeNLQuery  = 'nl_query'
+export const TypeNLResult = 'nl_result'
+export const TypeNLError  = 'nl_error'
