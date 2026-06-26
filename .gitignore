@@ -11,3 +11,7 @@ core/core
 .DS_Store
 .claude
 .worktrees
+.superpowers/
+docs/superpowers/
+CLAUDE.md
+marketing-assets/
