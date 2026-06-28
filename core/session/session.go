@@ -67,6 +67,7 @@ type Session struct {
 	cancelSuggest  context.CancelFunc
 	cancelAsk      context.CancelFunc // cancels any in-flight /ask stream
 	cancelAnalyze  context.CancelFunc // cancels any in-flight analysis request
+	cancelGhost    context.CancelFunc // cancels any in-flight ghost completion request
 
 	// firstCwdSeen suppresses the project-context banner on initial shell
 	// startup. The first OSC 7 message is the shell's initial cwd, not the
@@ -513,6 +514,39 @@ func (s *Session) Start() {
 				}
 				data, _ := json.Marshal(map[string]string{"command": cmd})
 				s.w.Send(wire.Message{Type: wire.TypeNLResult, Data: data})
+			}()
+
+		case wire.TypeGhostQuery:
+			if s.provider == nil || !s.provider.IsAvailable() {
+				break
+			}
+			var payload struct {
+				Prefix  string                  `json:"prefix"`
+				History []llm.GhostHistoryEntry `json:"history"`
+			}
+			if err := json.Unmarshal(msg.Data, &payload); err != nil || payload.Prefix == "" {
+				break
+			}
+			if s.cancelGhost != nil {
+				s.cancelGhost()
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			s.cancelGhost = cancel
+			entries := make([]llm.HistoryEntry, len(s.contextEntries))
+			copy(entries, s.contextEntries)
+			req := llm.GhostRequest{
+				Prefix:         payload.Prefix,
+				History:        payload.History,
+				SessionContext: entries,
+			}
+			go func() {
+				defer cancel()
+				suggestion, err := llm.GhostComplete(ctx, s.provider, req)
+				if err != nil || suggestion == "" {
+					return
+				}
+				data, _ := json.Marshal(map[string]string{"suggestion": suggestion})
+				s.w.Send(wire.Message{Type: wire.TypeGhostResult, Data: data})
 			}()
 
 		case wire.TypeKill:
