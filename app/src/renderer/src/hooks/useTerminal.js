@@ -140,6 +140,9 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
           case wire.TypeNLError:
             callbacksRef.current.onNLError?.(msg.data)
             break
+          case wire.TypeGhostResult:
+            callbacksRef.current.onGhostResult?.(msg.data?.suggestion ?? '')
+            break
         }
       }
     }
@@ -200,5 +203,10 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
     ws.current.send(JSON.stringify({ type: wire.TypeNLQuery, data: { query, cwd } }))
   }, [paneId])
 
-  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery }
+  const sendGhostQuery = useCallback((prefix, history) => {
+    if (ws.current?.readyState !== WebSocket.OPEN) return
+    ws.current.send(JSON.stringify({ type: wire.TypeGhostQuery, data: { prefix, history } }))
+  }, [paneId])
+
+  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery, sendGhostQuery }
 }
