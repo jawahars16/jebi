@@ -146,6 +146,7 @@ function buildHighlightStyle() {
 
 const ghostCycleEffect = StateEffect.define()
 export const ghostSuggestionsEffect = StateEffect.define()
+export const ghostResultEffect = StateEffect.define()
 
 class GhostWidget extends WidgetType {
   constructor(text) {
@@ -157,7 +158,8 @@ class GhostWidget extends WidgetType {
     const span = document.createElement('span')
     span.textContent = this.text
     span.setAttribute('aria-hidden', 'true')
-    span.style.cssText = 'color:var(--text-secondary);opacity:0.65;pointer-events:none;user-select:none;'
+    span.style.cssText = 'color:var(--text-secondary);opacity:0;pointer-events:none;user-select:none;transition:opacity 150ms ease-in;'
+    requestAnimationFrame(() => { span.style.opacity = '0.65' })
     return span
   }
 
@@ -172,6 +174,7 @@ function makeGhostPlugin(callbacksRef) {
     constructor(view) {
       this.suggestion = null
       this.matchIndex = 0
+      this.aiGhost = null   // current AI-sourced suggestion; null = none
       this.decorations = Decoration.none
       this._recompute(view)
     }
@@ -187,6 +190,16 @@ function makeGhostPlugin(callbacksRef) {
           }
           if (e.is(ghostSuggestionsEffect)) {
             suggestionsChanged = true
+          }
+          if (e.is(ghostResultEffect)) {
+            const suggestion = e.value
+            const doc = update.view.state.doc.toString()
+            // Only store if non-empty and consistent with current input
+            if (suggestion && suggestion.startsWith(doc) && suggestion !== doc) {
+              this.aiGhost = suggestion
+            }
+            // Recompute immediately so the replacement is visible without waiting for next keystroke
+            this._recompute(update.view)
           }
         }
       }
@@ -212,6 +225,7 @@ function makeGhostPlugin(callbacksRef) {
     _recompute(view) {
       const doc = view.state.doc.toString()
       if (!doc.trim()) {
+        this.aiGhost = null  // clear stale AI ghost when input is emptied
         const aiSuggestions = callbacksRef.current.aiSuggestions ?? []
         if (aiSuggestions.length > 0) {
           this.suggestion = aiSuggestions[0]
@@ -225,6 +239,17 @@ function makeGhostPlugin(callbacksRef) {
       // Don't offer ghost suggestions while the user is walking history;
       // otherwise a fetched entry picks up an unwanted grey tail.
       if (callbacksRef.current.isNavigatingHistory?.()) { this._clear(); return }
+
+      // AI ghost takes priority when it matches the current prefix.
+      if (this.aiGhost && this.aiGhost.startsWith(doc) && this.aiGhost !== doc) {
+        this.suggestion = this.aiGhost
+        this.matchIndex = 0
+        this._buildDecoration(view, doc)
+        return
+      }
+      // AI ghost is stale (user typed past it or backspaced) — discard it.
+      this.aiGhost = null
+
       const matches = this._getMatches(doc)
       if (matches.length === 0) { this._clear(); return }
       this.suggestion = matches[0]
@@ -271,6 +296,7 @@ function makeGhostPlugin(callbacksRef) {
         changes: { from: 0, to: view.state.doc.length, insert: text },
         selection: { anchor: text.length },
       })
+      this.aiGhost = null
       this._clear()
       return true
     }
@@ -293,6 +319,7 @@ const NL_PLACEHOLDER_TEXT = 'Describe what you want to do — get a ready-to-run
 export function useShellEditor(callbacksRef) {
   const editorContainerRef = useRef(null)
   const viewRef = useRef(null)
+  const ghostDebounceRef = useRef(null)   // debounce timer for AI ghost query
 
   useEffect(() => {
     const container = editorContainerRef.current
@@ -310,7 +337,17 @@ export function useShellEditor(callbacksRef) {
     const filePathSource = makeFilePathSource(callbacksRef)
     const valueChangeListener = EditorView.updateListener.of((update) => {
       if (update.docChanged) {
-        callbacksRef.current.onValueChange?.(update.state.doc.toString())
+        const doc = update.state.doc.toString()
+        callbacksRef.current.onValueChange?.(doc)
+
+        // AI ghost debounce — fire query 300ms after user stops typing.
+        clearTimeout(ghostDebounceRef.current)
+        if (doc.trim() && !callbacksRef.current.nlMode) {
+          ghostDebounceRef.current = setTimeout(() => {
+            const history = callbacksRef.current.getHistory?.() ?? []
+            callbacksRef.current.onGhostQuery?.(doc, history)
+          }, 300)
+        }
       }
     })
 
