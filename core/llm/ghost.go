@@ -2,7 +2,6 @@ package llm
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -82,7 +81,7 @@ func GhostComplete(ctx context.Context, provider Provider, req GhostRequest) (st
 
 	raw := strings.TrimSpace(sb.String())
 	if raw == "" {
-		return "", errors.New("no completion returned")
+		return "", nil
 	}
 
 	// Strip markdown fences if the model wrapped the output.

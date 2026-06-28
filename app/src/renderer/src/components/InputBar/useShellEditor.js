@@ -344,7 +344,7 @@ export function useShellEditor(callbacksRef) {
         clearTimeout(ghostDebounceRef.current)
         if (doc.trim() && !callbacksRef.current.nlMode) {
           ghostDebounceRef.current = setTimeout(() => {
-            const history = callbacksRef.current.getHistory?.() ?? []
+            const history = (callbacksRef.current.getHistory?.() ?? []).slice(-30)
             callbacksRef.current.onGhostQuery?.(doc, history)
           }, 300)
         }
