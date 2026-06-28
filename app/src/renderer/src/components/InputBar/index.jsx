@@ -1,7 +1,7 @@
 import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import Prompt from "../Prompt";
 import KeyBadge from "../KeyBadge";
-import { useShellEditor, ghostSuggestionsEffect } from "./useShellEditor";
+import { useShellEditor, ghostSuggestionsEffect, ghostResultEffect } from "./useShellEditor";
 
 
 const InputBar = forwardRef(function InputBar(
@@ -48,6 +48,7 @@ const InputBar = forwardRef(function InputBar(
     nlSuccessCount = 0,
     onNLModeChange,
     onNLSubmit,
+    onGhostQuery,
   },
   ref,
 ) {
@@ -100,6 +101,7 @@ const InputBar = forwardRef(function InputBar(
   callbacksRef.current.onNLModeChange = onNLModeChange;
   callbacksRef.current.nlMode = nlMode;
   callbacksRef.current.nlSuccessCount = nlSuccessCount;
+  callbacksRef.current.onGhostQuery = onGhostQuery;
 
   const { editorContainerRef, viewRef, setNlPlaceholder } = useShellEditor(callbacksRef)
 
@@ -121,6 +123,10 @@ const InputBar = forwardRef(function InputBar(
         selection: { anchor: 0, head: text.length },
       });
       view.focus();
+    },
+    applyGhostResult: (suggestion) => {
+      if (!suggestion) return;
+      viewRef.current?.dispatch({ effects: ghostResultEffect.of(suggestion) });
     },
   }));
 
