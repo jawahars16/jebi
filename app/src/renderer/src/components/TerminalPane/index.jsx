@@ -37,7 +37,7 @@ export default function TerminalPane({
   // the latest values without causing extra renders or requiring re-registration.
   const callbacksRef = useRef({});
   const { prefs } = usePreferences();
-  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery } = useTerminal(paneId, callbacksRef, initialCwd);
+  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery, sendGhostQuery } = useTerminal(paneId, callbacksRef, initialCwd);
   const {
     push: pushHistory,
     navigate: navigateHistory,
@@ -250,6 +250,10 @@ export default function TerminalPane({
 
   callbacksRef.current.onNLError = (msg) => {
     setNlPanel(prev => prev ? { ...prev, loading: false, error: msg || 'Could not translate to a command' } : null);
+  };
+
+  callbacksRef.current.onGhostResult = (suggestion) => {
+    inputBarRef.current?.applyGhostResult(suggestion);
   };
 
   callbacksRef.current.onGit = (data) => {
@@ -704,6 +708,7 @@ export default function TerminalPane({
           onSlashChange={handleSlashChange}
           onNLModeChange={(active) => setNlMode(active)}
           onNLSubmit={(query) => callbacksRef.current.onNLSubmit?.(query)}
+          onGhostQuery={sendGhostQuery}
           nlMode={nlMode}
           nlSuccessCount={nlSuccessCount}
           aiSuggestions={aiSuggestions}
