@@ -65,4 +65,7 @@ const (
 	TypeNLQuery  = "nl_query"   // frontend → backend: JSON {"query": string, "cwd": string}
 	TypeNLResult = "nl_result"  // backend → frontend: JSON {"command": string}
 	TypeNLError  = "nl_error"   // backend → frontend: plain string error message
+
+	TypeGhostQuery  = "ghost_query"  // frontend → backend: JSON {"prefix": string, "history": [{c,ok}]}
+	TypeGhostResult = "ghost_result" // backend → frontend: JSON {"suggestion": string}
 )

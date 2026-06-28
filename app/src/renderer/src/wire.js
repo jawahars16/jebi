@@ -48,3 +48,6 @@ export const TypeSummarize  = 'summarize'
 export const TypeNLQuery  = 'nl_query'
 export const TypeNLResult = 'nl_result'
 export const TypeNLError  = 'nl_error'
+
+export const TypeGhostQuery  = 'ghost_query'
+export const TypeGhostResult = 'ghost_result'
