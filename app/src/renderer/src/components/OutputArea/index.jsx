@@ -294,6 +294,84 @@ export default function OutputArea({
           return true;
         });
 
+        // Cmd held: underline all visible URLs; Cmd+hover: accent background; Cmd+up: clear
+        const LINK_REGEX = /(https?|HTTPS?):\/\/[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~[\]`()<>]/g;
+        let linkDecorations = []; // { dec, row, startCol, endCol }
+        let cmdHeld = false;
+        let hoveredLinkIdx = -1;
+
+        function clearLinkDecorations() {
+          linkDecorations.forEach(({ dec }) => dec.dispose());
+          linkDecorations = [];
+          hoveredLinkIdx = -1;
+        }
+
+        const onMouseMove = (e) => {
+          if (!cmdHeld || linkDecorations.length === 0) return;
+          const cellH = term._core?._renderService?.dimensions?.css?.cell?.height ?? 20;
+          const cellW = term._core?._renderService?.dimensions?.css?.cell?.width ?? 10;
+          // term.element has 8px top / 12px left padding applied after open()
+          const col = Math.floor((e.offsetX - 12) / cellW);
+          const row = Math.floor((e.offsetY - 8) / cellH);
+          const newIdx = linkDecorations.findIndex(
+            ({ row: r, startCol, endCol }) => r === row && col >= startCol && col < endCol
+          );
+          if (newIdx === hoveredLinkIdx) return;
+          if (hoveredLinkIdx !== -1) {
+            const old = linkDecorations[hoveredLinkIdx];
+            if (old?.dec.element) old.dec.element.style.background = 'transparent';
+          }
+          if (newIdx !== -1) {
+            const link = linkDecorations[newIdx];
+            if (link?.dec.element) link.dec.element.style.background = tabAccentRef.current + '35';
+          }
+          hoveredLinkIdx = newIdx;
+        };
+
+        const onMetaKeyDown = (e) => {
+          if (e.key !== 'Meta' || cmdHeld) return;
+          if (promptAddonRef.current?._tuiActive) return;
+          cmdHeld = true;
+          clearLinkDecorations();
+          const buf = term.buffer.active;
+          const startY = buf.viewportY;
+          const endY = startY + term.rows - 1;
+          const accent = tabAccentRef.current;
+          // registerMarker(n) offsets from cursor — compute using internal ybase
+          const ybase = term._core?.buffer?.ybase ?? buf.viewportY;
+          for (let y = startY; y <= endY; y++) {
+            const line = buf.getLine(y);
+            if (!line) continue;
+            const text = line.translateToString(true);
+            LINK_REGEX.lastIndex = 0;
+            let match;
+            while ((match = LINK_REGEX.exec(text)) !== null) {
+              const marker = term.registerMarker(y - ybase - buf.cursorY);
+              if (!marker) continue;
+              const dec = term.registerDecoration({ marker, x: match.index, width: match[0].length });
+              if (!dec) { marker.dispose(); continue; }
+              dec.onRender((el) => {
+                el.style.pointerEvents = 'none';
+                el.style.borderBottom = '1px solid rgba(255,255,255,0.65)';
+                el.style.boxSizing = 'border-box';
+              });
+              linkDecorations.push({ dec, row: y - startY, startCol: match.index, endCol: match.index + match[0].length });
+            }
+          }
+          term.refresh(0, term.rows - 1);
+          term.element?.addEventListener('mousemove', onMouseMove);
+        };
+
+        const onMetaKeyUp = (e) => {
+          if (e.key !== 'Meta') return;
+          cmdHeld = false;
+          term.element?.removeEventListener('mousemove', onMouseMove);
+          clearLinkDecorations();
+        };
+
+        window.addEventListener('keydown', onMetaKeyDown);
+        window.addEventListener('keyup', onMetaKeyUp);
+
         const webgl = new WebglAddon();
         webgl.onContextLoss(() => {
           webgl.dispose();
@@ -335,6 +413,10 @@ export default function OutputArea({
         cleanup = () => {
           observer.disconnect();
           if (fitFrameRef.current != null) cancelAnimationFrame(fitFrameRef.current);
+          window.removeEventListener('keydown', onMetaKeyDown);
+          window.removeEventListener('keyup', onMetaKeyUp);
+          term.element?.removeEventListener('mousemove', onMouseMove);
+          clearLinkDecorations();
           callbacksRef.current = {};
           term.dispose();
         };
