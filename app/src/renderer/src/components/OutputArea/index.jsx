@@ -18,6 +18,7 @@ import PortsPanel from "../PortsPanel";
 import CustomListPanel from "../CustomListPanel";
 import AskPanel from "../AskPanel";
 import { usePreferences } from "../../hooks/usePreferences";
+import { showStatusMessage } from "../../hooks/useStatusMessage";
 import EmptyState from "./EmptyState";
 
 const BUFFER_CAP = 512 * 1024; // 512 KB
@@ -214,6 +215,13 @@ export default function OutputArea({
       promptAddonRef.current = promptAddon;
       promptAddon.setOnReplay((command) => onReplayRef.current?.(command));
       promptAddon.setOnSave((command) => onSaveShortcut?.(command));
+
+      term.onSelectionChange(() => {
+        if (promptAddonRef.current?._tuiActive) return;
+        const sel = term.getSelection();
+        if (!sel) return;
+        navigator.clipboard.writeText(sel).then(() => showStatusMessage('copied selected text to clipboard !'));
+      });
 
       term.onData((data) => {
         // Strip focus-in/out events (\x1b[I / \x1b[O) — these leak to the shell
