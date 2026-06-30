@@ -337,17 +337,7 @@ export function useShellEditor(callbacksRef) {
     const filePathSource = makeFilePathSource(callbacksRef)
     const valueChangeListener = EditorView.updateListener.of((update) => {
       if (update.docChanged) {
-        const doc = update.state.doc.toString()
-        callbacksRef.current.onValueChange?.(doc)
-
-        // AI ghost debounce — fire query 300ms after user stops typing.
-        clearTimeout(ghostDebounceRef.current)
-        if (doc.trim() && !callbacksRef.current.nlMode) {
-          ghostDebounceRef.current = setTimeout(() => {
-            const history = (callbacksRef.current.getHistory?.() ?? []).slice(-30)
-            callbacksRef.current.onGhostQuery?.(doc, history)
-          }, 300)
-        }
+        callbacksRef.current.onValueChange?.(update.state.doc.toString())
       }
     })
 
