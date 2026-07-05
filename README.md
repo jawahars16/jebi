@@ -22,8 +22,8 @@ jebi is a terminal emulator for Mac with built-in local AI. It explains failed c
 
 ### Built-in Local AI
 - **Error explanations** — when a command fails, jebi explains why and how to fix it
+- **Natural language to command** — press `⌘⌥.` to describe what you want in plain English and get a ready-to-run shell command
 - **Next-command suggestions** — 3 smart suggestions after every run, shown as clickable chips
-- **`/ask`** — chat with AI about your current session, files, and environment
 - **No API key, no subscription, no cloud** — AI runs entirely on your Mac via llama.cpp
 - Choose from 7 bundled models: Qwen3 4B/8B, Gemma 3 4B, Qwen2.5-Coder 3B, and more
 - Download, switch, and delete models from Preferences → AI
@@ -32,8 +32,7 @@ jebi is a terminal emulator for Mac with built-in local AI. It explains failed c
 - `/ls` — file explorer with preview
 - `/ports` — live network port inspector
 - `/run` — Makefile & npm scripts picker
-- `/ask` — AI chat in the terminal
-- Define your own custom `/commands` in Preferences with dynamic item lists — [see examples →](docs/custom-slash-commands.md)
+- Define your own custom command in Preferences with dynamic item lists — [see examples →](docs/custom-slash-commands.md)
 
 ### Workspace
 - Multiple tabs with per-tab accent colors
@@ -110,6 +109,7 @@ Models are downloaded on demand and stored in `~/Library/Application Support/jeb
 | `⌘,` | Open Preferences |
 | `/` | Open command palette |
 | `⌘⌥1/2/3` | Run AI suggestion 1/2/3 |
+| `⌘⌥.` | Toggle natural language input mode |
 
 ---
 
