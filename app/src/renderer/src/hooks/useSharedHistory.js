@@ -1,17 +1,28 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 
 const HISTORY_KEY = 'term-history'
 const MAX_HISTORY = 1000
 
-// Each entry: { c: command, ok: bool }
-// Migrates legacy plain-string entries on load.
+// Tracks the most recently pushed command per session (sid key).
+// Declared before sharedHistory so the load IIFE can populate it.
+const lastCommandPerSession = new Map()
+
+// Each entry: { c: command, ok: bool, sid?: string }
+// sid is the paneId that produced the command; absent on legacy entries.
+// Migrates legacy plain-string entries on load and seeds the dedup map.
 let sharedHistory = (() => {
   try {
     const stored = localStorage.getItem(HISTORY_KEY)
     if (!stored) return []
-    return JSON.parse(stored).map((e) =>
+    const parsed = JSON.parse(stored).map((e) =>
       typeof e === 'string' ? { c: e, ok: true } : e
     )
+    // Seed dedup map so the first push after reload doesn't duplicate the
+    // last stored command for each session.
+    for (const e of parsed) {
+      if (e.sid) lastCommandPerSession.set(e.sid, e.c)
+    }
+    return parsed
   } catch {
     return []
   }
@@ -33,14 +44,16 @@ function persistAndBroadcast(next) {
 }
 
 // Push every completed command regardless of exit code.
-// Deduplicates consecutive identical commands.
-function push(command, exitCode) {
+// Deduplicates back-to-back identical commands within the same session.
+function push(command, exitCode, sid) {
   const trimmed = command.trim()
   if (!trimmed) return
   const ok = exitCode === 0
-  const last = sharedHistory[sharedHistory.length - 1]
-  if (last && last.c === trimmed) return
-  const next = [...sharedHistory, { c: trimmed, ok }].slice(-MAX_HISTORY)
+  const key = sid ?? ''
+  if (lastCommandPerSession.get(key) === trimmed) return
+  lastCommandPerSession.set(key, trimmed)
+  const entry = sid ? { c: trimmed, ok, sid } : { c: trimmed, ok }
+  const next = [...sharedHistory, entry].slice(-MAX_HISTORY)
   sharedHistory = next
   persistAndBroadcast(next)
 }
@@ -49,10 +62,31 @@ function getAll() {
   return sharedHistory
 }
 
-export function useSharedHistory() {
+export function useSharedHistory(paneId) {
+  if (process.env.NODE_ENV !== 'production' && !paneId) {
+    console.warn('useSharedHistory called without paneId — history entries will have no session scope')
+  }
+
   const indexRef = useRef(-1)
   const draftRef = useRef('')
   const prefixRef = useRef('')
+  // Cached session-filtered view; invalidated when sharedHistory changes.
+  const sessionCacheRef = useRef({ source: null, filtered: [] })
+
+  function sessionHistory() {
+    if (sessionCacheRef.current.source === sharedHistory) {
+      return sessionCacheRef.current.filtered
+    }
+    // Only this session's entries — legacy entries without sid are intentionally
+    // excluded to avoid duplicates after reload (they remain visible in getAll).
+    const filtered = sharedHistory.filter((e) => e.sid === paneId)
+    sessionCacheRef.current = { source: sharedHistory, filtered }
+    return filtered
+  }
+
+  useEffect(() => {
+    return () => lastCommandPerSession.delete(paneId)
+  }, [paneId])
 
   function resetNavigation() {
     indexRef.current = -1
@@ -65,7 +99,7 @@ export function useSharedHistory() {
   }
 
   function navigate(direction, currentValue) {
-    const history = sharedHistory
+    const history = sessionHistory()
     const index = indexRef.current
 
     if (direction === 'up') {
@@ -118,5 +152,9 @@ export function useSharedHistory() {
     return null
   }
 
-  return { push, navigate, getAll, isNavigating, resetNavigation }
+  function boundPush(command, exitCode) {
+    push(command, exitCode, paneId)
+  }
+
+  return { push: boundPush, navigate, getAll, getSessionHistory: sessionHistory, isNavigating, resetNavigation }
 }

@@ -16,7 +16,7 @@ import ToastManager from './components/Toast'
 import { useAIStatus } from './hooks/useAIStatus'
 import { usePreferences } from './hooks/usePreferences'
 import { setUserCommands } from './commands/registry'
-import { initUpdateStatusListener } from './hooks/useUpdateStatus'
+import { initUpdateStatusListener, useUpdateStatus } from './hooks/useUpdateStatus'
 import ConfirmDialog from './components/ConfirmDialog'
 
 function createTab(counter) {
@@ -63,6 +63,9 @@ function AppInner() {
   const [ctxMenu, setCtxMenu] = useState(null) // { x, y, tabId, paneId, paneCount }
   const { show: showToast } = useToast()
   const aiStatus = useAIStatus()
+  const updateStatus = useUpdateStatus()
+  const [updateDismissed, setUpdateDismissed] = useState(false)
+  const showUpdateBanner = updateStatus.available && !updateDismissed
 
   useEffect(() => {
     window.electron?.commands?.load().then((cmds) => setUserCommands(cmds ?? []))
@@ -458,6 +461,10 @@ function AppInner() {
                 onClose={paneCount > 1 ? () => closePane(tab.id, paneId) : null}
                 onNewTab={addTab}
                 onToggleTabPosition={toggleTabBarPosition}
+                showUpdateBanner={showUpdateBanner}
+                onDismissUpdate={() => setUpdateDismissed(true)}
+                onUpgrade={() => openPreferences('about')}
+                latestVersion={updateStatus.latestVersion}
               />
             </div>
           )
