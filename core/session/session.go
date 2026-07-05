@@ -295,8 +295,8 @@ func (s *Session) Start() {
 			if err := json.Unmarshal(msg.Data, &entry); err != nil {
 				break
 			}
-			if len(entry.Output) > 600 {
-				entry.Output = "…" + entry.Output[len(entry.Output)-600:]
+			if len(entry.Output) > 2000 {
+				entry.Output = "…" + entry.Output[len(entry.Output)-2000:]
 			}
 			s.contextEntries = append(s.contextEntries, entry)
 			if len(s.contextEntries) > maxContextEntries {

@@ -6,6 +6,7 @@ import { setPaneInfo } from "../../hooks/usePaneInfo";
 import { usePreferences } from "../../hooks/usePreferences";
 import { registerCopy, unregisterCopy } from "../../hooks/paneCopyRegistry";
 import { registerFocus, unregisterFocus } from "../../hooks/paneFocusRegistry";
+import UpdateBanner from "../UpdateBanner";
 import OutputArea from "../OutputArea";
 import InputBar from "../InputBar";
 import NLCommandPanel from "../NLCommandPanel";
@@ -28,6 +29,10 @@ export default function TerminalPane({
   onClose,
   onNewTab,
   onToggleTabPosition,
+  showUpdateBanner = false,
+  onDismissUpdate,
+  onUpgrade,
+  latestVersion = '',
 }) {
   // callbacksRef holds all event handlers as a stable ref object instead of
   // passing them as props or state. xterm.js and CodeMirror both live outside
@@ -42,9 +47,10 @@ export default function TerminalPane({
     push: pushHistory,
     navigate: navigateHistory,
     getAll: getHistory,
+    getSessionHistory,
     isNavigating: isNavigatingHistory,
     resetNavigation,
-  } = useSharedHistory();
+  } = useSharedHistory(paneId);
   const [running, setRunning] = useState(false);
   const [interactive, setInteractive] = useState(false);
   const interactiveRef = useRef(false);
@@ -379,7 +385,7 @@ export default function TerminalPane({
       openPorts: () => setPortsOpen(true),
       openAsk: () => { setAskMessages([]); setAskOpen(true) },
       summarize: () => {
-        if (getHistory().length === 0) {
+        if (getSessionHistory().length === 0) {
           setBanner({ text: 'No commands to summarize yet. Run some commands first, then try /summarize.', type: 'info' });
           return;
         }
@@ -599,6 +605,13 @@ export default function TerminalPane({
           onAction={(cmd) => { setAnalysisResult(null); handleSubmit(cmd); }}
         />
       )}
+      {isActive && showUpdateBanner && (
+        <UpdateBanner
+          latestVersion={latestVersion}
+          onDismiss={onDismissUpdate}
+          onUpgrade={onUpgrade}
+        />
+      )}
       {aiSuggestions.length > 0 && !running && (
         <div style={{
           borderTop: '1px solid color-mix(in srgb, var(--tab-accent) 30%, transparent)',
@@ -715,7 +728,7 @@ export default function TerminalPane({
           onSuggestionPick={(cmd) => { setAiSuggestions([]); handleSubmit(cmd); }}
           onNavigateHistory={navigateHistory}
           resetNavigation={resetNavigation}
-          getHistory={getHistory}
+          getHistory={getSessionHistory}
           isNavigatingHistory={isNavigatingHistory}
           commandContext={commandContext}
           onDismissExplanation={() => setBanner(null)}

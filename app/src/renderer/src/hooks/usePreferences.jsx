@@ -109,6 +109,7 @@ export function PreferencesProvider({ children }) {
 
   const value = { prefs, activeColors, setTheme, setFontFamily, setFontSize, setUiFontSize, setUiFontFamily, setPromptStyle, setAiExplainErrors, setAiDirectoryContext, setAiCommandSuggestions, setAiOutputAnalysis, setTerminalGrain, setTerminalGrainIntensity, setTabBarPosition }
 
+  
   return (
     <PreferencesContext.Provider value={value}>
       {children}

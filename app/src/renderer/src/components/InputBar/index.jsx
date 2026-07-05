@@ -107,7 +107,7 @@ const InputBar = forwardRef(function InputBar(
 
   useEffect(() => {
     viewRef.current?.dispatch({ effects: ghostSuggestionsEffect.of(aiSuggestions) })
-  }, [aiSuggestions]);
+  }, [aiSuggestions, nlMode]);
 
   useEffect(() => {
     setNlPlaceholder(nlMode);

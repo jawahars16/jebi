@@ -24,7 +24,10 @@ export function useUpdateStatus() {
   return status
 }
 
+let listenerInitialized = false
 export function initUpdateStatusListener() {
+  if (listenerInitialized) return
+  listenerInitialized = true
   window.electron.update.onStatus((data) => {
     notifyListeners({ ...currentStatus, ...data, checking: false })
   })

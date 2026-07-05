@@ -274,8 +274,8 @@ var explainPromptTemplate = "You are an expert terminal assistant. A shell comma
 	"Return only the explanation text."
 
 const explainMaxContextEntries = 5
-const explainMaxOutputBytes = 400
-const explainMaxFailingOutputBytes = 800
+const explainMaxOutputBytes = 600
+const explainMaxFailingOutputBytes = 2000
 
 func truncate(s string, max int) string {
 	if len(s) <= max {

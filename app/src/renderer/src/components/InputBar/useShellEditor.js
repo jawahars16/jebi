@@ -223,6 +223,7 @@ function makeGhostPlugin(callbacksRef) {
     }
 
     _recompute(view) {
+      if (callbacksRef.current.nlMode) { this._clear(); return }
       const doc = view.state.doc.toString()
       if (!doc.trim()) {
         this.aiGhost = null  // clear stale AI ghost when input is emptied
@@ -319,7 +320,6 @@ const NL_PLACEHOLDER_TEXT = 'Describe what you want to do — get a ready-to-run
 export function useShellEditor(callbacksRef) {
   const editorContainerRef = useRef(null)
   const viewRef = useRef(null)
-  const ghostDebounceRef = useRef(null)   // debounce timer for AI ghost query
 
   useEffect(() => {
     const container = editorContainerRef.current
