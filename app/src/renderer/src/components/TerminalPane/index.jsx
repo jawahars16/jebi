@@ -728,7 +728,7 @@ export default function TerminalPane({
           onSuggestionPick={(cmd) => { setAiSuggestions([]); handleSubmit(cmd); }}
           onNavigateHistory={navigateHistory}
           resetNavigation={resetNavigation}
-          getHistory={getSessionHistory}
+          getHistory={getHistory}
           isNavigatingHistory={isNavigatingHistory}
           commandContext={commandContext}
           onDismissExplanation={() => setBanner(null)}
