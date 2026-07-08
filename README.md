@@ -5,7 +5,8 @@
 <p align="center">
   <a href="https://github.com/jebi-sh/jebi/releases/latest"><img src="https://img.shields.io/github/v/release/jebi-sh/jebi?style=flat-square&color=3b82f6&label=Download" alt="Latest release"/></a>
   <img src="https://img.shields.io/badge/macOS%2014%2B-Apple%20Silicon-1d4ed8?style=flat-square" alt="macOS"/>
-  <img src="https://img.shields.io/badge/license-FSL--1.1-475569?style=flat-square" alt="FSL-1.1"/>
+  <img src="https://img.shields.io/badge/license-MIT-475569?style=flat-square" alt="MIT"/>
+  <a href="https://github.com/sponsors/jawahars16"><img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?style=flat-square&logo=githubsponsors&logoColor=white" alt="Sponsor jebi"/></a>
 </p>
 
 ---
