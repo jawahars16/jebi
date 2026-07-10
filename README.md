@@ -9,6 +9,10 @@
   <a href="https://github.com/sponsors/jawahars16"><img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?style=flat-square&logo=githubsponsors&logoColor=white" alt="Sponsor jebi"/></a>
 </p>
 
+<p align="center">
+  <a href="https://www.producthunt.com/products/jebi-the-terminal-that-thinks-with-you/launches/jebi?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-jebi" target="_blank" rel="noopener noreferrer"><img alt="jebi - A supercharged terminal for Mac with built-in local AI | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1170883&amp;theme=light&amp;t=1783695244064"></a>
+</p>
+
 ---
 
 jebi is a terminal emulator for Mac with built-in local AI. It explains failed commands, suggests what to run next, and lets you ask questions about your session — all without an API key or internet connection.
