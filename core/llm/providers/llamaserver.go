@@ -18,16 +18,27 @@ import (
 	"terminal/core/llm/config"
 )
 
+// LlamaServerIdleTimeout is how long the shared llama-server process may sit
+// unused before it is stopped and later restarted lazily.
+const LlamaServerIdleTimeout = 5 * time.Minute
+
+const llamaServerIdleCheckInterval = 30 * time.Second
+
 // LlamaServerProvider spawns and manages a llama-server subprocess, then
 // routes queries through its OpenAI-compatible HTTP API.
 type LlamaServerProvider struct {
-	modelPath  string
-	binaryPath string
-	port       int
-	cmd        *exec.Cmd
-	client     *llm.StreamClient
-	mu         sync.Mutex
-	started    bool
+	modelPath         string
+	binaryPath        string
+	port              int
+	cmd               *exec.Cmd
+	client            *llm.StreamClient
+	mu                sync.Mutex
+	started           bool
+	lastUsed          time.Time
+	idleTimeout       time.Duration
+	idleCheckInterval time.Duration
+	idleCancel        context.CancelFunc
+	now               func() time.Time
 }
 
 // NewLlamaServerProvider validates the binary and model paths.
@@ -41,8 +52,11 @@ func NewLlamaServerProvider(cfg config.Config) (*LlamaServerProvider, error) {
 		return nil, fmt.Errorf("llama-server: no model path configured")
 	}
 	return &LlamaServerProvider{
-		modelPath:  cfg.Model,
-		binaryPath: bin,
+		modelPath:         cfg.Model,
+		binaryPath:        bin,
+		idleTimeout:       LlamaServerIdleTimeout,
+		idleCheckInterval: llamaServerIdleCheckInterval,
+		now:               time.Now,
 	}, nil
 }
 
@@ -70,52 +84,84 @@ func (p *LlamaServerProvider) CheckAvailability() (string, bool) {
 
 // StreamQuery lazily starts the server on the first call, then streams the query.
 func (p *LlamaServerProvider) StreamQuery(ctx context.Context, req llm.QueryRequest) (<-chan llm.ResponseChunk, error) {
+	p.markUsed()
 	if err := p.ensureStarted(); err != nil {
 		return nil, err
 	}
-	return p.client.Stream(ctx, llm.BuildMessages(req))
+	ch, err := p.client.Stream(ctx, llm.BuildMessages(req))
+	if err != nil {
+		return nil, err
+	}
+	return p.markStreamUsed(ctx, ch), nil
 }
 
 // StreamMessages lazily starts the server and streams using the provided messages directly.
 func (p *LlamaServerProvider) StreamMessages(ctx context.Context, msgs []llm.ChatMessage) (<-chan llm.ResponseChunk, error) {
+	p.markUsed()
 	if err := p.ensureStarted(); err != nil {
 		return nil, err
 	}
-	return p.client.Stream(ctx, msgs)
+	ch, err := p.client.Stream(ctx, msgs)
+	if err != nil {
+		return nil, err
+	}
+	return p.markStreamUsed(ctx, ch), nil
 }
 
 // Stop sends SIGTERM to the subprocess and waits up to 5 seconds, then SIGKILLs.
 func (p *LlamaServerProvider) Stop() {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.cmd == nil || p.cmd.Process == nil {
+	cmd := p.clearStartedLocked()
+	p.mu.Unlock()
+
+	stopProcess(cmd)
+}
+
+func (p *LlamaServerProvider) clearStartedLocked() *exec.Cmd {
+	if p.idleCancel != nil {
+		p.idleCancel()
+		p.idleCancel = nil
+	}
+	cmd := p.cmd
+	p.cmd = nil
+	p.client = nil
+	p.started = false
+	return cmd
+}
+
+func stopProcess(cmd *exec.Cmd) {
+	if cmd == nil || cmd.Process == nil {
 		return
 	}
-	p.cmd.Process.Signal(syscall.SIGTERM)
+	cmd.Process.Signal(syscall.SIGTERM)
 	done := make(chan struct{})
-	go func() { p.cmd.Wait(); close(done) }()
+	go func() { cmd.Wait(); close(done) }()
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
-		p.cmd.Process.Kill()
+		cmd.Process.Kill()
 	}
-	p.cmd = nil
-	p.started = false
 }
 
 func (p *LlamaServerProvider) ensureStarted() error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 	if p.started {
+		p.mu.Unlock()
 		return nil
 	}
-	return p.start()
+	waitCmd, err := p.start()
+	p.mu.Unlock()
+
+	if waitCmd != nil {
+		waitCmd.Wait()
+	}
+	return err
 }
 
-func (p *LlamaServerProvider) start() error {
+func (p *LlamaServerProvider) start() (*exec.Cmd, error) {
 	port, err := freePort()
 	if err != nil {
-		return fmt.Errorf("llama-server: could not find free port: %w", err)
+		return nil, fmt.Errorf("llama-server: could not find free port: %w", err)
 	}
 	p.port = port
 
@@ -129,19 +175,139 @@ func (p *LlamaServerProvider) start() error {
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("llama-server: failed to start: %w", err)
+		return nil, fmt.Errorf("llama-server: failed to start: %w", err)
 	}
 	p.cmd = cmd
 
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	if err := waitForReady(baseURL+"/health", 30*time.Second); err != nil {
 		cmd.Process.Kill()
-		return fmt.Errorf("llama-server: did not become ready: %w", err)
+		p.cmd = nil
+		return cmd, fmt.Errorf("llama-server: did not become ready: %w", err)
 	}
 
 	p.client = llm.NewStreamClient(baseURL, filepath.Base(p.modelPath))
 	p.started = true
-	return nil
+	p.startIdleWatcherLocked()
+	return nil, nil
+}
+
+func (p *LlamaServerProvider) markUsed() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.lastUsed = p.currentTime()
+}
+
+func (p *LlamaServerProvider) markStreamUsed(ctx context.Context, ch <-chan llm.ResponseChunk) <-chan llm.ResponseChunk {
+	out := make(chan llm.ResponseChunk, 32)
+	go func() {
+		defer close(out)
+		completed := false
+		defer func() {
+			if completed {
+				p.markUsed()
+			}
+		}()
+		ticker := time.NewTicker(p.configuredIdleCheckInterval())
+		defer ticker.Stop()
+
+		for {
+			select {
+			case chunk, ok := <-ch:
+				if !ok {
+					completed = true
+					return
+				}
+				p.markUsed()
+				if !p.sendStreamChunk(ctx, ticker.C, out, chunk) {
+					return
+				}
+			case <-ticker.C:
+				p.markUsed()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return out
+}
+
+func (p *LlamaServerProvider) sendStreamChunk(ctx context.Context, ticks <-chan time.Time, out chan<- llm.ResponseChunk, chunk llm.ResponseChunk) bool {
+	for {
+		select {
+		case out <- chunk:
+			return true
+		case <-ticks:
+			p.markUsed()
+		case <-ctx.Done():
+			return false
+		}
+	}
+}
+
+func (p *LlamaServerProvider) currentTime() time.Time {
+	if p.now != nil {
+		return p.now()
+	}
+	return time.Now()
+}
+
+func (p *LlamaServerProvider) configuredIdleTimeout() time.Duration {
+	if p.idleTimeout > 0 {
+		return p.idleTimeout
+	}
+	return LlamaServerIdleTimeout
+}
+
+func (p *LlamaServerProvider) configuredIdleCheckInterval() time.Duration {
+	if p.idleCheckInterval > 0 {
+		return p.idleCheckInterval
+	}
+	return llamaServerIdleCheckInterval
+}
+
+func (p *LlamaServerProvider) startIdleWatcherLocked() {
+	if p.idleCancel != nil {
+		p.idleCancel()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	p.idleCancel = cancel
+	interval := p.configuredIdleCheckInterval()
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				p.stopIfIdle()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+func (p *LlamaServerProvider) stopIfIdle() {
+	p.mu.Lock()
+	if !p.started || p.cmd == nil || p.cmd.Process == nil || p.lastUsed.IsZero() {
+		p.mu.Unlock()
+		return
+	}
+
+	idleFor := p.currentTime().Sub(p.lastUsed)
+	if idleFor <= p.configuredIdleTimeout() {
+		p.mu.Unlock()
+		return
+	}
+
+	cmd := p.clearStartedLocked()
+	timeout := p.configuredIdleTimeout()
+	p.mu.Unlock()
+
+	stopProcess(cmd)
+	log.Printf("llm: llama-server stopped after %s idle", timeout)
 }
 
 func waitForReady(healthURL string, timeout time.Duration) error {
