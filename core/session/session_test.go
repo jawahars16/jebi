@@ -3,6 +3,8 @@ package session
 import (
 	"strings"
 	"testing"
+
+	"terminal/core/llm"
 )
 
 // TestParseOSCGitPayload verifies parseOSC extracts the OSC 9002 git payload.
@@ -117,4 +119,29 @@ func trimPrefix(s, prefix string) string {
 		return s[len(prefix):]
 	}
 	return s
+}
+
+// TestSessionSnapshotCopiesEntries verifies snapshot() returns a race-free
+// copy of session state that isn't affected by later mutations.
+func TestSessionSnapshotCopiesEntries(t *testing.T) {
+	s := &Session{id: "abc123", currentCwd: "/tmp/proj"}
+	s.contextEntries = []llm.HistoryEntry{{Command: "go test ./...", ExitCode: 1}}
+
+	snap := s.snapshot()
+
+	if snap.id != "abc123" {
+		t.Errorf("id = %q, want %q", snap.id, "abc123")
+	}
+	if snap.cwd != "/tmp/proj" {
+		t.Errorf("cwd = %q, want %q", snap.cwd, "/tmp/proj")
+	}
+	if len(snap.contextEntries) != 1 || snap.contextEntries[0].Command != "go test ./..." {
+		t.Fatalf("contextEntries = %+v, want one entry with Command %q", snap.contextEntries, "go test ./...")
+	}
+
+	// Mutating the session afterward must not affect the snapshot (proves it's a copy).
+	s.contextEntries[0].Command = "mutated"
+	if snap.contextEntries[0].Command != "go test ./..." {
+		t.Errorf("snapshot was mutated by later session changes — not an independent copy")
+	}
 }

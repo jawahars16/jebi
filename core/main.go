@@ -89,6 +89,8 @@ func main() {
 		s.Start()
 	})
 
+	http.HandleFunc("/global", session.GlobalHandler(provider))
+
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", *port))
 	if err != nil {
 		log.Fatalf("core: failed to listen on port %d: %v", *port, err)

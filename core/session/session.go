@@ -27,6 +27,14 @@ type resizeMsg struct {
 	Cols uint16 `json:"cols"`
 }
 
+// sessionSnapshot is a point-in-time, race-free copy of the session state the
+// global ask handler needs to build cross-session context.
+type sessionSnapshot struct {
+	id             string
+	cwd            string
+	contextEntries []llm.HistoryEntry
+}
+
 // connection is what Session needs from the WebSocket — messaging via Wire,
 // plus Close for lifecycle management.
 type connection interface {
@@ -64,6 +72,7 @@ type Session struct {
 	currentCwd     string
 	lastContextDir string // last dir for which project context banner was shown
 	contextEntries []llm.HistoryEntry
+	ctxMu          sync.Mutex // guards currentCwd and contextEntries against cross-goroutine reads (pipe(), Start(), global handler)
 	cancelSuggest  context.CancelFunc
 	cancelAsk      context.CancelFunc // cancels any in-flight /ask stream
 	cancelAnalyze  context.CancelFunc // cancels any in-flight analysis request
@@ -298,10 +307,12 @@ func (s *Session) Start() {
 			if len(entry.Output) > 2000 {
 				entry.Output = "…" + entry.Output[len(entry.Output)-2000:]
 			}
+			s.ctxMu.Lock()
 			s.contextEntries = append(s.contextEntries, entry)
 			if len(s.contextEntries) > maxContextEntries {
 				s.contextEntries = s.contextEntries[len(s.contextEntries)-maxContextEntries:]
 			}
+			s.ctxMu.Unlock()
 			// Skip AI for trivial commands, exit 127 (command not found), and
 			// exit 130 (Ctrl+C / SIGINT — user intentionally cancelled).
 			if entry.ExitCode == 127 || entry.ExitCode == 130 {
@@ -583,6 +594,20 @@ func buildAskMessages(s *Session, history []llm.ChatMessage, query string) []llm
 	return messages
 }
 
+// snapshot returns a race-free copy of the session state needed for
+// cross-session AI context (used by the global ask handler).
+func (s *Session) snapshot() sessionSnapshot {
+	s.ctxMu.Lock()
+	defer s.ctxMu.Unlock()
+	entries := make([]llm.HistoryEntry, len(s.contextEntries))
+	copy(entries, s.contextEntries)
+	return sessionSnapshot{
+		id:             s.id,
+		cwd:            s.currentCwd,
+		contextEntries: entries,
+	}
+}
+
 // formatRecentCommands formats the last 3 history entries as a compact log.
 func formatRecentCommands(entries []llm.HistoryEntry) string {
 	if len(entries) == 0 {
@@ -757,7 +782,9 @@ func (s *Session) pipe() {
 					switch {
 					case strings.HasPrefix(p, "7;"):
 						cwd := strings.TrimPrefix(p, "7;")
+						s.ctxMu.Lock()
 						s.currentCwd = cwd
+						s.ctxMu.Unlock()
 						s.w.Send(wire.StringMessage(wire.TypeCwd, cwd))
 						// Cancel previous detection and start fresh for the new directory.
 						if s.cancelDetect != nil {

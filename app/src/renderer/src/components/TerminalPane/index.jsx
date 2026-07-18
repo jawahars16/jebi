@@ -29,6 +29,7 @@ export default function TerminalPane({
   onClose,
   onNewTab,
   onToggleTabPosition,
+  onOpenGlobalAsk,
   showUpdateBanner = false,
   onDismissUpdate,
   onUpgrade,
@@ -42,7 +43,7 @@ export default function TerminalPane({
   // the latest values without causing extra renders or requiring re-registration.
   const callbacksRef = useRef({});
   const { prefs } = usePreferences();
-  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery, sendGhostQuery } = useTerminal(paneId, callbacksRef, initialCwd);
+  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendNLQuery, sendGhostQuery } = useTerminal(paneId, callbacksRef, initialCwd);
   const {
     push: pushHistory,
     navigate: navigateHistory,
@@ -67,8 +68,6 @@ export default function TerminalPane({
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [bannerThinkingMsg, setBannerThinkingMsg] = useState(null);
   const [hasCommands, setHasCommands] = useState(false)
-  const [askOpen, setAskOpen] = useState(false);
-  const [askMessages, setAskMessages] = useState([]); // [{ role, content, streaming?, error? }]
   const [banner, setBanner] = useState(null); // { text: string, type: 'error'|'info'|'warning'|'suggestion' }
   const [saveCommand, setSaveCommand] = useState(null); // command string when popover open
   const [nlMode, setNlMode] = useState(false);
@@ -383,7 +382,7 @@ export default function TerminalPane({
       openHistory: () => setHistoryOpen(true),
       openRun: () => setRunOpen(true),
       openPorts: () => setPortsOpen(true),
-      openAsk: () => { setAskMessages([]); setAskOpen(true) },
+      openAsk: () => onOpenGlobalAsk?.(),
       summarize: () => {
         if (getSessionHistory().length === 0) {
           setBanner({ text: 'No commands to summarize yet. Run some commands first, then try /summarize.', type: 'info' });
@@ -398,43 +397,10 @@ export default function TerminalPane({
         if (entry?.command) setSaveCommand(entry.command)
       },
     }),
-    [paneId, onSplitRight, onSplitDown, onClose, onNewTab, onToggleTabPosition],
+    [paneId, onSplitRight, onSplitDown, onClose, onNewTab, onToggleTabPosition, onOpenGlobalAsk],
   );
 
-  callbacksRef.current.fileListOpen = fileListOpen || historyOpen || runOpen || slashOpen || portsOpen || !!customList || !!previewFile || askOpen || !!saveCommand;
-
-  callbacksRef.current.onAskChunk = (token) => {
-    setAskMessages((prev) => {
-      const msgs = [...prev]
-      const last = msgs[msgs.length - 1]
-      if (last?.role === 'assistant' && last.streaming) {
-        msgs[msgs.length - 1] = { ...last, content: last.content + token }
-      }
-      return msgs
-    })
-  }
-  callbacksRef.current.onAskDone = () => {
-    setAskMessages((prev) => {
-      const msgs = [...prev]
-      const last = msgs[msgs.length - 1]
-      if (last?.role === 'assistant' && last.streaming) {
-        msgs[msgs.length - 1] = { ...last, streaming: false }
-      }
-      return msgs
-    })
-  }
-  callbacksRef.current.onAskError = (err) => {
-    setAskMessages((prev) => {
-      const msgs = [...prev]
-      const last = msgs[msgs.length - 1]
-      if (last?.role === 'assistant' && last.streaming) {
-        msgs[msgs.length - 1] = { role: 'assistant', content: err || 'AI not available', error: true }
-      } else {
-        msgs.push({ role: 'assistant', content: err || 'AI not available', error: true })
-      }
-      return msgs
-    })
-  }
+  callbacksRef.current.fileListOpen = fileListOpen || historyOpen || runOpen || slashOpen || portsOpen || !!customList || !!previewFile || !!saveCommand;
 
   const handleFileListSelect = useCallback((entry) => {
     setFileListOpen(false)
@@ -512,10 +478,16 @@ export default function TerminalPane({
   const handleSlashSelect = useCallback((cmd) => {
     setSlashOpen(false)
     setSlashQuery('')
-    setTimeout(() => {
-      inputBarRef.current?.setValue('')
-      inputBarRef.current?.focus()
-    }, 0)
+    // The 'ask' command hands focus to the global Ask AI drawer instead —
+    // refocusing the terminal input bar here would steal it back.
+    if (cmd.id === 'ask') {
+      setTimeout(() => inputBarRef.current?.setValue(''), 0)
+    } else {
+      setTimeout(() => {
+        inputBarRef.current?.setValue('')
+        inputBarRef.current?.focus()
+      }, 0)
+    }
     cmd.run(commandContext)
   }, [commandContext])
 
@@ -571,17 +543,6 @@ export default function TerminalPane({
         onCustomListClose={() => setCustomList(null)}
         hasCommands={hasCommands}
         onSaveShortcut={(cmd) => setSaveCommand(cmd)}
-        askOpen={askOpen}
-        askMessages={askMessages}
-        onAskSend={(history, query) => {
-          setAskMessages((prev) => [
-            ...prev,
-            { role: 'user', content: query },
-            { role: 'assistant', content: '', streaming: true },
-          ])
-          sendAsk(history, query)
-        }}
-        onAskClose={() => { setAskOpen(false); setTimeout(() => inputBarRef.current?.focus(), 0) }}
       />
 
       {bannerThinkingMsg && !banner?.text && (
@@ -714,7 +675,7 @@ export default function TerminalPane({
           }}
         />
       )}
-      {!running && !fileListOpen && !historyOpen && !runOpen && !portsOpen && !customList && !previewFile && !askOpen && (
+      {!running && !fileListOpen && !historyOpen && !runOpen && !portsOpen && !customList && !previewFile && (
         <InputBar
           ref={inputBarRef}
           onSubmit={handleSubmit}

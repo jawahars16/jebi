@@ -4,7 +4,7 @@ import TerminalPane from './components/TerminalPane'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useSessionStore } from './hooks/useSessionStore.jsx'
 import { usePaneResize } from './hooks/usePaneResize'
-import { deletePaneInfo, getPaneInfo } from './hooks/usePaneInfo'
+import { deletePaneInfo, getPaneInfo, computeTabTitle } from './hooks/usePaneInfo'
 import { triggerCopy } from './hooks/paneCopyRegistry'
 import { triggerFocus } from './hooks/paneFocusRegistry'
 import { createLeaf, splitLeaf, removeLeaf, collectPaneIds, computePaneRects, computeDividers } from './utils/layoutTree'
@@ -18,6 +18,7 @@ import { usePreferences } from './hooks/usePreferences'
 import { setUserCommands } from './commands/registry'
 import { initUpdateStatusListener, useUpdateStatus } from './hooks/useUpdateStatus'
 import ConfirmDialog from './components/ConfirmDialog'
+import AskDrawer from './components/AskDrawer'
 
 function createTab(counter) {
   const leaf = createLeaf()
@@ -65,6 +66,7 @@ function AppInner() {
   const aiStatus = useAIStatus()
   const updateStatus = useUpdateStatus()
   const [updateDismissed, setUpdateDismissed] = useState(false)
+  const [askOpen, setAskOpen] = useState(false)
   const showUpdateBanner = updateStatus.available && !updateDismissed
 
   useEffect(() => {
@@ -360,6 +362,24 @@ function AppInner() {
   // --- Pane count for current tab (to show/hide close button) ---
   const paneCount = collectPaneIds(activeTab.layout).length
 
+  // Builds the {id, title, active} list AskDrawer sends with every request —
+  // one entry per pane that has an established backend session.
+  const buildGlobalSessionList = useCallback(() => {
+    const list = []
+    for (const tab of tabs) {
+      for (const paneId of collectPaneIds(tab.layout)) {
+        const info = getPaneInfo(paneId)
+        if (!info?.sessionId) continue
+        list.push({
+          id: info.sessionId,
+          title: computeTabTitle(info, tab.fallbackTitle),
+          active: paneId === activeTab.activePaneId,
+        })
+      }
+    }
+    return list
+  }, [tabs, activeTab])
+
   // --- Render ---
 
   const tabBarProps = {
@@ -461,9 +481,10 @@ function AppInner() {
                 onClose={paneCount > 1 ? () => closePane(tab.id, paneId) : null}
                 onNewTab={addTab}
                 onToggleTabPosition={toggleTabBarPosition}
+                onOpenGlobalAsk={() => setAskOpen(true)}
                 showUpdateBanner={showUpdateBanner}
                 onDismissUpdate={() => setUpdateDismissed(true)}
-                onUpgrade={() => openPreferences('about')}
+                onUpgrade={() => { setUpdateDismissed(true); openPreferences('about') }}
                 latestVersion={updateStatus.latestVersion}
               />
             </div>
@@ -519,7 +540,7 @@ function AppInner() {
         </div>
       </div>
 
-      <StatusBar onOpenAISettings={() => openPreferences('ai')} onOpenUpdate={() => openPreferences('about')} />
+      <StatusBar onOpenAISettings={() => openPreferences('ai')} onOpenUpdate={() => openPreferences('about')} onOpenAsk={() => setAskOpen(true)} />
 
       {/* Pointer-capture overlay — sits over xterm canvases during drag so the
           cursor stays consistent and mouse events don't get swallowed by xterm */}
@@ -558,6 +579,13 @@ function AppInner() {
           onToggleTabPosition={() => { toggleTabBarPosition(); setCtxMenu(null) }}
         />
       )}
+
+      <AskDrawer
+        open={askOpen}
+        sessions={buildGlobalSessionList()}
+        activeSessionId={getPaneInfo(activeTab.activePaneId)?.sessionId}
+        onClose={() => setAskOpen(false)}
+      />
     </div>
   )
 }

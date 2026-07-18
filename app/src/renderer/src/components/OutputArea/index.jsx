@@ -16,7 +16,6 @@ import RunPanel from "../RunPanel";
 import SlashCommandPanel from "../SlashCommandPanel";
 import PortsPanel from "../PortsPanel";
 import CustomListPanel from "../CustomListPanel";
-import AskPanel from "../AskPanel";
 import { usePreferences } from "../../hooks/usePreferences";
 import { showStatusMessage } from "../../hooks/useStatusMessage";
 import EmptyState from "./EmptyState";
@@ -105,10 +104,6 @@ export default function OutputArea({
   customList = null,
   onCustomListSelect,
   onCustomListClose,
-  askOpen = false,
-  askMessages = [],
-  onAskSend,
-  onAskClose,
   hasCommands = false,
   onSaveShortcut,
 }) {
@@ -653,7 +648,7 @@ export default function OutputArea({
   }, [prefs.fontSize, prefs.fontFamily]);
 
 
-  const anyOverlayOpen = fileListOpen || !!previewFile || historyOpen || runOpen || slashOpen || portsOpen || !!customList || askOpen
+  const anyOverlayOpen = fileListOpen || !!previewFile || historyOpen || runOpen || slashOpen || portsOpen || !!customList
 
   function safeFind(fn, query, opts) {
     try {
@@ -682,7 +677,6 @@ export default function OutputArea({
           onSlashClose?.()
           onPortsClose?.()
           onCustomListClose?.()
-          onAskClose?.()
         }}
       />
       {!hasCommands && <EmptyState />}
@@ -854,13 +848,6 @@ export default function OutputArea({
           cwd={customList.cwd}
           onSelect={onCustomListSelect}
           onClose={onCustomListClose}
-        />
-      )}
-      {askOpen && (
-        <AskPanel
-          messages={askMessages}
-          onSend={onAskSend}
-          onClose={onAskClose}
         />
       )}
       {stickyCommand !== null && (

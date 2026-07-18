@@ -51,3 +51,7 @@ export const TypeNLError  = 'nl_error'
 
 export const TypeGhostQuery  = 'ghost_query'
 export const TypeGhostResult = 'ghost_result'
+
+export const TypeAskGlobal        = 'ask_global'
+export const TypeAskSuggest       = 'ask_suggest'
+export const TypeAskSuggestResult = 'ask_suggest_result'

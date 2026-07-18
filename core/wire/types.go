@@ -68,4 +68,14 @@ const (
 
 	TypeGhostQuery  = "ghost_query"  // frontend → backend: JSON {"prefix": string, "history": [{c,ok}]}
 	TypeGhostResult = "ghost_result" // backend → frontend: JSON {"suggestion": string}
+
+	// TypeAskGlobal is sent frontend → backend on the /global socket: JSON
+	// {"history":[...ChatMessage],"query":"...","sessions":[{"id","title","active"}]}
+	TypeAskGlobal = "ask_global"
+
+	// TypeAskSuggest is sent frontend → backend on the /global socket when the
+	// drawer opens with an empty conversation: same "sessions" payload, no query.
+	TypeAskSuggest = "ask_suggest"
+	// TypeAskSuggestResult is sent backend → frontend: JSON array of exactly 3 strings.
+	TypeAskSuggestResult = "ask_suggest_result"
 )

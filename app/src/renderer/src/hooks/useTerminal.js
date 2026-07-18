@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import * as wire from '../wire'
 import { notifyAIStatus } from './useAIStatus'
+import { setPaneInfo } from './usePaneInfo'
 
 export function useTerminal(paneId, callbacksRef, initialCwd) {
   const ws = useRef(null)
@@ -31,6 +32,7 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
         switch (msg.type) {
           case wire.TypeSessionID:
             sessionIdRef.current = msg.data
+            setPaneInfo(paneId, { sessionId: msg.data })
             break
           case wire.TypeOutput:
             callbacksRef.current.onOutput?.(msg.data)
@@ -122,15 +124,6 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
           case wire.TypeAIStatus:
             notifyAIStatus(msg.data)
             break
-          case wire.TypeAskChunk:
-            callbacksRef.current.onAskChunk?.(msg.data)
-            break
-          case wire.TypeAskDone:
-            callbacksRef.current.onAskDone?.()
-            break
-          case wire.TypeAskError:
-            callbacksRef.current.onAskError?.(msg.data)
-            break
           case wire.TypeAIAnalysis:
             callbacksRef.current.onAIAnalysis?.(msg.data)
             break
@@ -193,11 +186,6 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
     ws.current.send(JSON.stringify({ type: wire.TypeAIAnalyze, data: entry }))
   }, [paneId])
 
-  const sendAsk = useCallback((history, query) => {
-    if (ws.current?.readyState !== WebSocket.OPEN) return
-    ws.current.send(JSON.stringify({ type: wire.TypeAsk, data: { history, query } }))
-  }, [paneId])
-
   const sendNLQuery = useCallback((query, cwd) => {
     if (ws.current?.readyState !== WebSocket.OPEN) return
     ws.current.send(JSON.stringify({ type: wire.TypeNLQuery, data: { query, cwd } }))
@@ -208,5 +196,5 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
     ws.current.send(JSON.stringify({ type: wire.TypeGhostQuery, data: { prefix, history } }))
   }, [paneId])
 
-  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendAsk, sendNLQuery, sendGhostQuery }
+  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendNLQuery, sendGhostQuery }
 }

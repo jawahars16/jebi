@@ -34,6 +34,18 @@ func (r *sessionRegistry) remove(id string) {
 	delete(r.sessions, id)
 }
 
+// snapshot returns a copy of the currently live sessions, safe to range over
+// without holding the registry lock.
+func (r *sessionRegistry) snapshot() []*Session {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]*Session, 0, len(r.sessions))
+	for _, s := range r.sessions {
+		out = append(out, s)
+	}
+	return out
+}
+
 // Reattach looks up the session by id, wires in the new connection, and returns
 // the session. Returns false if no live session exists for that id.
 func Reattach(id string, conn interface {

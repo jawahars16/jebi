@@ -276,11 +276,19 @@ function makeGhostPlugin(callbacksRef) {
 
     _buildDecoration(view, doc) {
       const suffix = this.suggestion.slice(doc.length)
-      if (!suffix) { this.decorations = Decoration.none; return }
-      const cursorPos = view.state.selection.main.head
+      // The suggestion only ever extends the very end of the document, so it
+      // must render there — anchoring at the cursor instead would place the
+      // ghost text wherever the caret sits (e.g. after Home/End on an earlier
+      // line), splitting the visible text instead of appending after it.
+      // Hide it outright when the cursor isn't at the end: mid-text ghost
+      // text reads as confusing, not helpful.
+      if (!suffix || view.state.selection.main.head !== doc.length) {
+        this.decorations = Decoration.none
+        return
+      }
       const widget = new GhostWidget(suffix)
       this.decorations = RangeSet.of([
-        Decoration.widget({ widget, side: 1 }).range(cursorPos),
+        Decoration.widget({ widget, side: 1 }).range(doc.length),
       ])
     }
 

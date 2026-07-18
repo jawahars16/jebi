@@ -9,7 +9,7 @@ const updateArrowStyle = `
   }
 `
 
-export default function StatusBar({ onOpenAISettings, onOpenUpdate }) {
+export default function StatusBar({ onOpenAISettings, onOpenUpdate, onOpenAsk }) {
   const aiStatus = useAIStatus()
   const message = useStatusMessage()
   const updateStatus = useUpdateStatus()
@@ -78,6 +78,24 @@ export default function StatusBar({ onOpenAISettings, onOpenUpdate }) {
       }}>
         {message ?? ''}
       </span>
+
+      {/* Ask AI drawer toggle */}
+      <button
+        onClick={onOpenAsk}
+        title="Ask AI (/ask)"
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '2px 6px',
+          borderRadius: 4,
+          color: 'var(--text-muted)',
+          fontSize: '12px',
+          flexShrink: 0,
+        }}
+      >
+        ✦
+      </button>
 
       {/* AI chip — right */}
       {aiStatus.status !== 'unknown' && (
