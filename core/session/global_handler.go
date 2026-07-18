@@ -26,6 +26,12 @@ type askGlobalPayload struct {
 	Sessions []globalSessionInfo `json:"sessions"`
 }
 
+// historySearchPayload is the frontend → backend body for history_search.
+type historySearchPayload struct {
+	Query      string   `json:"query"`
+	Candidates []string `json:"candidates"`
+}
+
 // GlobalHandler serves the /global WebSocket route — cross-session AI
 // features (ask_global, ask_suggest) that are not tied to any one PTY session.
 func GlobalHandler(provider llm.Provider) http.HandlerFunc {
@@ -40,6 +46,7 @@ func GlobalHandler(provider llm.Provider) http.HandlerFunc {
 		wr := wire.New(conn)
 		var mu sync.Mutex
 		var cancelAsk context.CancelFunc
+		var cancelHistorySearch context.CancelFunc
 
 		for {
 			msg, err := wr.Receive()
@@ -47,6 +54,9 @@ func GlobalHandler(provider llm.Provider) http.HandlerFunc {
 				mu.Lock()
 				if cancelAsk != nil {
 					cancelAsk()
+				}
+				if cancelHistorySearch != nil {
+					cancelHistorySearch()
 				}
 				mu.Unlock()
 				return
@@ -95,6 +105,29 @@ func GlobalHandler(provider llm.Provider) http.HandlerFunc {
 					if err != nil && ctx.Err() == nil {
 						wr.Send(wire.StringMessage(wire.TypeAskError, err.Error()))
 					}
+				}()
+
+			case wire.TypeHistorySearch:
+				var payload historySearchPayload
+				if err := json.Unmarshal(msg.Data, &payload); err != nil || provider == nil || !provider.IsAvailable() {
+					continue // silent — frontend already shows "no matches" for an empty result
+				}
+				mu.Lock()
+				if cancelHistorySearch != nil {
+					cancelHistorySearch()
+				}
+				searchCtx, searchCancel := context.WithTimeout(context.Background(), 8*time.Second)
+				cancelHistorySearch = searchCancel
+				mu.Unlock()
+
+				go func() {
+					defer searchCancel()
+					matches, err := llm.SearchHistory(searchCtx, provider, payload.Query, payload.Candidates)
+					if err != nil {
+						return
+					}
+					data, _ := json.Marshal(map[string]any{"matches": matches})
+					wr.Send(wire.Message{Type: wire.TypeHistorySearchResult, Data: data})
 				}()
 
 			case wire.TypeKill:

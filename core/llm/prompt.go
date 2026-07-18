@@ -470,6 +470,24 @@ func BuildAnalyzeMessages(req AnalyzeRequest) []ChatMessage {
 	}
 }
 
+const riskCheckPromptTemplate = `You are a terminal safety assistant. The user is ABOUT TO RUN a command that has been
+flagged as potentially destructive. Explain, in exactly ONE short sentence (max ~20 words),
+the concrete real-world consequence of running it — what will be deleted/overwritten/broken
+and whether it's reversible. Do not add caveats, greetings, or markdown. Plain text only.
+
+Environment: shell=%s  os=%s  cwd=%s`
+
+// BuildRiskCheckMessages returns the message list for a pre-execution destructive-command
+// explanation request. Distinct from BuildAnalyzeMessages, which requires post-execution
+// output/exitCode that don't exist yet at this point in the flow.
+func BuildRiskCheckMessages(command, cwd, shell, os string) []ChatMessage {
+	system := fmt.Sprintf(riskCheckPromptTemplate, shell, os, cwd)
+	return []ChatMessage{
+		{Role: "system", Content: system},
+		{Role: "user", Content: command},
+	}
+}
+
 // ParseFinalResponse extracts the structured response from the accumulated
 // token string. Tries full unmarshal first, then falls back to extracting
 // the first '{' … last '}' substring to handle preamble text from the model.

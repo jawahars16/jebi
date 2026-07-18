@@ -32,6 +32,7 @@ const QUIPS = [
 const ALL_TIPS = [
   { key: '⌘K',    label: 'Clear the screen' },
   { key: '⌘F',    label: 'Search scrollback' },
+  { key: '⌘J',    label: 'Describe a command you ran to find it in history' },
   { key: 'Tab',   label: 'Complete file paths and history' },
   { key: '↑ ↓',  label: 'Browse command history' },
   { key: '/',     label: 'Open command palette' },

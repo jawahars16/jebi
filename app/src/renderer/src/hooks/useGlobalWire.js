@@ -39,6 +39,9 @@ export function useGlobalWire(callbacks) {
           case wire.TypeAskSuggestResult:
             callbacksRef.current.onSuggestions?.(msg.data)
             break
+          case wire.TypeHistorySearchResult:
+            callbacksRef.current.onHistoryMatches?.(msg.data?.matches ?? [])
+            break
         }
       }
     }
@@ -62,5 +65,10 @@ export function useGlobalWire(callbacks) {
     ws.current.send(JSON.stringify({ type: wire.TypeAskSuggest, data: { sessions } }))
   }, [])
 
-  return { sendAskGlobal, sendAskSuggest, connected }
+  const sendHistorySearch = useCallback((query, candidates) => {
+    if (ws.current?.readyState !== WebSocket.OPEN) return
+    ws.current.send(JSON.stringify({ type: wire.TypeHistorySearch, data: { query, candidates } }))
+  }, [])
+
+  return { sendAskGlobal, sendAskSuggest, sendHistorySearch, connected }
 }

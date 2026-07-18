@@ -94,6 +94,18 @@ export function PreferencesProvider({ children }) {
     setPrefs(prev => ({ ...prev, aiOutputAnalysis: value }))
   }
 
+  function setConfirmDestructiveCommands(value) {
+    setPrefs(prev => ({ ...prev, confirmDestructiveCommands: value }))
+  }
+
+  function dismissRiskPattern(id) {
+    setPrefs(prev => prev.dismissedRiskPatterns?.includes(id) ? prev : { ...prev, dismissedRiskPatterns: [...(prev.dismissedRiskPatterns ?? []), id] })
+  }
+
+  function resetDismissedRiskPatterns() {
+    setPrefs(prev => ({ ...prev, dismissedRiskPatterns: [] }))
+  }
+
   function setTerminalGrain(value) {
     setPrefs(prev => ({ ...prev, terminalGrain: value }))
   }
@@ -107,7 +119,7 @@ export function PreferencesProvider({ children }) {
     setPrefs(prev => ({ ...prev, tabBarPosition: value }))
   }
 
-  const value = { prefs, activeColors, setTheme, setFontFamily, setFontSize, setUiFontSize, setUiFontFamily, setPromptStyle, setAiExplainErrors, setAiDirectoryContext, setAiCommandSuggestions, setAiOutputAnalysis, setTerminalGrain, setTerminalGrainIntensity, setTabBarPosition }
+  const value = { prefs, activeColors, setTheme, setFontFamily, setFontSize, setUiFontSize, setUiFontFamily, setPromptStyle, setAiExplainErrors, setAiDirectoryContext, setAiCommandSuggestions, setAiOutputAnalysis, setConfirmDestructiveCommands, dismissRiskPattern, resetDismissedRiskPatterns, setTerminalGrain, setTerminalGrainIntensity, setTabBarPosition }
 
   
   return (

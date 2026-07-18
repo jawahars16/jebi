@@ -19,6 +19,8 @@ import { setUserCommands } from './commands/registry'
 import { initUpdateStatusListener, useUpdateStatus } from './hooks/useUpdateStatus'
 import ConfirmDialog from './components/ConfirmDialog'
 import AskDrawer from './components/AskDrawer'
+import HistorySearchModal from './components/HistorySearchModal'
+import { triggerSetInput } from './hooks/paneInputRegistry'
 
 function createTab(counter) {
   const leaf = createLeaf()
@@ -67,6 +69,7 @@ function AppInner() {
   const updateStatus = useUpdateStatus()
   const [updateDismissed, setUpdateDismissed] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
+  const [historySearchOpen, setHistorySearchOpen] = useState(false)
   const showUpdateBanner = updateStatus.available && !updateDismissed
 
   useEffect(() => {
@@ -352,6 +355,7 @@ function AppInner() {
     'Meta+d': () => splitActivePane('horizontal'),
     'Meta+Shift+D': () => splitActivePane('vertical'),
     'Meta+,': () => setIsPrefsOpen(true),
+    'Meta+j': () => setHistorySearchOpen(true),
     'Meta+Alt+ArrowRight': () => navigatePane('right'),
     'Meta+Alt+ArrowLeft':  () => navigatePane('left'),
     'Meta+Alt+ArrowUp':    () => navigatePane('up'),
@@ -585,6 +589,12 @@ function AppInner() {
         sessions={buildGlobalSessionList()}
         activeSessionId={getPaneInfo(activeTab.activePaneId)?.sessionId}
         onClose={() => setAskOpen(false)}
+      />
+
+      <HistorySearchModal
+        open={historySearchOpen}
+        onClose={() => setHistorySearchOpen(false)}
+        onSelect={(command) => triggerSetInput(activeTab.activePaneId, command)}
       />
     </div>
   )

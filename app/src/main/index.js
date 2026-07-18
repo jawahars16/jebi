@@ -330,6 +330,12 @@ function compareVersions(a, b) {
   return 0
 }
 
+// Populated from the GitHub API in checkForUpdates; used as the fallback
+// download link when the installed app isn't managed by Homebrew.
+let latestReleaseUrl = 'https://github.com/jebi-sh/jebi/releases/latest'
+// Direct .dmg asset URL for the latest release, when one is found.
+let latestDmgUrl = null
+
 function checkForUpdates(win) {
   const current = app.getVersion()
   const options = {
@@ -345,11 +351,14 @@ function checkForUpdates(win) {
         const json = JSON.parse(data)
         const latest = (json.tag_name || '').replace(/^v/, '')
         const available = !!(latest && compareVersions(latest, current) > 0)
+        latestReleaseUrl = json.html_url || latestReleaseUrl
+        const dmgAsset = (json.assets || []).find(a => a.name?.endsWith('.dmg'))
+        latestDmgUrl = dmgAsset?.browser_download_url || latestDmgUrl
         win.webContents.send('update:status', {
           available,
           currentVersion: current,
           latestVersion: latest,
-          releaseUrl: json.html_url || 'https://github.com/jebi-sh/jebi/releases/latest',
+          releaseUrl: latestReleaseUrl,
         })
       } catch {
         win.webContents.send('update:status', { available: false, error: true, currentVersion: current })
@@ -710,16 +719,37 @@ ipcMain.handle('update:check', () => {
   if (wins.length > 0) checkForUpdates(wins[0])
 })
 
-ipcMain.handle('update:install', () => {
+ipcMain.handle('update:install', async () => {
   const wins = BrowserWindow.getAllWindows()
   const win = wins[0]
   if (!win) return
 
-  const proc = spawn('sh', ['-c', 'brew update && brew upgrade --cask jebi'], {
-    env: { ...process.env, PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH}` },
-  })
-
+  const env = { ...process.env, PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH}` }
   const send = (line) => win.webContents.send('update:install-log', line)
+
+  // `brew upgrade --cask jebi` only works if jebi was originally installed
+  // via `brew install --cask jebi`. Installs from a manually downloaded DMG
+  // (or a copied .app) have no matching cask receipt, so check first instead
+  // of letting the upgrade fail with a confusing "Cask 'jebi' is not
+  // installed" error.
+  let caskInstalled = false
+  try {
+    await execFileAsync('brew', ['list', '--cask', 'jebi'], { env })
+    caskInstalled = true
+  } catch {
+    caskInstalled = false
+  }
+
+  if (!caskInstalled) {
+    win.webContents.send('update:install-done', {
+      success: true,
+      manual: true,
+      downloadUrl: latestDmgUrl || latestReleaseUrl,
+    })
+    return
+  }
+
+  const proc = spawn('sh', ['-c', 'brew update && brew upgrade --cask jebi'], { env })
 
   proc.stdout.on('data', (d) => d.toString().split('\n').forEach(l => l && send(l)))
   proc.stderr.on('data', (d) => d.toString().split('\n').forEach(l => l && send(l)))

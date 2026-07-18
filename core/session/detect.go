@@ -94,10 +94,15 @@ func (s *Session) detectEnv(ctx context.Context, dir string) {
 		}
 	}
 
-	if ctx.Err() != nil || s.provider == nil || dir == s.lastContextDir {
+	s.ctxMu.Lock()
+	sameDir := dir == s.lastContextDir
+	s.ctxMu.Unlock()
+	if ctx.Err() != nil || s.provider == nil || sameDir {
 		return
 	}
+	s.ctxMu.Lock()
 	s.lastContextDir = dir
+	s.ctxMu.Unlock()
 	// Strip walk-up detections that don't belong to the current directory.
 	// Node and Python use findUp so they may reflect a parent project — only
 	// include them if their marker files exist directly in dir.

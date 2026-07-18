@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
 
-export default function ConfirmDialog({ title, message, confirmLabel = 'Close anyway', cancelLabel = 'Cancel', onConfirm, onCancel }) {
+export default function ConfirmDialog({
+  title, message, confirmLabel = 'Close anyway', cancelLabel = 'Cancel', onConfirm, onCancel,
+  checkboxLabel, checkboxChecked, onCheckboxChange,
+}) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') { e.stopPropagation(); onCancel() }
@@ -29,6 +32,12 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Close an
       >
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{title}</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{message}</div>
+        {checkboxLabel && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={checkboxChecked} onChange={e => onCheckboxChange(e.target.checked)} />
+            {checkboxLabel}
+          </label>
+        )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           <button
             onClick={onCancel}

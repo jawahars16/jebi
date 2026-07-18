@@ -58,8 +58,12 @@ type Session struct {
 	rows uint16
 	cols uint16
 
-	// connMu guards conn and w so pipe() and Reattach() don't race.
+	// connMu guards conn, w, and attachCh so pipe() and Reattach() don't race.
 	connMu sync.Mutex
+
+	// attachCh is non-nil only while detached (w == nil); Reattach() closes it
+	// to wake Start()'s loop instead of leaving it to poll for a reconnect.
+	attachCh chan struct{}
 
 	// replay buffers PTY output while no client is connected.
 	replay *outputRingBuffer
@@ -68,15 +72,16 @@ type Session struct {
 	cancelDetect context.CancelFunc
 
 	// AI suggestion state — session-scoped, not persisted.
-	provider       llm.Provider
-	currentCwd     string
-	lastContextDir string // last dir for which project context banner was shown
-	contextEntries []llm.HistoryEntry
-	ctxMu          sync.Mutex // guards currentCwd and contextEntries against cross-goroutine reads (pipe(), Start(), global handler)
-	cancelSuggest  context.CancelFunc
-	cancelAsk      context.CancelFunc // cancels any in-flight /ask stream
-	cancelAnalyze  context.CancelFunc // cancels any in-flight analysis request
-	cancelGhost    context.CancelFunc // cancels any in-flight ghost completion request
+	provider        llm.Provider
+	currentCwd      string
+	lastContextDir  string // last dir for which project context banner was shown
+	contextEntries  []llm.HistoryEntry
+	ctxMu           sync.Mutex // guards currentCwd, lastContextDir, firstCwdSeen, and contextEntries against cross-goroutine reads (pipe(), Start(), detectEnv, global handler)
+	cancelSuggest   context.CancelFunc
+	cancelAsk       context.CancelFunc // cancels any in-flight /ask stream
+	cancelAnalyze   context.CancelFunc // cancels any in-flight analysis request
+	cancelGhost     context.CancelFunc // cancels any in-flight ghost completion request
+	cancelRiskCheck context.CancelFunc // cancels any in-flight destructive-command explanation request
 
 	// firstCwdSeen suppresses the project-context banner on initial shell
 	// startup. The first OSC 7 message is the shell's initial cwd, not the
@@ -178,6 +183,7 @@ func (s *Session) Detach() {
 	s.conn.Close()
 	s.conn = nil
 	s.w = nil
+	s.attachCh = make(chan struct{})
 }
 
 // Reattach wires a new WebSocket into this session, flushes buffered output,
@@ -187,6 +193,10 @@ func (s *Session) Reattach(conn connection) {
 	s.conn = conn
 	s.w = wire.New(conn)
 	w := s.w
+	if s.attachCh != nil {
+		close(s.attachCh)
+		s.attachCh = nil
+	}
 	s.connMu.Unlock()
 
 	// Send session ID so the renderer can persist it for future reconnects.
@@ -224,6 +234,21 @@ func (s *Session) Close() {
 	if s.cancelDetect != nil {
 		s.cancelDetect()
 	}
+	if s.cancelRiskCheck != nil {
+		s.cancelRiskCheck()
+	}
+	if s.cancelSuggest != nil {
+		s.cancelSuggest()
+	}
+	if s.cancelAsk != nil {
+		s.cancelAsk()
+	}
+	if s.cancelAnalyze != nil {
+		s.cancelAnalyze()
+	}
+	if s.cancelGhost != nil {
+		s.cancelGhost()
+	}
 	if s.cmd != nil && s.cmd.Process != nil {
 		s.cmd.Process.Kill()
 	}
@@ -260,10 +285,13 @@ func (s *Session) Start() {
 	for {
 		s.connMu.Lock()
 		w := s.w
+		ch := s.attachCh
 		s.connMu.Unlock()
 		if w == nil {
-			// Detached — wait for Reattach to provide a new reader.
-			time.Sleep(100 * time.Millisecond)
+			// Detached — block until Reattach() closes attachCh instead of
+			// polling; ch is guaranteed non-nil here since Detach() always
+			// sets it in the same critical section that clears w.
+			<-ch
 			continue
 		}
 		msg, err := w.Receive()
@@ -331,7 +359,7 @@ func (s *Session) Start() {
 			s.cancelSuggest = cancel
 			entries := make([]llm.HistoryEntry, len(s.contextEntries))
 			copy(entries, s.contextEntries)
-			cwd := s.currentCwd
+			cwd := s.getCwd()
 			req := llm.SuggestRequest{
 				Entries:    entries,
 				Cwd:        cwd,
@@ -427,6 +455,34 @@ func (s *Session) Start() {
 				s.w.Send(wire.Message{Type: wire.TypeAIAnalysis, Data: data})
 			}()
 
+		case wire.TypeAIRiskCheck:
+			if s.provider == nil || !s.provider.IsAvailable() {
+				break // silent — frontend already shows the static message
+			}
+			var payload struct {
+				Command   string `json:"command"`
+				Cwd       string `json:"cwd"`
+				RequestID int    `json:"requestId"`
+			}
+			if err := json.Unmarshal(msg.Data, &payload); err != nil || payload.Command == "" {
+				break
+			}
+			if s.cancelRiskCheck != nil {
+				s.cancelRiskCheck()
+			}
+			riskCtx, riskCancel := context.WithTimeout(context.Background(), 8*time.Second)
+			s.cancelRiskCheck = riskCancel
+			reqID := payload.RequestID
+			go func() {
+				defer riskCancel()
+				explanation, err := llm.RiskCheck(riskCtx, s.provider, payload.Command, payload.Cwd, resolveShell(s.cfg), runtime.GOOS+"/"+runtime.GOARCH)
+				if err != nil || explanation == "" {
+					return
+				}
+				data, _ := json.Marshal(map[string]any{"requestId": reqID, "explanation": explanation})
+				s.w.Send(wire.Message{Type: wire.TypeAIRiskExplanation, Data: data})
+			}()
+
 		case wire.TypeSummarize:
 			if s.provider == nil || len(s.contextEntries) == 0 {
 				s.w.Send(wire.Message{Type: wire.TypeAIBannerCancel})
@@ -439,12 +495,13 @@ func (s *Session) Start() {
 			s.cancelAsk = cancel
 			entries := make([]llm.HistoryEntry, len(s.contextEntries))
 			copy(entries, s.contextEntries)
+			cwd := s.getCwd()
 			req := llm.SuggestRequest{
 				Entries:    entries,
-				Cwd:        s.currentCwd,
+				Cwd:        cwd,
 				Shell:      resolveShell(s.cfg),
 				OS:         runtime.GOOS + "/" + runtime.GOARCH,
-				DirListing: readDir(s.currentCwd),
+				DirListing: readDir(cwd),
 			}
 			go func() {
 				defer cancel()
@@ -512,7 +569,7 @@ func (s *Session) Start() {
 				defer cancel()
 				cwd := payload.Cwd
 				if cwd == "" {
-					cwd = s.currentCwd
+					cwd = s.getCwd()
 				}
 				cmd, err := llm.NLQuery(ctx, s.provider, payload.Query, cwd, resolveShell(s.cfg), runtime.GOOS+"/"+runtime.GOARCH)
 				if err != nil || cmd == "" {
@@ -569,6 +626,7 @@ func (s *Session) Start() {
 // buildAskMessages constructs the message list for a /ask request.
 // The system prompt is built server-side to enforce scope and inject fresh context.
 func buildAskMessages(s *Session, history []llm.ChatMessage, query string) []llm.ChatMessage {
+	cwd := s.getCwd()
 	system := "You are a terminal assistant embedded in a developer terminal called jebi.\n" +
 		"You ONLY answer questions about:\n" +
 		"- The current terminal session (commands run, their output, exit codes)\n" +
@@ -578,9 +636,9 @@ func buildAskMessages(s *Session, history []llm.ChatMessage, query string) []llm
 		"You MUST politely decline any question outside this scope by saying:\n" +
 		"\"I can only help with terminal and shell questions in this session.\"\n\n" +
 		"Be concise. Use backticks for commands and file paths. No unnecessary preamble.\n\n" +
-		"Current directory: " + s.currentCwd + "\n"
+		"Current directory: " + cwd + "\n"
 
-	if listing := readDir(s.currentCwd); len(listing) > 0 {
+	if listing := readDir(cwd); len(listing) > 0 {
 		system += "\nFiles in current directory: " + strings.Join(listing, "  ")
 	}
 
@@ -592,6 +650,13 @@ func buildAskMessages(s *Session, history []llm.ChatMessage, query string) []llm
 	messages = append(messages, history...)
 	messages = append(messages, llm.ChatMessage{Role: "user", Content: query})
 	return messages
+}
+
+// getCwd returns the current working directory, safe for cross-goroutine reads.
+func (s *Session) getCwd() string {
+	s.ctxMu.Lock()
+	defer s.ctxMu.Unlock()
+	return s.currentCwd
 }
 
 // snapshot returns a race-free copy of the session state needed for
@@ -796,10 +861,12 @@ func (s *Session) pipe() {
 						// appear immediately, but skip the AI project-context banner by
 						// pre-setting lastContextDir (detectEnv skips the banner when
 						// dir == lastContextDir).
+						s.ctxMu.Lock()
 						if !s.firstCwdSeen {
 							s.firstCwdSeen = true
 							s.lastContextDir = cwd
 						}
+						s.ctxMu.Unlock()
 						go s.detectEnv(ctx, cwd)
 					case strings.HasPrefix(p, "9001;"):
 						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))

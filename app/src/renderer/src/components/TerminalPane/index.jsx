@@ -4,8 +4,11 @@ import { useTerminal } from "../../hooks/useTerminal";
 import { useSharedHistory } from "../../hooks/useSharedHistory";
 import { setPaneInfo } from "../../hooks/usePaneInfo";
 import { usePreferences } from "../../hooks/usePreferences";
+import { useAIStatus } from "../../hooks/useAIStatus";
 import { registerCopy, unregisterCopy } from "../../hooks/paneCopyRegistry";
 import { registerFocus, unregisterFocus } from "../../hooks/paneFocusRegistry";
+import { registerSetInput, unregisterSetInput } from "../../hooks/paneInputRegistry";
+import { detectRisk } from "../../commands/riskDetection";
 import UpdateBanner from "../UpdateBanner";
 import OutputArea from "../OutputArea";
 import InputBar from "../InputBar";
@@ -16,6 +19,7 @@ import AnalysisPanel from "../AnalysisPanel";
 import AnalysisLoadingBar from "../AnalysisPanel/LoadingBar";
 import KeyBadge from "../KeyBadge";
 import Tooltip from "../Tooltip";
+import ConfirmDialog from "../ConfirmDialog";
 
 export default function TerminalPane({
   paneId,
@@ -42,8 +46,10 @@ export default function TerminalPane({
   // By writing to callbacksRef.current on every render, handlers always see
   // the latest values without causing extra renders or requiring re-registration.
   const callbacksRef = useRef({});
-  const { prefs } = usePreferences();
-  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendNLQuery, sendGhostQuery } = useTerminal(paneId, callbacksRef, initialCwd);
+  const { prefs, dismissRiskPattern } = usePreferences();
+  const aiStatus = useAIStatus();
+  const aiAvailable = aiStatus.status === 'available';
+  const { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendRiskCheck, sendSummarize, sendNLQuery, sendGhostQuery } = useTerminal(paneId, callbacksRef, initialCwd);
   const {
     push: pushHistory,
     navigate: navigateHistory,
@@ -92,6 +98,9 @@ export default function TerminalPane({
   const [condaData, setCondaData] = useState(null);
   const inputBarRef = useRef(null);
   const runningRef = useRef(false);
+  const [riskConfirm, setRiskConfirm] = useState(null); // { command, trimmed, risk, aiExplanation, requestId } | null
+  const [suppressChecked, setSuppressChecked] = useState(false);
+  const riskRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!analysisLoading) return;
@@ -113,6 +122,11 @@ export default function TerminalPane({
       }
     })
     return () => unregisterFocus(paneId)
+  }, [paneId])
+
+  useEffect(() => {
+    registerSetInput(paneId, (text) => inputBarRef.current?.setValue(text))
+    return () => unregisterSetInput(paneId)
   }, [paneId])
 
   useEffect(() => {
@@ -215,6 +229,9 @@ export default function TerminalPane({
   };
   callbacksRef.current.onAISuggestError = () => { setAiSuggestions([]); };
   callbacksRef.current.onAIAnalysis = (result) => { setAnalysisLoading(false); setAnalysisResult(result); };
+  callbacksRef.current.onRiskCheckResult = ({ requestId, explanation }) => {
+    setRiskConfirm(prev => (prev && prev.requestId === requestId) ? { ...prev, aiExplanation: explanation } : prev);
+  };
   callbacksRef.current.onAIBannerStart = (type) => {
     if (type === 'error' && !prefs.aiExplainErrors) return;
     if (type === 'info'  && !prefs.aiDirectoryContext) return;
@@ -307,16 +324,8 @@ export default function TerminalPane({
     setTimeout(() => inputBarRef.current?.focus(), 0);
   }, []);
 
-  const handleSubmit = useCallback(
-    (command) => {
-      setBanner(null);
-      setAiSuggestions([]);
-      const trimmed = command.trim();
-      setHasCommands(true);
-      if (trimmed === 'clear') {
-        clearScreen();
-        return;
-      }
+  const executeCommand = useCallback(
+    (command, trimmed) => {
       pendingCommandRef.current = trimmed;
       setRunning(true);
       setAnalysisResult(null);
@@ -340,7 +349,55 @@ export default function TerminalPane({
         callbacksRef.current.focusTerm?.();
       });
     },
-    [sendInput, paneId, clearScreen],
+    [sendInput, paneId],
+  );
+
+  const closeRiskDialog = useCallback(() => {
+    if (suppressChecked && riskConfirm) dismissRiskPattern(riskConfirm.risk.id);
+    setRiskConfirm(null);
+  }, [suppressChecked, riskConfirm, dismissRiskPattern]);
+
+  const onRiskConfirm = useCallback(() => {
+    if (!riskConfirm) return;
+    const { command, trimmed } = riskConfirm;
+    closeRiskDialog();
+    executeCommand(command, trimmed);
+  }, [riskConfirm, closeRiskDialog, executeCommand]);
+
+  const onRiskCancel = useCallback(() => {
+    if (!riskConfirm) return;
+    const { command } = riskConfirm;
+    closeRiskDialog();
+    inputBarRef.current?.setValue(command); // restores text and refocuses
+  }, [riskConfirm, closeRiskDialog]);
+
+  const handleSubmit = useCallback(
+    (command) => {
+      setBanner(null);
+      setAiSuggestions([]);
+      const trimmed = command.trim();
+      setHasCommands(true);
+      if (trimmed === 'clear') {
+        clearScreen();
+        return;
+      }
+
+      if (prefs.confirmDestructiveCommands) {
+        const risk = detectRisk(trimmed);
+        if (risk && !prefs.dismissedRiskPatterns?.includes(risk.id)) {
+          const requestId = ++riskRequestIdRef.current;
+          setSuppressChecked(false);
+          setRiskConfirm({ command, trimmed, risk, aiExplanation: null, requestId });
+          if (aiAvailable) {
+            sendRiskCheck({ command: trimmed, cwd: callbacksRef.current.currentCwd ?? '', requestId });
+          }
+          return; // stop — wait for dialog outcome
+        }
+      }
+
+      executeCommand(command, trimmed);
+    },
+    [executeCommand, clearScreen, prefs.confirmDestructiveCommands, prefs.dismissedRiskPatterns, aiAvailable, sendRiskCheck],
   );
 
   function handleMouseDown() {
@@ -749,6 +806,19 @@ export default function TerminalPane({
             />
           </div>
         </div>
+      )}
+      {riskConfirm && (
+        <ConfirmDialog
+          title={`Confirm: ${riskConfirm.risk.label}`}
+          message={riskConfirm.aiExplanation ?? riskConfirm.risk.staticMessage}
+          confirmLabel="Run anyway"
+          cancelLabel="Cancel"
+          checkboxLabel="Don't ask again for this type of command"
+          checkboxChecked={suppressChecked}
+          onCheckboxChange={setSuppressChecked}
+          onConfirm={onRiskConfirm}
+          onCancel={onRiskCancel}
+        />
       )}
     </div>
   );

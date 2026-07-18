@@ -4,7 +4,7 @@ import { Toggle, ToggleRow } from './Toggle'
 import ModelCard from './ModelCard'
 
 export default function AISection() {
-  const { prefs, setAiExplainErrors, setAiDirectoryContext, setAiCommandSuggestions, setAiOutputAnalysis } = usePreferences()
+  const { prefs, setAiExplainErrors, setAiDirectoryContext, setAiCommandSuggestions, setAiOutputAnalysis, setConfirmDestructiveCommands, resetDismissedRiskPatterns } = usePreferences()
   const [models, setModels] = useState([])
   const [downloadProgress, setDownloadProgress] = useState({})
   const [saving, setSaving] = useState(false)
@@ -85,6 +85,30 @@ export default function AISection() {
           </div>
         </div>
         <Toggle checked={aiEnabled} onChange={handleToggleAi} />
+      </div>
+
+      {/* Destructive-command guard — independent of the AI toggle above; the
+          static warning works with AI off, AI only adds a specific explanation. */}
+      <div style={{ marginBottom: 16 }}>
+        <ToggleRow
+          label="Confirm destructive commands"
+          description="Show a confirmation dialog before running commands that could delete data or overwrite history (rm -rf, git push --force, etc.). Works even with AI disabled; AI adds a specific one-line explanation when available."
+          checked={prefs.confirmDestructiveCommands ?? true}
+          onChange={setConfirmDestructiveCommands}
+        />
+        {prefs.dismissedRiskPatterns?.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>
+              {prefs.dismissedRiskPatterns.length} warning type(s) muted
+            </span>
+            <button
+              onClick={resetDismissedRiskPatterns}
+              style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer' }}
+            >
+              Reset
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Model list — dimmed when AI is off */}

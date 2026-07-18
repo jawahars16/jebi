@@ -59,6 +59,11 @@ const (
 	// TypeAIAnalysis is sent backend → frontend: JSON AnalysisResult object.
 	TypeAIAnalysis = "ai_analysis"
 
+	// TypeAIRiskCheck is sent frontend → backend: JSON {"command":"…","cwd":"…","requestId":N}
+	TypeAIRiskCheck = "ai_risk_check"
+	// TypeAIRiskExplanation is sent backend → frontend: JSON {"requestId":N,"explanation":"…"}
+	TypeAIRiskExplanation = "ai_risk_explanation"
+
 	// TypeSummarize is sent frontend → backend to request a session summary.
 	TypeSummarize = "summarize"
 
@@ -78,4 +83,10 @@ const (
 	TypeAskSuggest = "ask_suggest"
 	// TypeAskSuggestResult is sent backend → frontend: JSON array of exactly 3 strings.
 	TypeAskSuggestResult = "ask_suggest_result"
+
+	// TypeHistorySearch is sent frontend → backend on the /global socket: JSON
+	// {"query": "...", "candidates": ["cmd1", "cmd2", ...]}
+	TypeHistorySearch = "history_search"
+	// TypeHistorySearchResult is sent backend → frontend: JSON {"matches": ["cmd2", "cmd7"]}
+	TypeHistorySearchResult = "history_search_result"
 )

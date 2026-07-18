@@ -133,8 +133,35 @@ export default function AboutSection() {
           </div>
         )}
 
-        {/* Install log */}
-        {(installing || installDone) && (
+        {/* Manual install instructions — jebi wasn't installed via Homebrew */}
+        {installDone?.success && installDone.manual && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+            <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-primary)', lineHeight: 1.6 }}>
+              jebi wasn't installed via Homebrew on this Mac, so it can't be upgraded with <code style={{ fontFamily: 'var(--font-mono)' }}>brew upgrade</code>. Install the update manually instead:
+            </div>
+            <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+              <li>Download the latest version below</li>
+              <li>Open the downloaded file and drag jebi into Applications, replacing the old copy</li>
+              <li>Quit and relaunch jebi</li>
+            </ol>
+            <button
+              onClick={() => window.electron.openExternal(installDone.downloadUrl)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 6,
+                border: 'none', background: 'var(--accent)',
+                color: '#fff', fontFamily: 'var(--font-ui)',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                alignSelf: 'flex-start',
+              }}
+            >
+              ↓ Download latest version
+            </button>
+          </div>
+        )}
+
+        {/* Install log — Homebrew path only */}
+        {(installing || (installDone && !installDone.manual)) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div
               ref={logRef}

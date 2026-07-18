@@ -43,6 +43,9 @@ export const TypeAskError = 'ask_error'
 
 export const TypeAIAnalyze  = 'ai_analyze'
 export const TypeAIAnalysis = 'ai_analysis'
+
+export const TypeAIRiskCheck       = 'ai_risk_check'
+export const TypeAIRiskExplanation = 'ai_risk_explanation'
 export const TypeSummarize  = 'summarize'
 
 export const TypeNLQuery  = 'nl_query'
@@ -55,3 +58,6 @@ export const TypeGhostResult = 'ghost_result'
 export const TypeAskGlobal        = 'ask_global'
 export const TypeAskSuggest       = 'ask_suggest'
 export const TypeAskSuggestResult = 'ask_suggest_result'
+
+export const TypeHistorySearch       = 'history_search'
+export const TypeHistorySearchResult = 'history_search_result'

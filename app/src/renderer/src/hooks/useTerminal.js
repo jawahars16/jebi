@@ -127,6 +127,9 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
           case wire.TypeAIAnalysis:
             callbacksRef.current.onAIAnalysis?.(msg.data)
             break
+          case wire.TypeAIRiskExplanation:
+            callbacksRef.current.onRiskCheckResult?.(msg.data)
+            break
           case wire.TypeNLResult:
             callbacksRef.current.onNLResult?.(msg.data?.command ?? '')
             break
@@ -186,6 +189,11 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
     ws.current.send(JSON.stringify({ type: wire.TypeAIAnalyze, data: entry }))
   }, [paneId])
 
+  const sendRiskCheck = useCallback((payload) => {
+    if (ws.current?.readyState !== WebSocket.OPEN) return
+    ws.current.send(JSON.stringify({ type: wire.TypeAIRiskCheck, data: payload }))
+  }, [paneId])
+
   const sendNLQuery = useCallback((query, cwd) => {
     if (ws.current?.readyState !== WebSocket.OPEN) return
     ws.current.send(JSON.stringify({ type: wire.TypeNLQuery, data: { query, cwd } }))
@@ -196,5 +204,5 @@ export function useTerminal(paneId, callbacksRef, initialCwd) {
     ws.current.send(JSON.stringify({ type: wire.TypeGhostQuery, data: { prefix, history } }))
   }, [paneId])
 
-  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendSummarize, sendNLQuery, sendGhostQuery }
+  return { sendInput, sendRaw, sendResize, sendAIAppend, sendAIAnalyze, sendRiskCheck, sendSummarize, sendNLQuery, sendGhostQuery }
 }

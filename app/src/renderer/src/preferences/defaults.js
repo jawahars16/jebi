@@ -12,6 +12,8 @@ export const DEFAULT_PREFS = {
   aiDirectoryContext: true,
   aiCommandSuggestions: true,
   aiOutputAnalysis:   false,
+  confirmDestructiveCommands: true,
+  dismissedRiskPatterns: [],
   terminalGrain: true,
   terminalGrainIntensity: 15,
 }

@@ -58,7 +58,7 @@ function push(command, exitCode, sid) {
   persistAndBroadcast(next)
 }
 
-function getAll() {
+export function getAll() {
   return sharedHistory
 }
 
