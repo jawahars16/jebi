@@ -10,6 +10,7 @@ export default function AISection() {
   const [saving, setSaving] = useState(false)
   const [aiEnabled, setAiEnabledState] = useState(true)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [category, setCategory] = useState('balanced')
 
   useEffect(() => {
     window.electron.ai.getConfig().then(cfg => {
@@ -93,13 +94,45 @@ export default function AISection() {
             Loading…
           </div>
         )}
+
+        {/* Category tab switch */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+          {[
+            { id: 'fast', label: 'Fast' },
+            { id: 'balanced', label: 'Balanced' },
+            { id: 'smart', label: 'Smart' },
+          ].map(tab => {
+            const active = category === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCategory(tab.id)}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  border: `1px solid ${active ? 'var(--brand)' : 'var(--border)'}`,
+                  background: active ? 'color-mix(in srgb, var(--brand) 12%, transparent)' : 'none',
+                  color: active ? 'var(--brand)' : 'var(--text-muted)',
+                  fontFamily: 'var(--font-ui)',
+                  fontSize: 'var(--font-size-ui)',
+                  fontWeight: active ? 600 : 400,
+                  cursor: 'pointer',
+                  transition: 'border-color 150ms ease, background 150ms ease, color 150ms ease',
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 4 }}>
-          {models.map((model, i) => (
+          {models.filter(m => (m.category ?? 'balanced') === category).map((model, i, arr) => (
             <ModelCard
               key={model.id}
               model={model}
               isActive={!!model.active}
-              isLast={i === models.length - 1}
+              isLast={i === arr.length - 1}
               onActivate={() => handleActivate(model)}
               onDownload={() => handleDownload(model.id)}
               onCancel={() => handleCancel(model.id)}
