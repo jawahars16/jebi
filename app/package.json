@@ -1,6 +1,6 @@
 {
   "name": "jebi",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "description": "A modern developer terminal",
   "main": "out/main/index.js",
   "scripts": {
@@ -58,7 +58,12 @@
         }
       ],
       "category": "public.app-category.developer-tools",
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "identity": "Jawahar Selvaraj (TSU6RAH237)"
     },
     "dmg": {
       "artifactName": "${productName}-${version}-${arch}.${ext}",
