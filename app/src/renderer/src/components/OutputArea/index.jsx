@@ -283,6 +283,14 @@ export default function OutputArea({
                 (e.key === 'c' || e.key === 'd' || e.key === 'z')) {
               return true;
             }
+            // Arrow keys drive raw-mode CLI prompts (inquirer/enquirer list selection etc.)
+            // that don't switch to the alt-screen buffer or enable bracketed paste/DECCKM,
+            // so the isInteractive() heuristic misses them. Forward arrows through while a
+            // command is running rather than hijacking them into the InputBar.
+            if (callbacksRef.current.isRunning?.() &&
+                (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+              return true;
+            }
             callbacksRef.current.focusInput?.();
             return false;
           }
