@@ -120,9 +120,8 @@ do_update_tap() {
   local sha
   sha=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
 
-  local tap_dir
   tap_dir=$(mktemp -d)
-  trap 'rm -rf "$tap_dir"' EXIT
+  trap 'rm -rf "${tap_dir:-}"' EXIT
 
   run git clone "$HOMEBREW_TAP_REPO" "$tap_dir"
 

@@ -342,8 +342,17 @@ function checkForUpdates(win) {
     hostname: 'api.github.com',
     path: '/repos/jebi-sh/jebi/releases/latest',
     headers: { 'User-Agent': 'jebi-app' },
+    timeout: 10000,
   }
-  https.get(options, (res) => {
+
+  let settled = false
+  const sendOnce = (status) => {
+    if (settled) return
+    settled = true
+    win.webContents.send('update:status', status)
+  }
+
+  const req = https.get(options, (res) => {
     let data = ''
     res.on('data', chunk => { data += chunk })
     res.on('end', () => {
@@ -354,18 +363,25 @@ function checkForUpdates(win) {
         latestReleaseUrl = json.html_url || latestReleaseUrl
         const dmgAsset = (json.assets || []).find(a => a.name?.endsWith('.dmg'))
         latestDmgUrl = dmgAsset?.browser_download_url || latestDmgUrl
-        win.webContents.send('update:status', {
+        sendOnce({
           available,
           currentVersion: current,
           latestVersion: latest,
           releaseUrl: latestReleaseUrl,
         })
       } catch {
-        win.webContents.send('update:status', { available: false, error: true, currentVersion: current })
+        sendOnce({ available: false, error: true, currentVersion: current })
       }
     })
-  }).on('error', () => {
-    win.webContents.send('update:status', { available: false, error: true, currentVersion: current })
+  })
+
+  req.on('timeout', () => {
+    req.destroy()
+    sendOnce({ available: false, error: true, currentVersion: current })
+  })
+
+  req.on('error', () => {
+    sendOnce({ available: false, error: true, currentVersion: current })
   })
 }
 

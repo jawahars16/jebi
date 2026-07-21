@@ -99,7 +99,7 @@ export default function AboutSection() {
 
         {showResult && updateStatus.error && (
           <p style={{ margin: 0, fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-muted)' }}>
-            Could not check for updates. Check your connection and try again.
+            Update check failed. Try again.
           </p>
         )}
 
