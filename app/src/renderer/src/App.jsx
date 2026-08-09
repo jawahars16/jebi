@@ -544,7 +544,7 @@ function AppInner() {
         </div>
       </div>
 
-      <StatusBar onOpenAISettings={() => openPreferences('ai')} onOpenUpdate={() => openPreferences('about')} onOpenAsk={() => setAskOpen(true)} />
+      <StatusBar onOpenAISettings={() => openPreferences('ai')} onOpenUpdate={() => openPreferences('about')} />
 
       {/* Pointer-capture overlay — sits over xterm canvases during drag so the
           cursor stays consistent and mouse events don't get swallowed by xterm */}
@@ -599,4 +599,3 @@ function AppInner() {
     </div>
   )
 }
-

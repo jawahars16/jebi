@@ -52,6 +52,8 @@ var detectors = []detector{
 // non-empty result to the frontend immediately, then triggers an AI project
 // context summary once all detectors complete.
 func (s *Session) detectEnv(ctx context.Context, dir string) {
+	defer s.recoverGoroutine("detect_env")
+
 	type result struct {
 		msgType string
 		data    string
@@ -63,6 +65,7 @@ func (s *Session) detectEnv(ctx context.Context, dir string) {
 		d := d
 		wg.Add(1)
 		go func() {
+			defer s.recoverGoroutine("detect_probe_" + d.msgType)
 			defer wg.Done()
 			ch <- result{d.msgType, d.probe(ctx, dir)}
 		}()
@@ -76,7 +79,7 @@ func (s *Session) detectEnv(ctx context.Context, dir string) {
 	}()
 	for r := range ch {
 		if r.data != "" {
-			s.w.Send(wire.StringMessage(r.msgType, r.data))
+			s.send(wire.StringMessage(r.msgType, r.data))
 		}
 		switch r.msgType {
 		case wire.TypeGit:
@@ -153,9 +156,9 @@ func (s *Session) sendProjectContext(ctx context.Context, info llm.ProjectInfo) 
 		return
 	}
 	startData, _ := json.Marshal(map[string]string{"type": "info"})
-	s.w.Send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
+	s.send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
 	data, _ := json.Marshal(result.Message)
-	s.w.Send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
+	s.send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
 }
 
 // newDetectContext returns a context capped at detectTimeout.

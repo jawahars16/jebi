@@ -7,23 +7,20 @@ import (
 	"strings"
 )
 
-const historySearchSystemPrompt = `You are a shell history search assistant. Given a list of previously run
-commands and a natural-language description of what the user is looking for,
-identify which commands (if any) match the user's intent.
+const historySearchSystemPrompt = `Find previous shell commands that match the user's intent.
 
-Rules:
-- Only choose from the exact commands listed below. Do not invent, modify, or combine commands.
-- Return up to 5 matches, most relevant first.
-- Output ONLY a JSON array of strings, each exactly matching one of the listed commands. No markdown, no explanation.
-- If nothing matches, output an empty JSON array: []`
+Match by the command's actual action, flags, arguments, paths, pipes, and redirects. Ignore superficial word or tool overlap.
+
+Return up to 5 matching command indexes, best first.
+Return only strong matches.
+Output only a JSON array of integers, or [].`
 
 // BuildHistorySearchMessages returns the message list for a history-search request.
 func BuildHistorySearchMessages(query string, candidates []string) []ChatMessage {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Query: %s\n\nCommands:\n", query)
-	for _, c := range candidates {
-		sb.WriteString(c)
-		sb.WriteString("\n")
+	for i, c := range candidates {
+		fmt.Fprintf(&sb, "%d: %s\n", i, c)
 	}
 	return []ChatMessage{
 		{Role: "system", Content: historySearchSystemPrompt},
@@ -32,10 +29,12 @@ func BuildHistorySearchMessages(query string, candidates []string) []ChatMessage
 }
 
 // SearchHistory asks the model which of the given candidate commands best
-// match the natural-language query. Returns only strings that are exact
-// members of candidates — any hallucinated text is dropped. Returns an
-// empty (non-nil) slice, not an error, when nothing matches or the model's
-// output can't be parsed as JSON.
+// match the natural-language query. The model returns 0-based indexes
+// rather than reproducing command text — this uses fewer output tokens and
+// avoids the model subtly altering quoting, spacing, or flags when asked to
+// echo a command. Out-of-range indexes are dropped. Returns an empty
+// (non-nil) slice, not an error, when nothing matches or the model's output
+// can't be parsed as JSON.
 func SearchHistory(ctx context.Context, provider Provider, query string, candidates []string) ([]string, error) {
 	if len(candidates) == 0 {
 		return []string{}, nil
@@ -62,20 +61,17 @@ func SearchHistory(ctx context.Context, provider Provider, query string, candida
 		return []string{}, nil
 	}
 
-	var parsed []string
-	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+	var indexes []int
+	if err := json.Unmarshal([]byte(raw), &indexes); err != nil {
 		return []string{}, nil // unparsable output — treat as no matches, not an error
 	}
 
-	valid := make(map[string]bool, len(candidates))
-	for _, c := range candidates {
-		valid[c] = true
-	}
-	matches := make([]string, 0, len(parsed))
-	for _, m := range parsed {
-		if valid[m] {
-			matches = append(matches, m)
+	matches := make([]string, 0, len(indexes))
+	for _, idx := range indexes {
+		if idx < 0 || idx >= len(candidates) {
+			continue // out-of-range index — hallucinated or malformed, drop it
 		}
+		matches = append(matches, candidates[idx])
 		if len(matches) >= 5 {
 			break
 		}

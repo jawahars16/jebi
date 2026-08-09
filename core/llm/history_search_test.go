@@ -16,7 +16,7 @@ func TestBuildHistorySearchMessagesIncludesQueryAndCandidates(t *testing.T) {
 		t.Errorf("messages[0].Role = %q, want system", messages[0].Role)
 	}
 	user := messages[1].Content
-	for _, want := range []string{"clean up docker", "docker system prune -f", "git status"} {
+	for _, want := range []string{"clean up docker", "0: docker system prune -f", "1: git status"} {
 		if !strings.Contains(user, want) {
 			t.Errorf("user message missing %q, got: %s", want, user)
 		}
@@ -25,7 +25,7 @@ func TestBuildHistorySearchMessagesIncludesQueryAndCandidates(t *testing.T) {
 
 func TestSearchHistoryReturnsMultipleMatches(t *testing.T) {
 	candidates := []string{"docker system prune -f", "git status", "npm run build"}
-	provider := &fakeRiskProvider{tokens: []string{`["docker system prune -f", "npm run build"]`}}
+	provider := &fakeRiskProvider{tokens: []string{`[0, 2]`}}
 	got, err := SearchHistory(context.Background(), provider, "clean up docker", candidates)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -36,16 +36,16 @@ func TestSearchHistoryReturnsMultipleMatches(t *testing.T) {
 	}
 }
 
-func TestSearchHistoryDropsHallucinatedMatches(t *testing.T) {
+func TestSearchHistoryDropsOutOfRangeIndex(t *testing.T) {
 	candidates := []string{"docker system prune -f", "git status"}
-	// "docker rm -f nonexistent" was never in candidates — must be dropped.
-	provider := &fakeRiskProvider{tokens: []string{`["docker system prune -f", "docker rm -f nonexistent"]`}}
+	// index 5 doesn't exist in the candidate list — must be dropped.
+	provider := &fakeRiskProvider{tokens: []string{`[0, 5, -1]`}}
 	got, err := SearchHistory(context.Background(), provider, "clean up docker", candidates)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(got) != 1 || got[0] != "docker system prune -f" {
-		t.Errorf("got %v, want [\"docker system prune -f\"] (hallucinated entry dropped)", got)
+		t.Errorf("got %v, want [\"docker system prune -f\"] (out-of-range index dropped)", got)
 	}
 }
 
@@ -83,7 +83,7 @@ func TestSearchHistoryPropagatesProviderError(t *testing.T) {
 func TestSearchHistoryRespectsContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	provider := &fakeRiskProvider{tokens: []string{`["ls -la"]`}}
+	provider := &fakeRiskProvider{tokens: []string{`[0]`}}
 	_, err := SearchHistory(ctx, provider, "anything", []string{"ls -la"})
 	if err == nil {
 		t.Fatal("expected error from cancelled context, got nil")

@@ -61,3 +61,8 @@ export const TypeAskSuggestResult = 'ask_suggest_result'
 
 export const TypeHistorySearch       = 'history_search'
 export const TypeHistorySearchResult = 'history_search_result'
+
+// Sent right before the connection closes for good — the session crashed.
+// The frontend must not silently reconnect; show an error and let the user
+// explicitly start a new shell for that tab.
+export const TypeSessionDead = 'session_dead'

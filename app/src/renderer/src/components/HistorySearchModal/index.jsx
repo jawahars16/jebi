@@ -39,6 +39,7 @@ export default function HistorySearchModal({ open, onClose, onSelect }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const [noMatches, setNoMatches] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(0)
   const inputRef = useRef(null)
   const modalRef = useRef(null)
@@ -56,6 +57,7 @@ export default function HistorySearchModal({ open, onClose, onSelect }) {
     onHistoryMatches: (matches) => {
       if (!open || sentForQueryRef.current !== query) return
       setSearching(false)
+      setNoMatches(matches.length === 0)
       setResults(matches)
     },
   })
@@ -66,6 +68,7 @@ export default function HistorySearchModal({ open, onClose, onSelect }) {
     setQuery('')
     setResults([])
     setSearching(false)
+    setNoMatches(false)
     setSelectedIdx(0)
   }, [open])
 
@@ -83,6 +86,7 @@ export default function HistorySearchModal({ open, onClose, onSelect }) {
     if (!open) return
     clearTimeout(debounceRef.current)
     setSearching(false)
+    setNoMatches(false)
     if (!query.trim()) { setResults([]); return }
 
     const commands = dedupedCommands().slice(0, MAX_CANDIDATES)
@@ -155,7 +159,7 @@ export default function HistorySearchModal({ open, onClose, onSelect }) {
             padding: '14px 16px',
             background: 'transparent',
             border: 'none',
-            borderBottom: results.length > 0 || searching ? '1px solid var(--border)' : 'none',
+            borderBottom: results.length > 0 || searching || noMatches ? '1px solid var(--border)' : 'none',
             outline: 'none',
             fontFamily: 'var(--font-mono)',
             fontSize: 14,
@@ -165,6 +169,11 @@ export default function HistorySearchModal({ open, onClose, onSelect }) {
         {searching && (
           <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>
             Searching…
+          </div>
+        )}
+        {!searching && noMatches && (
+          <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>
+            No relevant results
           </div>
         )}
         {!searching && results.length > 0 && (

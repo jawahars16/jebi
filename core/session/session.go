@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"syscall"
@@ -87,6 +89,35 @@ type Session struct {
 	// startup. The first OSC 7 message is the shell's initial cwd, not the
 	// result of a user cd command; we only want the banner after real navigation.
 	firstCwdSeen bool
+
+	// dead is set once by crashed() and never cleared. It tells Start() to
+	// exit for good instead of detaching and waiting for a reattach that
+	// will never come. Guarded by connMu.
+	dead bool
+}
+
+// send writes msg to the attached client if one exists; it is a no-op when
+// the session is detached (s.w == nil), unlike calling s.w.Send directly —
+// which would panic on the nil receiver. Every send to the frontend outside
+// of pipe()'s own sendOutput/OSC handling must go through this.
+func (s *Session) send(msg wire.Message) {
+	s.connMu.Lock()
+	w := s.w
+	s.connMu.Unlock()
+	if w != nil {
+		w.Send(msg)
+	}
+}
+
+// recoverGoroutine logs and swallows a panic in a background AI goroutine
+// (suggestions, banners, /ask, etc). These are cosmetic — a failure in one
+// must never crash the process and take every other tab down with it, but
+// unlike a pipe() crash it doesn't mean the shell itself is broken, so the
+// session is left running rather than marked dead.
+func (s *Session) recoverGoroutine(label string) {
+	if r := recover(); r != nil {
+		log.Printf("session %s: %s panic recovered: %v\n%s", s.id, label, r, debug.Stack())
+	}
 }
 
 // resolveShell returns cfg.Shell if set, then $SHELL, then /bin/zsh.
@@ -155,7 +186,7 @@ func New(conn connection, provider llm.Provider, initialCwd string) (*Session, e
 
 	// Send config to frontend so it knows which prompt segments are active.
 	cfgData, _ := json.Marshal(s.cfg)
-	s.w.Send(wire.Message{Type: wire.TypeConfig, Data: cfgData})
+	s.send(wire.Message{Type: wire.TypeConfig, Data: cfgData})
 
 	// Suppress echo and inject the shell hook (suppress prompt, set up precmd).
 	// Then emit a marker so pipe() knows when init is complete and output is clean.
@@ -262,6 +293,33 @@ func (s *Session) Close() {
 	s.connMu.Unlock()
 }
 
+// crashed marks the session permanently dead after an unrecoverable error
+// (a panic in pipe()), tells the attached client so it can show an error
+// instead of retrying forever, and releases all resources. Safe to call more
+// than once and safe to call while detached — a panic could happen with no
+// client attached at all.
+func (s *Session) crashed() {
+	s.connMu.Lock()
+	if s.dead {
+		s.connMu.Unlock()
+		return
+	}
+	s.dead = true
+	w := s.w
+	ch := s.attachCh
+	s.connMu.Unlock()
+
+	if w != nil {
+		w.Send(wire.Message{Type: wire.TypeSessionDead})
+	}
+	s.Close()
+	if ch != nil {
+		// Wake Start()'s loop if it's currently blocked waiting for a
+		// reattach that will now never come.
+		close(ch)
+	}
+}
+
 // Start launches the pipe goroutine and blocks reading input from the frontend.
 // Returns only when a "kill" message is received or the shell process exits.
 // A plain WebSocket disconnect detaches the connection but keeps the PTY alive.
@@ -270,15 +328,15 @@ func (s *Session) Start() {
 	registry.add(s)
 
 	// Send session ID first so the renderer can persist it.
-	s.w.Send(wire.StringMessage(wire.TypeSessionID, s.id))
+	s.send(wire.StringMessage(wire.TypeSessionID, s.id))
 
 	// Notify the frontend whether AI assistance is available.
 	if s.provider != nil && s.provider.IsAvailable() {
 		payload, _ := json.Marshal(map[string]string{"status": "available", "provider": s.provider.Name()})
-		s.w.Send(wire.Message{Type: wire.TypeAIStatus, Data: payload})
+		s.send(wire.Message{Type: wire.TypeAIStatus, Data: payload})
 	} else {
 		payload, _ := json.Marshal(map[string]string{"status": "unavailable", "provider": ""})
-		s.w.Send(wire.Message{Type: wire.TypeAIStatus, Data: payload})
+		s.send(wire.Message{Type: wire.TypeAIStatus, Data: payload})
 	}
 
 	go s.pipe()
@@ -286,16 +344,30 @@ func (s *Session) Start() {
 		s.connMu.Lock()
 		w := s.w
 		ch := s.attachCh
+		dead := s.dead
 		s.connMu.Unlock()
+		if dead {
+			// crashed() already ran full cleanup; just end this goroutine.
+			return
+		}
 		if w == nil {
 			// Detached — block until Reattach() closes attachCh instead of
 			// polling; ch is guaranteed non-nil here since Detach() always
-			// sets it in the same critical section that clears w.
+			// sets it in the same critical section that clears w. crashed()
+			// also closes attachCh, to wake us up here if it fires while detached.
 			<-ch
 			continue
 		}
 		msg, err := w.Receive()
 		if err != nil {
+			s.connMu.Lock()
+			dead = s.dead
+			s.connMu.Unlock()
+			if dead {
+				// crashed() closed the conn out from under us — don't
+				// detach-and-wait, just end the goroutine like above.
+				return
+			}
 			// WebSocket dropped — detach and keep PTY alive.
 			s.Detach()
 			continue
@@ -370,49 +442,53 @@ func (s *Session) Start() {
 			if entry.ExitCode != 0 {
 				// Error path: explain what went wrong AND suggest a fix command
 				go func() {
+					defer s.recoverGoroutine("ai_explain")
 					defer cancel()
 					var wg sync.WaitGroup
 					wg.Add(2)
 					go func() {
+						defer s.recoverGoroutine("ai_explain_stream")
 						defer wg.Done()
 						startData, _ := json.Marshal(map[string]string{"type": "error"})
-						s.w.Send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
+						s.send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
 						done := false
 						llm.ExplainStream(ctx, s.provider, req,
 							func(token string) {
 								data, _ := json.Marshal(token)
-								s.w.Send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
+								s.send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
 							},
 							func(_ string) { done = true },
 						)
 						// Send cancel if the stream didn't complete — covers both context
 						// cancellation and provider early-close (partial response).
 						if !done {
-							s.w.Send(wire.Message{Type: wire.TypeAIBannerCancel})
+							s.send(wire.Message{Type: wire.TypeAIBannerCancel})
 						}
 					}()
 					go func() {
+						defer s.recoverGoroutine("ai_suggest")
 						defer wg.Done()
 						suggestions, err := llm.Suggest(ctx, s.provider, req)
 						if err != nil || len(suggestions) == 0 {
 							return
 						}
 						data, _ := json.Marshal(suggestions)
-						s.w.Send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
+						s.send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
 					}()
 					wg.Wait()
 				}()
 			} else {
 				// Success path: suggest next commands (from first command onwards)
 				go func() {
+					defer s.recoverGoroutine("ai_suggest_success")
 					defer cancel()
 					suggestions, err := llm.Suggest(ctx, s.provider, req)
 					if err != nil || len(suggestions) == 0 {
-						s.w.Send(wire.Message{Type: wire.TypeAISuggestError})
+						s.send(wire.Message{Type: wire.TypeAISuggestError})
 						return
 					}
 					data, _ := json.Marshal(suggestions)
-					s.w.Send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
+					s.send(wire.Message{Type: wire.TypeAISuggestion, Data: data})
 				}()
 			}
 
@@ -443,6 +519,7 @@ func (s *Session) Start() {
 				OS:       runtime.GOOS + "/" + runtime.GOARCH,
 			}
 			go func() {
+				defer s.recoverGoroutine("ai_analyze")
 				defer cancel()
 				result, err := llm.Analyze(ctx, s.provider, req)
 				if err != nil || result == nil {
@@ -452,7 +529,7 @@ func (s *Session) Start() {
 				if err != nil {
 					return
 				}
-				s.w.Send(wire.Message{Type: wire.TypeAIAnalysis, Data: data})
+				s.send(wire.Message{Type: wire.TypeAIAnalysis, Data: data})
 			}()
 
 		case wire.TypeAIRiskCheck:
@@ -474,18 +551,19 @@ func (s *Session) Start() {
 			s.cancelRiskCheck = riskCancel
 			reqID := payload.RequestID
 			go func() {
+				defer s.recoverGoroutine("ai_risk_check")
 				defer riskCancel()
 				explanation, err := llm.RiskCheck(riskCtx, s.provider, payload.Command, payload.Cwd, resolveShell(s.cfg), runtime.GOOS+"/"+runtime.GOARCH)
 				if err != nil || explanation == "" {
 					return
 				}
 				data, _ := json.Marshal(map[string]any{"requestId": reqID, "explanation": explanation})
-				s.w.Send(wire.Message{Type: wire.TypeAIRiskExplanation, Data: data})
+				s.send(wire.Message{Type: wire.TypeAIRiskExplanation, Data: data})
 			}()
 
 		case wire.TypeSummarize:
 			if s.provider == nil || len(s.contextEntries) == 0 {
-				s.w.Send(wire.Message{Type: wire.TypeAIBannerCancel})
+				s.send(wire.Message{Type: wire.TypeAIBannerCancel})
 				break
 			}
 			if s.cancelAsk != nil {
@@ -504,20 +582,21 @@ func (s *Session) Start() {
 				DirListing: readDir(cwd),
 			}
 			go func() {
+				defer s.recoverGoroutine("ai_summarize")
 				defer cancel()
 				startData, _ := json.Marshal(map[string]string{"type": "summary"})
-				s.w.Send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
+				s.send(wire.Message{Type: wire.TypeAIBannerStart, Data: startData})
 				done := false
 				messages := llm.BuildSessionSummaryMessages(req)
 				llm.AskStream(ctx, s.provider, messages,
 					func(token string) {
 						data, _ := json.Marshal(token)
-						s.w.Send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
+						s.send(wire.Message{Type: wire.TypeAIBannerToken, Data: data})
 					},
 					func(_ string) { done = true },
 				)
 				if !done {
-					s.w.Send(wire.Message{Type: wire.TypeAIBannerCancel})
+					s.send(wire.Message{Type: wire.TypeAIBannerCancel})
 				}
 			}()
 
@@ -527,7 +606,7 @@ func (s *Session) Start() {
 				Query   string            `json:"query"`
 			}
 			if err := json.Unmarshal(msg.Data, &payload); err != nil || s.provider == nil || !s.provider.IsAvailable() {
-				s.w.Send(wire.StringMessage(wire.TypeAskError, "AI not available"))
+				s.send(wire.StringMessage(wire.TypeAskError, "AI not available"))
 				break
 			}
 			if s.cancelAsk != nil {
@@ -537,18 +616,19 @@ func (s *Session) Start() {
 			s.cancelAsk = cancel
 			messages := buildAskMessages(s, payload.History, payload.Query)
 			go func() {
+				defer s.recoverGoroutine("ai_ask")
 				defer cancel()
 				err := llm.AskStream(ctx, s.provider, messages,
 					func(token string) {
 						data, _ := json.Marshal(token)
-						s.w.Send(wire.Message{Type: wire.TypeAskChunk, Data: data})
+						s.send(wire.Message{Type: wire.TypeAskChunk, Data: data})
 					},
 					func(_ string) {
-						s.w.Send(wire.Message{Type: wire.TypeAskDone})
+						s.send(wire.Message{Type: wire.TypeAskDone})
 					},
 				)
 				if err != nil && ctx.Err() == nil {
-					s.w.Send(wire.StringMessage(wire.TypeAskError, err.Error()))
+					s.send(wire.StringMessage(wire.TypeAskError, err.Error()))
 				}
 			}()
 
@@ -561,11 +641,12 @@ func (s *Session) Start() {
 				break
 			}
 			if s.provider == nil || !s.provider.IsAvailable() {
-				s.w.Send(wire.StringMessage(wire.TypeNLError, "AI not available"))
+				s.send(wire.StringMessage(wire.TypeNLError, "AI not available"))
 				break
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			go func() {
+				defer s.recoverGoroutine("ai_nl_query")
 				defer cancel()
 				cwd := payload.Cwd
 				if cwd == "" {
@@ -577,11 +658,11 @@ func (s *Session) Start() {
 					if err != nil && err.Error() == "not_a_command" {
 						msg = "No relevant command for this query"
 					}
-					s.w.Send(wire.StringMessage(wire.TypeNLError, msg))
+					s.send(wire.StringMessage(wire.TypeNLError, msg))
 					return
 				}
 				data, _ := json.Marshal(map[string]string{"command": cmd})
-				s.w.Send(wire.Message{Type: wire.TypeNLResult, Data: data})
+				s.send(wire.Message{Type: wire.TypeNLResult, Data: data})
 			}()
 
 		case wire.TypeGhostQuery:
@@ -608,13 +689,14 @@ func (s *Session) Start() {
 				SessionContext: entries,
 			}
 			go func() {
+				defer s.recoverGoroutine("ai_ghost")
 				defer cancel()
 				suggestion, err := llm.GhostComplete(ctx, s.provider, req)
 				if err != nil || suggestion == "" {
 					return
 				}
 				data, _ := json.Marshal(map[string]string{"suggestion": suggestion})
-				s.w.Send(wire.Message{Type: wire.TypeGhostResult, Data: data})
+				s.send(wire.Message{Type: wire.TypeGhostResult, Data: data})
 			}()
 
 		case wire.TypeKill:
@@ -793,6 +875,13 @@ func splitCompleteUTF8(buf []byte) (complete []byte, leftover []byte) {
 //   - OSC 7  (cwd)       → TypeCwd
 //   - OSC 9001 (exit code) → TypeExitCode
 func (s *Session) pipe() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("session %s: pipe() panic recovered: %v\n%s", s.id, r, debug.Stack())
+			s.crashed()
+		}
+	}()
+
 	buf := make([]byte, 4096)
 	ready := false
 	var pending []byte
@@ -850,7 +939,7 @@ func (s *Session) pipe() {
 						s.ctxMu.Lock()
 						s.currentCwd = cwd
 						s.ctxMu.Unlock()
-						s.w.Send(wire.StringMessage(wire.TypeCwd, cwd))
+						s.send(wire.StringMessage(wire.TypeCwd, cwd))
 						// Cancel previous detection and start fresh for the new directory.
 						if s.cancelDetect != nil {
 							s.cancelDetect()
@@ -869,11 +958,11 @@ func (s *Session) pipe() {
 						s.ctxMu.Unlock()
 						go s.detectEnv(ctx, cwd)
 					case strings.HasPrefix(p, "9001;"):
-						s.w.Send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
+						s.send(wire.StringMessage(wire.TypeExitCode, strings.TrimPrefix(p, "9001;")))
 					case strings.HasPrefix(p, "9003;"):
 						env := strings.TrimPrefix(p, "9003;")
 						if env != "" {
-							s.w.Send(wire.StringMessage(wire.TypeConda, env))
+							s.send(wire.StringMessage(wire.TypeConda, env))
 						}
 					}
 				}

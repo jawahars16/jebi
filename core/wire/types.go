@@ -89,4 +89,10 @@ const (
 	TypeHistorySearch = "history_search"
 	// TypeHistorySearchResult is sent backend → frontend: JSON {"matches": ["cmd2", "cmd7"]}
 	TypeHistorySearchResult = "history_search_result"
+
+	// TypeSessionDead is sent backend → frontend right before the connection
+	// closes for good: the session crashed and its shell is gone. The
+	// frontend must not silently reconnect — it should surface an error and
+	// let the user explicitly start a new shell for that tab.
+	TypeSessionDead = "session_dead"
 )
